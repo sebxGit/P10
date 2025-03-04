@@ -1,0 +1,36 @@
+Name,Value,Unit
+Domestic Consumer,,
+Number of Domestic Consumers:,126.0,
+Number of EVs at each Domestic Consumer at simulation start:,0.0,
+Number of Charging Boxes at each Domestic Consumer at simulation start:,0.0,
+Maximum allowed number of EVs at a Domestic Consumer:,1.0,
+Maximum allowed number of Charging Boxes at a Domestic Consumer:,1.0,
+Domestic Consumer base load data source:,Dataset (true),
+Assign random EV/Charging box to:,Domestic Consumer with lowest number of EVs first (true),
+Driving distance per trip:,Randomly generated based on dataset (true),
+First possible departure hour:,5.0,
+Last possible departure hour:,9.0,
+First possible arrival hour:,14.0,
+Last possible arrival hour:,22.0,
+First hour in average idle load estimation period:,0.0,
+Last hour in average idle load estimation period:,4.0,
+Driving locked to peaks loads within predefined time ranges:,No (false),
+EV growth function:,From dataset,
+Starting number of EVs (total!):,1.0,EVs
+,,
+Electric Vehicle & Charging Box,,
+EV models source:,Dataset (true),
+Charging Box models source:,Dataset (true),
+,,
+Electric Grid & Supplier,,
+Number of Electricity Suppliers:,1.0,
+Total grid capacity:,400.0,kW
+House Capacity:,17.3,kW
+Electricity price structure:,Hourly price based,
+Distribution tariff:,Tariff model 2.0,
+,,
+Charging strategies,,
+Strategy:,Simple Charging,
+Minimum State-of-Charge:,0.0,%
+Maximum State-of-Charge:,100.0,%
+Number of manual inputs:,0.0,

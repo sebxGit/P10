@@ -1,0 +1,6 @@
+EV model,Battery capacity [kWh],Mileage [kWh/km],Charging power [kW]
+Tesla model 3,50.0,0.151,11.0
+VW e-Golf,35.8,0.168,7.2
+Hyundai Kona,42.0,0.154,11.0
+Renault Zoe,44.1,0.161,22.0
+Nissan Leaf,40.0,0.164,3.68
