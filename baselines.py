@@ -87,7 +87,7 @@ criterion_map = {
 }
 
 scaler_map = {
-    "MinMaxScaler": MinMaxScaler()
+    "MinMaxScaler": MinMaxScaler
 }
 
 args = parser.parse_args()
@@ -96,7 +96,8 @@ X = df.copy()
 y = X['Energy_Consumption'].shift(-1).ffill()
 X_cv, X_test, y_cv, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
 X_train, X_val, y_train, y_val = train_test_split(X_cv, y_cv, test_size=0.25, shuffle=False)
-preprocessing = scaler_map.get(args.scaler)
+
+preprocessing = scaler_map.get(args.scaler)()
 preprocessing.fit(X_train)
 
 X_train = preprocessing.transform(X_train)
@@ -116,7 +117,7 @@ test_dataset = TimeSeriesDataset(X_test, y_test, seq_len=args.seq_len)
 test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, persistent_workers=True)
 
 if __name__ == '__main__':
-    model = LSTM(input_size=1, hidden_size=args.hidden_size, num_layers=args.num_layers, criterion=criterion_map.get(args.criterion), dropout=args.dropout, learning_rate=args.learning_rate)
-    trainer = L.Trainer(max_epochs=args.max_epochs, fast_dev_run=100)
+    model = LSTM(input_size=1, hidden_size=args.hidden_size, num_layers=args.num_layers, criterion=criterion_map.get(args.criterion)(), dropout=args.dropout, learning_rate=args.learning_rate)
+    trainer = L.Trainer(max_epochs=args.max_epochs, fast_dev_run=100, default_root_dir='/Models')
     trainer.fit(model, train_loader, val_loader)
     trainer.test(model, test_loader)
