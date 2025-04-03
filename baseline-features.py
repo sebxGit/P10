@@ -26,6 +26,14 @@ from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from lightning.pytorch.callbacks import DeviceStatsMonitor
 from lightning.pytorch.callbacks import BasePredictionWriter
 
+## Used for SHAP values/plotting
+feature_names = ['Energy_Consumption', 'Session_Count', 'Day_of_Week', 'Hour_of_Day',
+                 'Month_of_Year', 'Year', 'Day/Night', 'IsHoliday', 'Weekend', 'HourSin',
+                 'HourCos', 'DayOfWeekSin', 'DayOfWeekCos', 'MonthOfYearSin',
+                 'MonthOfYearCos', 'Energy_Consumption_1h', 'Energy_Consumption_6h',
+                 'Energy_Consumption_12h', 'Energy_Consumption_24h',
+                 'Energy_Consumption_1w', 'Energy_Consumption_rolling', 'Season_0',
+                 'Season_1', 'Season_2', 'Season_3', 'Season_4']
 
 def convert_to_hourly(data):
 
@@ -147,21 +155,17 @@ def add_features(hourly_df):
   hourly_df['Energy_Consumption_6h'] = hourly_df['Energy_Consumption'].shift(6)
 
   # 12h
-  hourly_df['Energy_Consumption_12h'] = hourly_df['Energy_Consumption'].shift(
-      12)
+  hourly_df['Energy_Consumption_12h'] = hourly_df['Energy_Consumption'].shift(12)
 
   # 24h
-  hourly_df['Energy_Consumption_24h'] = hourly_df['Energy_Consumption'].shift(
-      24)
+  hourly_df['Energy_Consumption_24h'] = hourly_df['Energy_Consumption'].shift(24)
 
   # 1 week
-  hourly_df['Energy_Consumption_1w'] = hourly_df['Energy_Consumption'].shift(
-      24*7)
+  hourly_df['Energy_Consumption_1w'] = hourly_df['Energy_Consumption'].shift(24*7)
 
   # Rolling average
   # 24h
-  hourly_df['Energy_Consumption_rolling'] = hourly_df['Energy_Consumption'].rolling(
-      window=24).mean()
+  hourly_df['Energy_Consumption_rolling'] = hourly_df['Energy_Consumption'].rolling(window=24).mean()
 
   return hourly_df
 
@@ -171,14 +175,6 @@ def filter_data(start_date, end_date, data):
     # print(data.head())
 
     return data
-
-
-features_cols = ["Session_Count", "Day_of_Week", "Hour_of_Day", "Month_of_Year", "Year", "Day/Night", "IsHolidays",
-                 "Weekend", "HourSin", "HourCos", "DayOfWeekSin", "DayOfWeekCos", "MonthOfYearSin", "MonthOfYearCos", 
-                 "Energy_Consumption_1h","Energy_Consumption_6h", "Energy_Consumption_12h", "Energy_Consumption_24h", 
-                 "Energy_Consumption_1w", "Energy_Consumption_rolling"]
-target_col = "Energy_Consumption"
-
 
 class TimeSeriesDataset(Dataset):
   def __init__(self, X: np.ndarray, y: np.ndarray, seq_len: int = 1):
@@ -346,6 +342,7 @@ params = dict(
     scaler=MinMaxScaler()
 )
 
+## Testing for datamodel and dataloader ##
 def test_data_module(): 
   dm = ColoradoDataModule(
     data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', 
@@ -361,7 +358,6 @@ def test_data_module():
   batch = next(iter(train_loader))
   x, y = batch
   print(f"x shape: {x.shape}, y shape: {y.shape}")
-
 def unit_test_dataloader_shapes(): 
   dm = ColoradoDataModule(
     data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv',
@@ -373,7 +369,6 @@ def unit_test_dataloader_shapes():
   )
 
   dm.setup(stage='fit')
-  train_loader = dm.train_dataloader()
   for x, y in dm.train_dataloader(): 
     assert x.ndim == 3, "Expected x to be 3D (batch, sequence, features)"
     assert y.ndim == 2, "Expected y to be 2D (batch, target)"
@@ -383,7 +378,6 @@ def unit_test_dataloader_shapes():
     assert x.shape[2] == 26, f"Expected 26 features, got {x.shape[2]}"
     print("Batch shapes are as expected!")
     break # One batch is enough
-
 def end_to_end_testing(): 
   model = LSTM(input_size=26, hidden_size=100, num_layers=1, criterion=nn.MSELoss(), dropout=0.2, learning_rate=0.001)
 
@@ -403,164 +397,69 @@ def end_to_end_testing():
   trainer.predict(model, dm)
 
 
-# def feature_importance(model, datamodel, feature_names):
-  batch = next(iter(datamodel))
-  x, y = batch
-  print(f"x shape: {x.shape}, y shape: {y.shape}") # torch.Size([8, 12, 26]) - 8 batches, 12 sequences, 26 features, torch.Size([8, 1]) - 8 batches, 1 target
+## DeepExplainer ## 
+def compute_shap_values(model, dataloader, feature_names, agg_func=np.mean):
+  ## Compute SHAP values ##
+  model.eval()  # Ensure the model is in evaluation mode
+  X, _ = next(iter(dataloader))
+  batch_size, seq_len, input_size = X.shape
 
-  # def forward(x): 
-  #   return (x[:, :, 0] +
-  #           2*x[:, :, 1] +
-  #           3*x[:, :, 2] +
-  #           4*x[:, :, 3] +
-  #           5*x[:, :, 4] +
-  #           6*x[:, :, 5] +
-  #           7*x[:, :, 6] +
-  #           8*x[:, :, 7] +
-  #           9*x[:, :, 8] +
-  #           10*x[:, :, 9] +
-  #           11*x[:, :, 10] +
-  #           12*x[:, :, 11] +
-  #           13*x[:, :, 12] +
-  #           14*x[:, :, 13] +
-  #           15*x[:, :, 14] +
-  #           16*x[:, :, 15] +
-  #           17*x[:, :, 16] +
-  #           18*x[:, :, 17] +
-  #           19*x[:, :, 18] +
-  #           20*x[:, :, 19] +
-  #           21*x[:, :, 20] +
-  #           22*x[:, :, 21] +
-  #           23*x[:, :, 22] +
-  #           24*x[:, :, 23] +
-  #           25*x[:, :, 24] +
-  #           26*x[:, :, 25])
+  # Create a DeepExplainer object
+  explainer = shap.DeepExplainer(model, X)
 
-  def forward(x):
-    weighted_features = torch.stack([
-      1*x[:, :, 0],
-      2*x[:, :, 1],
-      3*x[:, :, 2],
-      4*x[:, :, 3],
-      5*x[:, :, 4],
-      6*x[:, :, 5],
-      7*x[:, :, 6],
-      8*x[:, :, 7],
-      9*x[:, :, 8],
-      10*x[:, :, 9],
-      11*x[:, :, 10],
-      12*x[:, :, 11],
-      13*x[:, :, 12],
-      14*x[:, :, 13],
-      15*x[:, :, 14],
-      16*x[:, :, 15],
-      17*x[:, :, 16],
-      18*x[:, :, 17],
-      19*x[:, :, 18],
-      20*x[:, :, 19],
-      21*x[:, :, 20],
-      22*x[:, :, 21],
-      23*x[:, :, 22],
-      24*x[:, :, 23],
-      25*x[:, :, 24],
-      26*x[:, :, 25]
-    ], dim=-1) # shape [8, 12, 26]
+  # Compute SHAP values
+  shap_values = explainer.shap_values(X, check_additivity=False)
 
-    return weighted_features # shape [8, 12, 26]
+  shap_values_agg = agg_func(shap_values.reshape(
+      batch_size, seq_len, input_size), axis=1)  # (batch_size, input_size)
 
-  def forward_np(x_np):
-    # Convert numpy array to torch.Tensor
-    x_tensor = torch.from_numpy(x_np).float()
-    # Reshape from [batch, 312] to [batch, 12, 26]
-    x_tensor = x_tensor.view(-1, 12, 26)
-    # Call the original forward function that expects a 3D input
-    output = forward(x_tensor)
-    r = output.detach().cpu().numpy()
-    print(f"Forward np function: {r}")
-    return r
+  shap.summary_plot(
+      shap_values=shap_values_agg,
+      features=X[:, -1, :].numpy(),  # Use the last time step for features
+      feature_names=feature_names,
+      plot_type='bar',
+      show=False,
+      max_display=26,
+      plot_size=(20, 10)
+  )
+  plt.savefig('shap_summary_plot_deep_explainer.png',
+              bbox_inches='tight', dpi=700)
+  plt.show()
 
-  
-  print(f"Forward function: {forward(x)}")
+  # Waterfall plot for the first sample
+  shap.waterfall_plot(shap.Explanation(values=shap_values_agg[0], base_values=explainer.expected_value,
+                      data=X[0, -1, :].numpy(), feature_names=feature_names), show=False, max_display=26)
+  plt.savefig('shap_waterfall_plot_deep_explainer.png',
+              dpi=700, bbox_inches='tight')
+  plt.show()
 
-  #Convert tensor board background to numpy array
-  x_numpy = x.cpu().detach().numpy() # convert to numpy array
+  # Waterfall plot for the second sample
+  shap.waterfall_plot(shap.Explanation(values=shap_values_agg[1], base_values=explainer.expected_value,
+                      data=X[1, -1, :].numpy(), feature_names=feature_names), show=False, max_display=26)
+  plt.savefig('shap_waterfall_plot_deep_explainer_100.png',
+              dpi=700, bbox_inches='tight')
+  plt.show()
 
-  # Wrap the forward function to accept NumPy arrays 
+  # Beeswarm plot
+  shap_values_explanation = shap.Explanation(
+      values=shap_values_agg, base_values=explainer.expected_value, data=X[:, -1, :].numpy(), feature_names=feature_names)
+  shap.plots.beeswarm(shap_values_explanation, max_display=26, show=False)
+  plt.show()
 
-  # Flatten the input data from shape [8, 12, 26] to [8, 312]
-  x_flat = x_numpy.reshape(x_numpy.shape[0], -1)
-  explainer = shap.KernelExplainer(forward_np, x_flat)
-  shap_values = explainer.shap_values(x_flat, nsamples=100)
+  # Violin plot
+  shap.plots.violin(shap_values_explanation, max_display=26, show=False)
+  plt.show()
 
-  shap.summary_plot(shap_values, x_flat)
+  # Shap scatter plot
+  shap.decision_plot(explainer.expected_value,
+                     shap_values_agg[0], feature_names=feature_names, show=False)
+  plt.show()
 
-  return shap_values
+  # Save the SHAP values to a CSV file
+  shap_values_df = pd.DataFrame(shap_values_agg, columns=feature_names)
+  shap_values_df.to_csv('shap_values_deep_explainer.csv', index=False)
 
-
-def compute_shap_feature_importance(model, dataloader, nsamples=100, agg_func=np.mean, feature_names=None):
-    """
-    Computes SHAP values for a model with input shape [batch, 12, 26] and target shape [batch, 1],
-    and aggregates the SHAP values over the time dimension so that only 26 features remain.
-    
-    Parameters:
-      model: PyTorch Lightning model in eval mode.
-      dataloader: DataLoader yielding a batch with x of shape [batch, 12, 26] and y of shape [batch, 1].
-      nsamples: Number of samples for KernelExplainer.
-      agg_func: Function to aggregate SHAP values over time (e.g. np.mean or np.sum).
-      feature_names: List of 26 feature names.
-      
-    Returns:
-      shap_values_agg: Aggregated SHAP values of shape [batch, 26].
-    """
-    # Get one batch of data
-    batch = next(iter(dataloader))
-    x, _ = batch  # x shape: [batch, 12, 26]
-    batch_size, seq_len, input_dim = x.shape
-
-    # Convert x to numpy and flatten to [batch, seq_len*input_dim]
-    x_np = x.detach().cpu().numpy()
-    x_flat = x_np.reshape(batch_size, -1)  # shape: [batch, 312]
-
-    # Define a prediction function that SHAP can use.
-    # It reshapes the flattened numpy array back to [batch, 12, 26],
-    # feeds it to the model, and returns a 1D array (one prediction per sample)
-    # Here, the model uses the last time step to predict a single target.
-    def forward_np(x_np):
-        x_tensor = torch.from_numpy(x_np).float()
-        x_tensor = x_tensor.view(-1, seq_len, input_dim)
-        out = model(x_tensor)  # shape: [batch, 1]
-        return out.detach().cpu().numpy().flatten()
-
-    # Use x_flat as the background data for the explainer.
-    background = x_flat
-
-    # Create the KernelExplainer using the wrapped function.
-    explainer = shap.KernelExplainer(forward_np, background)
-    # Compute SHAP values for x_flat.
-    # Because forward_np returns a scalar per sample, SHAP will produce an explanation with 312 values.
-    shap_vals = explainer.shap_values(x_flat, nsamples=nsamples)
-    # shap_vals has shape [batch, 312]
-
-    # Aggregate the SHAP values over the time dimension.
-    # First, reshape to [batch, seq_len, input_dim] = [batch, 12, 26]
-    shap_vals_reshaped = shap_vals.reshape(batch_size, seq_len, input_dim)
-    # Then, aggregate over the time steps (axis=1) using the provided aggregation function.
-    shap_vals_agg = agg_func(shap_vals_reshaped, axis=1)  # shape: [batch, 26]
-
-    # Visualize the aggregated SHAP values for all samples using a summary plot.
-    # Note: For visualization, the input data should match the aggregated shape.
-    # Here, we aggregate the flattened input as well by computing the mean over time steps.
-    x_features = x_np.mean(axis=1)  # shape: [batch, 26]
-    shap.summary_plot(shap_vals_agg, x_features, feature_names=feature_names, max_display=26)
-    plt.show()
-    plt.savefig("shap_summary_plot.png")
-
-    shap.waterfall_plot(shap.Explanation(values=shap_vals_agg[0], base_values=explainer.expected_value, data=x_features[0], feature_names=feature_names))
-    plt.show()
-    plt.savefig("shap_waterfall_plot.png")
-
-
-    return shap_vals_agg
+  return shap_values_agg
 
 
 if __name__ == "__main__": 
@@ -580,37 +479,11 @@ if __name__ == "__main__":
     callbacks=[EarlyStopping(monitor="val_loss", mode="min"), pred_writer], 
     default_root_dir='Models'
   )
-
-  feature_names = ['Energy_Consumption', 'Session_Count', 'Day_of_Week', 'Hour_of_Day',
-                   'Month_of_Year', 'Year', 'Day/Night', 'IsHoliday', 'Weekend', 'HourSin',
-                   'HourCos', 'DayOfWeekSin', 'DayOfWeekCos', 'MonthOfYearSin',
-                   'MonthOfYearCos', 'Energy_Consumption_1h', 'Energy_Consumption_6h',
-                   'Energy_Consumption_12h', 'Energy_Consumption_24h',
-                   'Energy_Consumption_1w', 'Energy_Consumption_rolling', 'Season_0',
-                   'Season_1', 'Season_2', 'Season_3', 'Season_4']
   
   trainer = L.Trainer(max_epochs=params['max_epochs'], callbacks=[EarlyStopping(monitor="val_loss", mode="min"), pred_writer], default_root_dir='Models')
   trainer.fit(model, colmod)
   trainer.test(model, colmod)
-  # #trainer.predict(model, colmod, return_predictions=False)
 
-  # # save model and datamodule
-  # trainer.save_checkpoint("Models/lstm_model.ckpt")
+  # Compute and plot SHAP values
+  shap_values = compute_shap_values(model, colmod.predict_dataloader(), feature_names, agg_func=np.mean)
 
-
-  # # Load model and datamodule
-  #model = LSTM.load_from_checkpoint("Models/lstm_model.ckpt", input_size=params['input_size'], hidden_size=params['hidden_size'], num_layers=params['num_layers'], criterion=params['criterion'], dropout=params['dropout'], learning_rate=params['learning_rate'])
-  # colmod = ColoradoDataModule.load_from_checkpoint("Models/datamodule.ckpt")
-  
-  model.eval()
-  #feature_names = [f"t{t}_f{f}" for t in range(12) for f in range(26)]
-  #shap_values = feature_importance(model, colmod.test_dataloader(), feature_names)
-
-  aggregated_shap = compute_shap_feature_importance(model, colmod.test_dataloader(), nsamples=100, agg_func=np.mean, feature_names=feature_names)
-
-
-  # trainer.predict(model, colmod, return_predictions=False)
-
-  # test_data_module()
-  # unit_test_dataloader_shapes()
-  # end_to_end_testing()
