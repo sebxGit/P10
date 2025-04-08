@@ -535,6 +535,7 @@ parser.add_argument("--scaler", type=str, default="MinMaxScaler")
 
 criterion_map = { 
                   "MSELoss": nn.MSELoss, 
+                  "MAELoss": nn.L1Loss,
                   "WeightedMSELoss": WeightedMSELoss,
                   "AsymmetricMAEandMSELoss": AsymmetricMAEandMSELoss,
                   "WeightedAsymmetricMAEandMSELoss": WeightedAsymmetricMAEandMSELoss,
