@@ -405,7 +405,7 @@ class GRU(torch.nn.Module):
     out = self.fc(out[:, -1, :])  # Get the last time step
     return out
 
-def objective_lightning(args, trial):
+def objective(args, trial):
     params = {
         'hidden_size': trial.suggest_int('hidden_size', 50, 200),
         'num_layers': trial.suggest_int('num_layers', 1, 10),
@@ -420,6 +420,11 @@ def objective_lightning(args, trial):
         'scaler': MinMaxScaler(),
         'num_workers': 5,
         'input_size': 22,
+        'n_estimators': trial.suggest_int('n_estimators', 50, 200),
+        'max_depth': trial.suggest_int('max_depth', 1, 20),
+        'min_samples_split': trial.suggest_int('min_samples_split', 2, 20),
+        'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 20),
+        'max_features': trial.suggest_float('max_features', 0.1, 1.0),
     }
 
     colmod = ColoradoDataModule(
@@ -442,63 +447,41 @@ def objective_lightning(args, trial):
       model = GRU(input_size=params['input_size'], hidden_size=params['hidden_size'], num_layers=params['num_layers'], dropout=params['dropout'])
     elif args.model == "MLP":
       model = MLP(num_features=params['input_size'], seq_len=params['seq_len'], num_classes=1)
-
-    print(f"-----Tuning {model.name} model-----")
-    tuned_model = LightningModel(
-        model=model,
-        criterion=params['criterion'],
-        optimizer=params['optimizer'],
-        learning_rate=params['learning_rate']
-    )
-    trainer = L.Trainer(
-        max_epochs=params['max_epochs'],
-        callbacks=[EarlyStopping(monitor="val_loss", mode="min")],
-        log_every_n_steps=0,
-        enable_checkpointing=False
-    )
-    trainer.fit(tuned_model, colmod)
-    val_loss = trainer.callback_metrics["val_loss"].item()
-    return val_loss
-   
-def objective_sklearn(args, trial):
-    params = {
-        'n_estimators': trial.suggest_int('n_estimators', 50, 200),
-        'max_depth': trial.suggest_int('max_depth', 1, 20),
-        'min_samples_split': trial.suggest_int('min_samples_split', 2, 20),
-        'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 20),
-        'max_features': trial.suggest_float('max_features', 0.1, 1.0),
-        'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.5),
-    }
-
-    if args.model == "AdaBoost":
-        model = AdaBoostRegressor(n_estimators=params['n_estimators'], learning_rate=params['learning_rate'], random_state=42)
+    elif args.model == "AdaBoost":
+      model = AdaBoostRegressor(n_estimators=params['n_estimators'], learning_rate=params['learning_rate'], random_state=42)
     elif args.model == "RandomForest":
-        model = RandomForestRegressor(n_estimators=params['n_estimators'], max_depth=params['max_depth'], min_samples_split=params['min_samples_split'], min_samples_leaf=params['min_samples_leaf'], max_features=params['max_features'], random_state=42)
+      model = RandomForestRegressor(n_estimators=params['n_estimators'], max_depth=params['max_depth'], min_samples_split=params['min_samples_split'], min_samples_leaf=params['min_samples_leaf'], max_features=params['max_features'], random_state=42)
     elif args.model == "GradientBoosting":
-        model = GradientBoostingRegressor(n_estimators=params['n_estimators'], max_depth=params['max_depth'], min_samples_split=params['min_samples_split'], min_samples_leaf=params['min_samples_leaf'], learning_rate=params['learning_rate'], random_state=42)
+      model = GradientBoostingRegressor(n_estimators=params['n_estimators'], max_depth=params['max_depth'], min_samples_split=params['min_samples_split'], min_samples_leaf=params['min_samples_leaf'], learning_rate=params['learning_rate'], random_state=42)
+    
+    if isinstance(model, torch.nn.Module):
+      print(f"-----Tuning {model.name} model-----")
+      tuned_model = LightningModel(
+          model=model,
+          criterion=params['criterion'],
+          optimizer=params['optimizer'],
+          learning_rate=params['learning_rate']
+      )
+      trainer = L.Trainer(
+          max_epochs=params['max_epochs'],
+          callbacks=[EarlyStopping(monitor="val_loss", mode="min")],
+          log_every_n_steps=0,
+          enable_checkpointing=False
+      )
+      trainer.fit(tuned_model, colmod)
+      val_loss = trainer.callback_metrics["val_loss"].item()
 
-    colmod = ColoradoDataModule(
-    data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv',
-    scaler=MinMaxScaler(),
-    seq_len=1,
-    batch_size=1,
-    num_workers=5,
-    is_persistent=True
-    )
-
-    colmod.prepare_data()
-    colmod.setup(stage="fit")
-
-    X_train = colmod.X_train
-    y_train = colmod.y_train.ravel()
-
-    model.fit(X_train, y_train)
-    val_loss = mean_squared_error(y_train, model.predict(X_train))
+    elif isinstance(model, BaseEstimator):
+      print(f"-----Tuning {model.__class__.__name__} model-----")
+      X_train = colmod.X_train
+      y_train = colmod.y_train.ravel()
+      model.fit(X_train, y_train)
+      val_loss = mean_absolute_error(y_train, model.predict(X_train))
     return val_loss
 
 def tune_model_with_optuna(args, n_trials=50):
     study = optuna.create_study(direction="minimize")
-    study.optimize(lambda trial: objective_lightning(args, trial), n_trials=n_trials)
+    study.optimize(lambda trial: objective(args, trial), n_trials=n_trials)
 
     print("Best params:", study.best_params)
     print("Best validation loss:", study.best_value)
@@ -509,6 +492,6 @@ if __name__ == '__main__':
     parser.add_argument("--model", type=str, default="LSTM")
     args = parser.parse_args()
 
-    best_params = tune_model_with_optuna(args, n_trials=10)
+    best_params = tune_model_with_optuna(args, n_trials=100)
 
 
