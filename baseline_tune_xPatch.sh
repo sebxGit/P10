@@ -8,4 +8,4 @@
 #SBATCH --cpus-per-task=20
 #SBATCH --mem=175G
 
-singularity exec --nv energycontainerblackbox.sif python3 baselines_tuning.py --model DPAD
+singularity exec --nv energycontainerblackbox.sif python3 baselines_tuning.py --model xPatch
