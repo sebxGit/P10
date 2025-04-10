@@ -5,6 +5,9 @@ import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 import holidays
 import optuna
+# from models import GRU, LSTM, MLP
+from models.LSTM import LSTM
+from models.D_PAD_adpGCN import DPAD_GCN
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
@@ -363,68 +366,59 @@ class LightningModel(L.LightningModule):
   def configure_optimizers(self):
     return self.optimizer(self.parameters(), lr=self.learning_rate)
 
-class MLP(torch.nn.Module):
-  def __init__(self, num_features, seq_len, num_classes):
-    super().__init__()
-    self.name = "MLP"
+# class MLP(torch.nn.Module):
+#   def __init__(self, num_features, seq_len, num_classes):
+#     super().__init__()
+#     self.name = "MLP"
 
-    self.all_layers = torch.nn.Sequential(
-      torch.nn.Linear(num_features, seq_len),
-      torch.nn.ReLU(),
-      torch.nn.Linear(seq_len, 25),
-      torch.nn.ReLU(),
-      torch.nn.Linear(25, num_classes),
-    )
+#     self.all_layers = torch.nn.Sequential(
+#       torch.nn.Linear(num_features, seq_len),
+#       torch.nn.ReLU(),
+#       torch.nn.Linear(seq_len, 25),
+#       torch.nn.ReLU(),
+#       torch.nn.Linear(25, num_classes),
+#     )
 
-  def forward(self, x):
-    x = torch.flatten(x, start_dim=1)
-    logits = self.all_layers(x)
-    return logits
+#   def forward(self, x):
+#     x = torch.flatten(x, start_dim=1)
+#     logits = self.all_layers(x)
+#     return logits
 
-class LSTM(torch.nn.Module):
-  def __init__(self, input_size, hidden_size, num_layers, dropout):
-    super().__init__()
-    self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, dropout=dropout)
-    self.fc = nn.Linear(hidden_size, 1)
-    self.name = "LSTM"
+# class LSTM(torch.nn.Module):
+#   def __init__(self, input_size, hidden_size, num_layers, dropout):
+#     super().__init__()
+#     self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, dropout=dropout)
+#     self.fc = nn.Linear(hidden_size, 1)
+#     self.name = "LSTM"
 
-  def forward(self, x):
-    out, _ = self.lstm(x)
-    out = self.fc(out[:, -1, :])  # Get the last time step
-    return out
+#   def forward(self, x):
+#     out, _ = self.lstm(x)
+#     out = self.fc(out[:, -1, :])  # Get the last time step
+#     return out
 
-class GRU(torch.nn.Module):
-  def __init__(self, input_size, hidden_size, num_layers, dropout):
-    super().__init__()
-    self.gru = nn.GRU(input_size, hidden_size, num_layers, batch_first=True, dropout=dropout)
-    self.fc = nn.Linear(hidden_size, 1)
-    self.name = "GRU"
+# class GRU(torch.nn.Module):
+#   def __init__(self, input_size, hidden_size, num_layers, dropout):
+#     super().__init__()
+#     self.gru = nn.GRU(input_size, hidden_size, num_layers, batch_first=True, dropout=dropout)
+#     self.fc = nn.Linear(hidden_size, 1)
+#     self.name = "GRU"
 
-  def forward(self, x):
-    out, _ = self.gru(x)
-    out = self.fc(out[:, -1, :])  # Get the last time step
-    return out
+#   def forward(self, x):
+#     out, _ = self.gru(x)
+#     out = self.fc(out[:, -1, :])  # Get the last time step
+#     return out
 
 def objective(args, trial):
     params = {
-        'hidden_size': trial.suggest_int('hidden_size', 50, 200),
-        'num_layers': trial.suggest_int('num_layers', 1, 10),
-        'dropout': trial.suggest_float('dropout', 0.0, 1),
         'seq_len': trial.suggest_int('seq_len', 1, 24),
-        'n_features': trial.suggest_int('n_features', 1, 20),
         'batch_size': trial.suggest_int('batch_size', 1, 64),
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'max_epochs': trial.suggest_int('max_epochs', 50, 1000),
         'criterion': torch.nn.L1Loss(),
         'optimizer': torch.optim.Adam,
         'scaler': MinMaxScaler(),
-        'num_workers': 5,
+        'num_workers': trial.suggest_int('num_workers', 0, 20),
         'input_size': 22,
-        'n_estimators': trial.suggest_int('n_estimators', 50, 200),
-        'max_depth': trial.suggest_int('max_depth', 1, 20),
-        'min_samples_split': trial.suggest_int('min_samples_split', 2, 20),
-        'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 20),
-        'max_features': trial.suggest_float('max_features', 0.1, 1.0),
     }
 
     colmod = ColoradoDataModule(
@@ -442,17 +436,56 @@ def objective(args, trial):
     model = None
 
     if args.model == "LSTM":
-      model = LSTM(input_size=params['input_size'], hidden_size=params['hidden_size'], num_layers=params['num_layers'], dropout=params['dropout'])
+      _params = {
+        'hidden_size': trial.suggest_int('hidden_size', 50, 200),
+        'num_layers': trial.suggest_int('num_layers', 1, 10),
+        'dropout': trial.suggest_float('dropout', 0.0, 1),
+      }
+      model = LSTM(input_size=params['input_size'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "GRU":
-      model = GRU(input_size=params['input_size'], hidden_size=params['hidden_size'], num_layers=params['num_layers'], dropout=params['dropout'])
+      _params = {
+        'hidden_size': trial.suggest_int('hidden_size', 50, 200),
+        'num_layers': trial.suggest_int('num_layers', 1, 10),
+        'dropout': trial.suggest_float('dropout', 0.0, 1),
+      }
+      model = GRU(input_size=params['input_size'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "MLP":
       model = MLP(num_features=params['input_size'], seq_len=params['seq_len'], num_classes=1)
     elif args.model == "AdaBoost":
-      model = AdaBoostRegressor(n_estimators=params['n_estimators'], learning_rate=params['learning_rate'], random_state=42)
+      _params = {
+        'n_estimators': trial.suggest_int('n_estimators', 50, 200),
+        'learning_rate_model': trial.suggest_float('learning_rate_model', 0.01, 1.0),
+      }
+      model = AdaBoostRegressor(n_estimators=_params['n_estimators'], learning_rate=_params['learning_rate_model'], random_state=42)
     elif args.model == "RandomForest":
-      model = RandomForestRegressor(n_estimators=params['n_estimators'], max_depth=params['max_depth'], min_samples_split=params['min_samples_split'], min_samples_leaf=params['min_samples_leaf'], max_features=params['max_features'], random_state=42)
+      _params = {
+        'n_estimators': trial.suggest_int('n_estimators', 50, 200),
+        'max_depth': trial.suggest_int('max_depth', 1, 20),
+        'min_samples_split': trial.suggest_int('min_samples_split', 2, 20),
+        'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 20),
+        'max_features': trial.suggest_float('max_features', 0.1, 1.0),
+      }
+      model = RandomForestRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], min_samples_leaf=_params['min_samples_leaf'], max_features=_params['max_features'], random_state=42)
     elif args.model == "GradientBoosting":
-      model = GradientBoostingRegressor(n_estimators=params['n_estimators'], max_depth=params['max_depth'], min_samples_split=params['min_samples_split'], min_samples_leaf=params['min_samples_leaf'], learning_rate=params['learning_rate'], random_state=42)
+      _params = {
+        'n_estimators': trial.suggest_int('n_estimators', 50, 200),
+        'max_depth': trial.suggest_int('max_depth', 1, 20),
+        'min_samples_split': trial.suggest_int('min_samples_split', 2, 20),
+        'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 20),
+        'max_features': trial.suggest_float('max_features', 0.1, 1.0),
+        'learning_rate_model': trial.suggest_float('learning_rate_model', 0.01, 1.0),
+      }
+      model = GradientBoostingRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], min_samples_leaf=_params['min_samples_leaf'], learning_rate=_params['learning_rate_model'], random_state=42)
+    elif args.model == "DPAD":
+       _params = {
+        'enc_hidden': trial.suggest_int('enc_hidden', 1, 400),
+        'dec_hidden': trial.suggest_int('dec_hidden', 1, 400),
+        'num_levels': trial.suggest_int('num_levels', 1, 10),
+        'dropout': trial.suggest_float('dropout', 0.0, 1),
+        'K_IMP': trial.suggest_int('K_IMP', 1, 10),
+        'RIN': trial.suggest_int('RIN', 0, 1)
+       }
+       DPAD_GCN(input_len=params['seq_len'], output_len=1, input_dim=params['input_size'], enc_hidden=168, dec_hidden=168, dropout=0.5, num_levels=2, K_IMP=6, RIN=1)
     
     if isinstance(model, torch.nn.Module):
       print(f"-----Tuning {model.name} model-----")
