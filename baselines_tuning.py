@@ -5,9 +5,11 @@ import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 import holidays
 import optuna
-# from models import GRU, LSTM, MLP
 from models.LSTM import LSTM
+from models.GRU import GRU
+from models.MLP import MLP
 from models.D_PAD_adpGCN import DPAD_GCN
+from models.xPatch import xPatch
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
@@ -419,6 +421,7 @@ def objective(args, trial):
         'scaler': MinMaxScaler(),
         'num_workers': trial.suggest_int('num_workers', 0, 20),
         'input_size': 22,
+        'forecasting_horizon': 1,
     }
 
     colmod = ColoradoDataModule(
@@ -486,7 +489,28 @@ def objective(args, trial):
         'RIN': trial.suggest_int('RIN', 0, 1)
        }
        DPAD_GCN(input_len=params['seq_len'], output_len=1, input_dim=params['input_size'], enc_hidden=168, dec_hidden=168, dropout=0.5, num_levels=2, K_IMP=6, RIN=1)
-    
+    elif args.model == "xPatch":
+      class Configs:
+        def __init__(self, config_dict):
+          for key, value in config_dict.items():
+            setattr(self, key, value)
+
+      params_xpatch = Configs(
+        dict(
+        seq_len = params['seq_len'],
+        pred_len = params['forecasting_horizon'],
+        enc_in = params['input_size'],
+        patch_len = trial.suggest_int('patch_len', 1, 24),
+        stride = trial.suggest_int('stride', 1, 24),
+        padding_patch = trial.suggest_categorical('padding_patch', ['end', 'None']),
+        revin = trial.suggest_int('revin', 0, 1),
+        ma_type = trial.suggest_categorical('ma_type', ['reg', 'ema', 'dema']),
+        alpha = trial.suggest_float('alpha', 0.0, 1.0),
+        beta = trial.suggest_float('beta', 0.0, 1.0),
+        )
+      )
+      model = xPatch(params_xpatch)
+
     if isinstance(model, torch.nn.Module):
       print(f"-----Tuning {model.name} model-----")
       tuned_model = LightningModel(

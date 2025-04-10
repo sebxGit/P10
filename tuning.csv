@@ -1,0 +1,3 @@
+name, tuning
+ADA, {'hidden_size': 182, 'num_layers': 8, 'dropout': 0.09558083782124971, 'seq_len': 5, 'n_features': 12, 'batch_size': 28, 'learning_rate': 0.009763807428612475, 'max_epochs': 392, 'n_estimators': 196, 'max_depth': 3, 'min_samples_split': 8, 'min_samples_leaf': 13, 'max_features': 0.14966506092601528}
+RandomForest, {'hidden_size': 115, 'num_layers': 6, 'dropout': 0.20498255422752112, 'seq_len': 24, 'n_features': 6, 'batch_size': 63, 'learning_rate': 0.0011501562631259308, 'max_epochs': 808, 'n_estimators': 64, 'max_depth': 19, 'min_samples_split': 2, 'min_samples_leaf': 1, 'max_features': 0.3508443919354397}

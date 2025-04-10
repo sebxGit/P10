@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=p9_blackbox_run
+#SBATCH --job-name=p10
 #SBATCH --output=result_%j.out
 #SBATCH --error=error_%j.err
 #SBATCH --time=12:00:00 # 
