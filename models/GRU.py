@@ -1,10 +1,10 @@
 from torch import nn
 
 class GRU(nn.Module):
-  def __init__(self, input_size, hidden_size, num_layers, dropout):
+  def __init__(self, input_size, hidden_size, num_layers, dropout, pred_len):
     super().__init__()
     self.gru = nn.GRU(input_size, hidden_size, num_layers, batch_first=True, dropout=dropout)
-    self.fc = nn.Linear(hidden_size, 1)
+    self.fc = nn.Linear(hidden_size, pred_len)
     self.name = "GRU"
 
   def forward(self, x):

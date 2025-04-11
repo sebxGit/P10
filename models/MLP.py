@@ -1,7 +1,7 @@
 import torch
 
 class MLP(torch.nn.Module):
-  def __init__(self, num_features, seq_len, num_classes):
+  def __init__(self, num_features, seq_len, pred_len):
     super().__init__()
     self.name = "MLP"
 
@@ -10,7 +10,7 @@ class MLP(torch.nn.Module):
       torch.nn.ReLU(),
       torch.nn.Linear(seq_len, 25),
       torch.nn.ReLU(),
-      torch.nn.Linear(25, num_classes),
+      torch.nn.Linear(25, pred_len),
     )
 
   def forward(self, x):
