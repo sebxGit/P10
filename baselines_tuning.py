@@ -379,6 +379,7 @@ def objective(args, trial):
         'input_size': 21,
         'pred_len': 24,
         'seq_len': trial.suggest_int('seq_len', 24*7, 24*7*3, step=24),
+        'stride': 24,
         'batch_size': trial.suggest_int('batch_size', 1, 64),
         'criterion': torch.nn.L1Loss(),
         'optimizer': torch.optim.Adam,
@@ -387,16 +388,10 @@ def objective(args, trial):
         'max_epochs': trial.suggest_int('max_epochs', 50, 1000, step=50),
         'num_workers': trial.suggest_int('num_workers', 0, 20),
         'seed': 42,
+        'is_persistent': False,
     }
 
-    colmod = ColoradoDataModule(
-    data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv',
-    scaler=params['scaler'],
-    seq_len=params['seq_len'],
-    batch_size=params['batch_size'],
-    num_workers=params['num_workers'],
-    is_persistent=True if params['num_workers'] > 0 else False
-    )
+    colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=params['scaler'], seq_len=params['seq_len'], pred_len=params['pred_len'], stride=params['stride'], batch_size=params['batch_size'], num_workers=params['num_workers'], is_persistent=params['is_persistent'])
     seed_everything(params['seed'], workers=True)
 
     colmod.prepare_data()
@@ -580,5 +575,3 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     best_params = tune_model_with_optuna(args, n_trials=200)
-
-
