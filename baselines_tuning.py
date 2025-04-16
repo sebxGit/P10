@@ -10,6 +10,8 @@ from models.GRU import GRU
 from models.MLP import MLP
 from models.D_PAD_adpGCN import DPAD_GCN
 from models.xPatch import xPatch
+from models.Fredformer import Fredformer
+from models.PatchMixer import PatchMixer
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
@@ -26,6 +28,7 @@ from torch.utils.tensorboard import SummaryWriter
 import lightning as L
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from lightning.pytorch.callbacks import BasePredictionWriter
+from lightning.pytorch import seed_everything
 
 # tensorboard --logdir=Predictions/MLP-GRU-LSTM
 
@@ -175,16 +178,22 @@ def filter_data(start_date, end_date, data):
     return data
 
 class TimeSeriesDataset(Dataset):
-  def __init__(self, X: np.ndarray, y: np.ndarray, seq_len: int = 1):
+  def __init__(self, X: np.ndarray, y: np.ndarray, seq_len: int = 1, pred_len: int = 24, stride: int = 24):
+    self.seq_len = seq_len
+    self.pred_len = pred_len
+    self.stride = stride
+
     self.X = torch.tensor(X).float()
     self.y = torch.tensor(y).float()
-    self.seq_len = seq_len
 
   def __len__(self):
-    return self.X.__len__() - (self.seq_len-1)
+    return (len(self.X) - (self.seq_len + self.pred_len - 1)) // self.stride + 1
 
   def __getitem__(self, index):
-    return (self.X[index:index+self.seq_len], self.y[index+self.seq_len-1])
+    start_idx = index * self.stride
+    x_window = self.X[start_idx: start_idx + self.seq_len]
+    y_target = self.y[start_idx + self.seq_len: start_idx + self.seq_len + self.pred_len]
+    return x_window, y_target
 
 class BootstrapSampler(Sampler):
   def __init__(self, data_source, window_size, num_samples=None):
@@ -203,11 +212,13 @@ class BootstrapSampler(Sampler):
     return self.num_samples
 
 class ColoradoDataModule(L.LightningDataModule):
-  def __init__(self, data_dir: str, scaler: int, seq_len: int, batch_size: int, num_workers: int, is_persistent: bool):
+  def __init__(self, data_dir: str, scaler: int, seq_len: int, pred_len: int, stride: int, batch_size: int, num_workers: int, is_persistent: bool):
     super().__init__()
     self.data_dir = data_dir
     self.scaler = scaler
     self.seq_len = seq_len
+    self.pred_len = pred_len
+    self.stride = stride
     self.batch_size = batch_size
     self.num_workers = num_workers
     self.is_persistent = is_persistent
@@ -219,103 +230,98 @@ class ColoradoDataModule(L.LightningDataModule):
     self.y_test = None
 
   def setup(self, stage: str):
+    start_date = pd.to_datetime('2021-05-30')
+    end_date = pd.to_datetime('2023-05-30')
+
+    # Load and preprocess the data
     data = pd.read_csv(self.data_dir)
     data = convert_to_hourly(data)
     data = add_features(data)
-
-    start_date = pd.to_datetime('2021-11-30')
-    end_date = pd.to_datetime('2023-11-30')
-
-    data = pd.get_dummies(data, columns=['Season'])
-
     df = filter_data(start_date, end_date, data)
+
     df = df.dropna()
+
+    #df.to_csv('final_df_hourly.csv', index=True)  
+
     X = df.copy()
-    y = X['Energy_Consumption'].shift(-1).ffill()
+
+    y = X.pop('Energy_Consumption')
+
+    #y = create_multi_step_targets(X['Energy_Consumption'], horizon=24)
+    #X=X.iloc[:-24]
+    #y=y[:-24] 
+
+    # 60/20/20 split
     X_tv, self.X_test, y_tv, self.y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
     self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(X_tv, y_tv, test_size=0.25, shuffle=False)
 
     preprocessing = self.scaler
     preprocessing.fit(self.X_train)  # should only fit to training data
+    
 
     if stage == "fit" or stage is None:
       self.X_train = preprocessing.transform(self.X_train)
-      self.y_train = self.y_train.values.reshape((-1, 1))
+      self.y_train = np.array(self.y_train)
+
+      y_train_df = pd.DataFrame(self.y_train, columns=["target"])
+      combined = pd.concat([y_train_df, pd.DataFrame(self.X_train),], axis=1)
+      combined.to_csv('train.csv', index=True)
+
       self.X_val = preprocessing.transform(self.X_val)
-      self.y_val = self.y_val.values.reshape((-1, 1))
+      self.y_val = np.array(self.y_val)
 
     if stage == "test" or "predict" or stage is None:
       self.X_test = preprocessing.transform(self.X_test)
-      self.y_test = self.y_test.values.reshape((-1, 1))
+      self.y_test = np.array(self.y_test)
 
   def train_dataloader(self):
-    train_dataset = TimeSeriesDataset(self.X_train, self.y_train, seq_len=self.seq_len)
-    window_size = round(len(self.X_train)*0.80)
+    train_dataset = TimeSeriesDataset(self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+    # window_size = round(len(self.X_train)*0.97)
     # bootstrap_sampler = BootstrapSampler(train_dataset, window_size=window_size)
     # train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=bootstrap_sampler, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
-    train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
+    train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return train_loader
   
   def val_dataloader(self):
-    val_dataset = TimeSeriesDataset(self.X_val, self.y_val, seq_len=self.seq_len)
-    val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
+    val_dataset = TimeSeriesDataset(self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+    val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return val_loader
 
   def test_dataloader(self):
-    test_dataset = TimeSeriesDataset(self.X_test, self.y_test, seq_len=self.seq_len)
-    test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
+    test_dataset = TimeSeriesDataset(self.X_test, self.y_test, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+    test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return test_loader
 
   def predict_dataloader(self):
-    test_dataset = TimeSeriesDataset(self.X_test, self.y_test, seq_len=self.seq_len)
-    test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
+    test_dataset = TimeSeriesDataset(self.X_test, self.y_test, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+    test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return test_loader
+  
+  def sklearn_setup(self, set_name: str = "train"): 
+    if set_name == "train": 
+      X = self.X_train 
+      y = self.y_train
+    elif set_name == "val":
+      X = self.X_val 
+      y = self.y_val
+    elif set_name == "test":
+      X = self.X_test 
+      y = self.y_test
+    else:
+      raise ValueError("Invalid set name. Choose from 'train', 'val', or 'test'.")
 
-class WeightedMSELoss(nn.Module):
-    def __init__(self):
-        super(WeightedMSELoss, self).__init__()
 
-    def forward(self, predictions, targets):
-        loss = torch.mean((predictions - targets) ** 2) #MSE
-        weight = torch.where(predictions < targets, 2.0, 1.0)
-        weighted_loss = torch.mean(loss * weight)
-        return weighted_loss
+    seq_len = self.seq_len
+    pred_len = 24
 
-class AsymmetricMAEandMSELoss(nn.Module):
-    def __init__(self):
-        super(AsymmetricMAEandMSELoss, self).__init__()
+    X_window, y_target = [], []
+  
+    for i in range(len(X) - seq_len - pred_len + 1):
+        X_window.append(X[i:i + seq_len].flatten())
+        y_target.append(y[i + seq_len:i + seq_len + pred_len])
 
-    def forward(self, predictions, targets):
-        mae_loss = torch.mean(torch.abs(predictions - targets))
-        mse_loss = torch.mean((predictions - targets) ** 2)
-        loss = torch.where(predictions > targets, mae_loss, mse_loss)
-
-        mean_loss = torch.mean(loss)
-        return mean_loss
-
-class WeightedAsymmetricMAEandMSELoss(nn.Module): 
-    def __init__(self):
-        super(WeightedAsymmetricMAEandMSELoss, self).__init__()
-
-    def forward(self, predictions, targets):
-        mae_loss = torch.mean(torch.abs(predictions - targets))
-        mse_loss = torch.mean((predictions - targets) ** 2)
-        loss = torch.where(predictions > targets, mae_loss, mse_loss*2)
-
-        mean_loss = torch.mean(loss)
-        return mean_loss
-
-class CustomLogCoshLoss(nn.Module):
-    def __init__(self):
-        super(CustomLogCoshLoss, self).__init__()
-
-    def forward(self, predictions, targets):
-        error = predictions - targets
-        lc_loss = torch.log(torch.cosh(error))
-        mse_loss = torch.mean(error ** 2)
-        loss = torch.where(predictions > targets, lc_loss, mse_loss*2)
-        return torch.mean(loss)
-
+    return np.array(X_window), np.array(y_target)
+  
 class CustomWriter(BasePredictionWriter):
   def __init__(self, output_dir, write_interval, combined_name, model_name):
     super().__init__(write_interval)
@@ -368,60 +374,19 @@ class LightningModel(L.LightningModule):
   def configure_optimizers(self):
     return self.optimizer(self.parameters(), lr=self.learning_rate)
 
-# class MLP(torch.nn.Module):
-#   def __init__(self, num_features, seq_len, num_classes):
-#     super().__init__()
-#     self.name = "MLP"
-
-#     self.all_layers = torch.nn.Sequential(
-#       torch.nn.Linear(num_features, seq_len),
-#       torch.nn.ReLU(),
-#       torch.nn.Linear(seq_len, 25),
-#       torch.nn.ReLU(),
-#       torch.nn.Linear(25, num_classes),
-#     )
-
-#   def forward(self, x):
-#     x = torch.flatten(x, start_dim=1)
-#     logits = self.all_layers(x)
-#     return logits
-
-# class LSTM(torch.nn.Module):
-#   def __init__(self, input_size, hidden_size, num_layers, dropout):
-#     super().__init__()
-#     self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, dropout=dropout)
-#     self.fc = nn.Linear(hidden_size, 1)
-#     self.name = "LSTM"
-
-#   def forward(self, x):
-#     out, _ = self.lstm(x)
-#     out = self.fc(out[:, -1, :])  # Get the last time step
-#     return out
-
-# class GRU(torch.nn.Module):
-#   def __init__(self, input_size, hidden_size, num_layers, dropout):
-#     super().__init__()
-#     self.gru = nn.GRU(input_size, hidden_size, num_layers, batch_first=True, dropout=dropout)
-#     self.fc = nn.Linear(hidden_size, 1)
-#     self.name = "GRU"
-
-#   def forward(self, x):
-#     out, _ = self.gru(x)
-#     out = self.fc(out[:, -1, :])  # Get the last time step
-#     return out
-
 def objective(args, trial):
     params = {
-        'seq_len': trial.suggest_int('seq_len', 1, 24),
+        'input_size': 21,
+        'pred_len': 24,
+        'seq_len': trial.suggest_int('seq_len', 24*7, 24*7*3, step=24),
         'batch_size': trial.suggest_int('batch_size', 1, 64),
-        'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
-        'max_epochs': trial.suggest_int('max_epochs', 50, 1000),
         'criterion': torch.nn.L1Loss(),
         'optimizer': torch.optim.Adam,
         'scaler': MinMaxScaler(),
+        'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
+        'max_epochs': trial.suggest_int('max_epochs', 50, 1000, step=50),
         'num_workers': trial.suggest_int('num_workers', 0, 20),
-        'input_size': 22,
-        'forecasting_horizon': 1,
+        'seed': 42,
     }
 
     colmod = ColoradoDataModule(
@@ -432,11 +397,17 @@ def objective(args, trial):
     num_workers=params['num_workers'],
     is_persistent=True if params['num_workers'] > 0 else False
     )
+    seed_everything(params['seed'], workers=True)
 
     colmod.prepare_data()
     colmod.setup(stage="fit")
 
     model = None
+
+    class Configs:
+      def __init__(self, config_dict):
+        for key, value in config_dict.items():
+          setattr(self, key, value)
 
     if args.model == "LSTM":
       _params = {
@@ -444,22 +415,22 @@ def objective(args, trial):
         'num_layers': trial.suggest_int('num_layers', 1, 10),
         'dropout': trial.suggest_float('dropout', 0.0, 1),
       }
-      model = LSTM(input_size=params['input_size'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
+      model = LSTM(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "GRU":
       _params = {
         'hidden_size': trial.suggest_int('hidden_size', 50, 200),
         'num_layers': trial.suggest_int('num_layers', 1, 10),
         'dropout': trial.suggest_float('dropout', 0.0, 1),
       }
-      model = GRU(input_size=params['input_size'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
+      model = GRU(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "MLP":
-      model = MLP(num_features=params['input_size'], seq_len=params['seq_len'], num_classes=1)
+      model = MLP(num_features=params['seq_len']*params['input_size'], seq_len=params['batch_size'], pred_len=params['pred_len'], hidden_size=trial.suggest_int('hidden_size', 25, 250, step=25))
     elif args.model == "AdaBoost":
       _params = {
         'n_estimators': trial.suggest_int('n_estimators', 50, 200),
         'learning_rate_model': trial.suggest_float('learning_rate_model', 0.01, 1.0),
       }
-      model = AdaBoostRegressor(n_estimators=_params['n_estimators'], learning_rate=_params['learning_rate_model'], random_state=42)
+      model = AdaBoostRegressor(n_estimators=_params['n_estimators'], learning_rate=_params['learning_rate_model'], random_state=params['seed'])
     elif args.model == "RandomForest":
       _params = {
         'n_estimators': trial.suggest_int('n_estimators', 50, 200),
@@ -468,7 +439,7 @@ def objective(args, trial):
         'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 20),
         'max_features': trial.suggest_float('max_features', 0.1, 1.0),
       }
-      model = RandomForestRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], min_samples_leaf=_params['min_samples_leaf'], max_features=_params['max_features'], random_state=42)
+      model = RandomForestRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], min_samples_leaf=_params['min_samples_leaf'], max_features=_params['max_features'], random_state=params['seed'])
     elif args.model == "GradientBoosting":
       _params = {
         'n_estimators': trial.suggest_int('n_estimators', 50, 200),
@@ -478,7 +449,7 @@ def objective(args, trial):
         'max_features': trial.suggest_float('max_features', 0.1, 1.0),
         'learning_rate_model': trial.suggest_float('learning_rate_model', 0.01, 1.0),
       }
-      model = GradientBoostingRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], min_samples_leaf=_params['min_samples_leaf'], learning_rate=_params['learning_rate_model'], random_state=42)
+      model = GradientBoostingRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], min_samples_leaf=_params['min_samples_leaf'], learning_rate=_params['learning_rate_model'], random_state=params['seed'])
     elif args.model == "DPAD":
        _params = {
         'enc_hidden': trial.suggest_int('enc_hidden', 1, 400),
@@ -488,17 +459,12 @@ def objective(args, trial):
         'K_IMP': trial.suggest_int('K_IMP', 1, 10),
         'RIN': trial.suggest_int('RIN', 0, 1)
        }
-       DPAD_GCN(input_len=params['seq_len'], output_len=1, input_dim=params['input_size'], enc_hidden=168, dec_hidden=168, dropout=0.5, num_levels=2, K_IMP=6, RIN=1)
+       DPAD_GCN(input_len=params['seq_len'], output_len=params['pred_len'], input_dim=params['input_size'], enc_hidden=_params['enc_hidden'], dec_hidden=_params['dec_hidden'], dropout=_params['dropout'], num_levels=_params['num_levels'], K_IMP=_params['K_IMP'], RIN=_params['RIN'])
     elif args.model == "xPatch":
-      class Configs:
-        def __init__(self, config_dict):
-          for key, value in config_dict.items():
-            setattr(self, key, value)
-
       params_xpatch = Configs(
         dict(
         seq_len = params['seq_len'],
-        pred_len = params['forecasting_horizon'],
+        pred_len = params['pred_len'],
         enc_in = params['input_size'],
         patch_len = trial.suggest_int('patch_len', 1, 24),
         stride = trial.suggest_int('stride', 1, 24),
@@ -510,7 +476,70 @@ def objective(args, trial):
         )
       )
       model = xPatch(params_xpatch)
+    elif args.model == "Fredformer":
+      _params = Configs(
+        dict(
+          enc_in=params['input_size'],                # Number of input channels
+          seq_len=params['seq_len'],               # Context window (lookback length)
+          pred_len=params['pred_len'],              # Target window (forecasting length)
+          output=0,                 # Output dimension (default 0)
 
+          # Model architecture
+          e_layers = trial.suggest_int("e_layers", 1, 4),  # Number of layers
+          n_heads = trial.suggest_int("n_heads", 1, 16),  # Number of attention heads
+          d_model = trial.suggest_int("d_model", 128, 1024, step=64),  # Dimension of the model
+          d_ff = trial.suggest_int("d_ff", 512, 4096, step=128),  # Dimension of feed-forward network
+          dropout = trial.suggest_float("dropout", 0.0, 1, step=0.05),  # Dropout rate
+          fc_dropout = trial.suggest_float("fc_dropout", 0.0, 1, step=0.05),  # Fully connected dropout
+          head_dropout = trial.suggest_float("head_dropout", 0.0, 1, step=0.05),  # Dropout rate for the head layers
+          individual = trial.suggest_categorical("individual", [0, 1]),  # Whether to use individual heads
+
+          # Patching
+          patch_len = trial.suggest_int("patch_len", 4, 16, step=1),  # Patch size
+          stride = trial.suggest_int("stride", 1, 16, step=1),  # Stride for patching
+          padding_patch = trial.suggest_categorical("padding_patch", ["end", "start", "none"]),  # Padding type for patches
+
+          # RevIN
+          revin = trial.suggest_categorical("revin", [0, 1]),  # Whether to use RevIN
+          affine = trial.suggest_categorical("affine", [0, 1]),  # Affine transformation in RevIN
+          subtract_last = trial.suggest_categorical("subtract_last", [0, 1]),  # Subtract last value in RevIN
+
+          # Ablation and Nystrom
+          use_nys = trial.suggest_categorical("use_nys", [0, 1]),  # Whether to use Nystrom approximation
+          ablation = trial.suggest_categorical("ablation", [0, 1]),  # Ablation study configuration
+
+          # Crossformer-specific parameters
+          cf_dim = trial.suggest_int("cf_dim", 16, 128, step=8),  # Crossformer dimension
+          cf_depth = trial.suggest_int("cf_depth", 1, 4),  # Crossformer depth
+          cf_heads = trial.suggest_int("cf_heads", 1, 8),  # Crossformer number of heads
+          cf_mlp = trial.suggest_int("cf_mlp", 64, 256, step=16),  # Crossformer MLP dimension
+          cf_head_dim = trial.suggest_int("cf_head_dim", 16, 64, step=8),  # Crossformer head dimension
+          cf_drop = trial.suggest_float("cf_drop", 0.0, 0.5, step=0.05),  # Crossformer dropout rate
+
+          # MLP-specific parameters
+          mlp_hidden = trial.suggest_int("mlp_hidden", 32, 128, step=16),  # Hidden layer size for MLP
+          mlp_drop = trial.suggest_float("mlp_drop", 0.0, 0.5, step=0.05),  # Dropout rate for MLP
+        )
+      )
+      model = Fredformer(_params)
+    elif args.model == "PatchMixer":
+      _params = {
+        "enc_in":params['input_size'],                # Number of input channels
+        "seq_len": params['seq_len'],               # Context window (lookback length)
+        "pred_len": params['pred_len'],
+        "batch_size": trial.suggest_int("batch_size", 8, 64, step=8),  # Batch size
+        "patch_len": trial.suggest_int("patch_len", 4, 32, step=4),  # Patch size
+        "stride": trial.suggest_int("stride", 1, 16, step=1),  # Stride for patching
+        "mixer_kernel_size": trial.suggest_int("mixer_kernel_size", 2, 16, step=2),  # Kernel size for the PatchMixer layer
+        "d_model": trial.suggest_int("d_model", 128, 1024, step=64),  # Dimension of the model
+        "dropout": trial.suggest_float("dropout", 0.0, 0.5, step=0.05),  # Dropout rate for the model
+        "head_dropout": trial.suggest_float("head_dropout", 0.0, 0.5, step=0.05),  # Dropout rate for the head layers
+        "e_layers": trial.suggest_int("e_layers", 1, 4),  # Number of PatchMixer layers (depth)
+      }
+      model = PatchMixer(_params)
+    else:
+      raise ValueError("Model not found")
+      
     if isinstance(model, torch.nn.Module):
       print(f"-----Tuning {model.name} model-----")
       tuned_model = LightningModel(
@@ -526,15 +555,16 @@ def objective(args, trial):
           enable_checkpointing=False
       )
       trainer.fit(tuned_model, colmod)
-      val_loss = trainer.callback_metrics["val_loss"].item()
+      train_loss = trainer.callback_metrics["train_loss"].item()
 
     elif isinstance(model, BaseEstimator):
-      print(f"-----Tuning {model.__class__.__name__} model-----")
+      name = model.__class__.__name__
+      print(f"-----Training {type(model.estimator).__name__ if name == "MultiOutputRegressor" else name} model-----")
       X_train = colmod.X_train
       y_train = colmod.y_train.ravel()
       model.fit(X_train, y_train)
-      val_loss = mean_absolute_error(y_train, model.predict(X_train))
-    return val_loss
+      train_loss = mean_absolute_error(y_train, model.predict(X_train))
+    return train_loss
 
 def tune_model_with_optuna(args, n_trials=50):
     study = optuna.create_study(direction="minimize")
@@ -549,6 +579,6 @@ if __name__ == '__main__':
     parser.add_argument("--model", type=str, default="LSTM")
     args = parser.parse_args()
 
-    best_params = tune_model_with_optuna(args, n_trials=100)
+    best_params = tune_model_with_optuna(args, n_trials=200)
 
 
