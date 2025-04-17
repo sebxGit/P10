@@ -378,8 +378,7 @@ def objective(args, trial):
     params = {
         'input_size': 21,
         'pred_len': 24,
-        # 'seq_len': trial.suggest_int('seq_len', 24*7, 24*7*3, step=24),
-        'seq_len': 12,
+        'seq_len': trial.suggest_int('seq_len', 24*7, 24*7*3, step=24),
         'stride': 24,
         'batch_size': trial.suggest_int('batch_size', 1, 64),
         'criterion': torch.nn.L1Loss(),
@@ -519,19 +518,34 @@ def objective(args, trial):
       )
       model = Fredformer(_params)
     elif args.model == "PatchMixer":
-      _params = Configs({
-        "enc_in": params['input_size'],                # Number of input channels
-        "seq_len": params['seq_len'],               # Context window (lookback length)
-        "pred_len": params['pred_len'],
-        "batch_size": params['batch_size'],
-        "patch_len": trial.suggest_int("patch_len", 4, 32, step=4),  # Patch size
-        "stride": trial.suggest_int("stride", 1, 16, step=1),  # Stride for patching
-        "mixer_kernel_size": trial.suggest_int("mixer_kernel_size", 2, 16, step=2),  # Kernel size for the PatchMixer layer
-        "d_model": trial.suggest_int("d_model", 128, 1024, step=64),  # Dimension of the model
-        "dropout": trial.suggest_float("dropout", 0.0, 0.5, step=0.05),  # Dropout rate for the model
-        "head_dropout": trial.suggest_float("head_dropout", 0.0, 0.5, step=0.05),  # Dropout rate for the head layers
-        "e_layers": trial.suggest_int("e_layers", 1, 4),  # Number of PatchMixer layers (depth)
-      })
+      # _params = Configs({
+      #   "enc_in": params['input_size'],                # Number of input channels
+      #   "seq_len": params['seq_len'],               # Context window (lookback length)
+      #   "pred_len": params['pred_len'],
+      #   "batch_size": params['batch_size'],
+      #   "patch_len": trial.suggest_int("patch_len", 4, 32, step=4),  # Patch size
+      #   "stride": trial.suggest_int("stride", 1, 16, step=1),  # Stride for patching
+      #   "mixer_kernel_size": trial.suggest_int("mixer_kernel_size", 2, 16, step=2),  # Kernel size for the PatchMixer layer
+      #   "d_model": trial.suggest_int("d_model", 128, 1024, step=64),  # Dimension of the model
+      #   "dropout": trial.suggest_float("dropout", 0.0, 0.5, step=0.05),  # Dropout rate for the model
+      #   "head_dropout": trial.suggest_float("head_dropout", 0.0, 0.5, step=0.05),  # Dropout rate for the head layers
+      #   "e_layers": trial.suggest_int("e_layers", 1, 4),  # Number of PatchMixer layers (depth)
+      # })
+      _params = Configs(
+        dict(
+          enc_in = 21,                # Number of input channels (nvals)
+          seq_len = 12,               # Lookback window length
+          pred_len = 24,              # Forecasting length
+          batch_size = 24,             # Batch size
+          patch_len = 16,             # Patch size
+          stride = 8,                 # Stride for patching
+          mixer_kernel_size = 8,      # Kernel size for the PatchMixer layer
+          d_model = 512,              # Dimension of the model
+          dropout = 0.05,              # Dropout rate for the model
+          head_dropout = 0.0,         # Dropout rate for the head layers
+          e_layers = 2,               # Number of PatchMixer layers (depth)
+        )
+      )
       model = PatchMixer(_params)
     else:
       raise ValueError("Model not found")
