@@ -378,7 +378,8 @@ def objective(args, trial):
     params = {
         'input_size': 21,
         'pred_len': 24,
-        'seq_len': trial.suggest_int('seq_len', 24*7, 24*7*3, step=24),
+        # 'seq_len': trial.suggest_int('seq_len', 24*7, 24*7*3, step=24),
+        'seq_len': 12,
         'stride': 24,
         'batch_size': trial.suggest_int('batch_size', 1, 64),
         'criterion': torch.nn.L1Loss(),
@@ -522,7 +523,7 @@ def objective(args, trial):
         "enc_in": params['input_size'],                # Number of input channels
         "seq_len": params['seq_len'],               # Context window (lookback length)
         "pred_len": params['pred_len'],
-        "batch_size": trial.suggest_int("batch_size", 8, 64, step=8),  # Batch size
+        "batch_size": params['batch_size'],
         "patch_len": trial.suggest_int("patch_len", 4, 32, step=4),  # Patch size
         "stride": trial.suggest_int("stride", 1, 16, step=1),  # Stride for patching
         "mixer_kernel_size": trial.suggest_int("mixer_kernel_size", 2, 16, step=2),  # Kernel size for the PatchMixer layer
