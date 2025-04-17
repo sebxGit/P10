@@ -518,8 +518,8 @@ def objective(args, trial):
       )
       model = Fredformer(_params)
     elif args.model == "PatchMixer":
-      _params = {
-        "enc_in":params['input_size'],                # Number of input channels
+      _params = Configs({
+        "enc_in": params['input_size'],                # Number of input channels
         "seq_len": params['seq_len'],               # Context window (lookback length)
         "pred_len": params['pred_len'],
         "batch_size": trial.suggest_int("batch_size", 8, 64, step=8),  # Batch size
@@ -530,7 +530,7 @@ def objective(args, trial):
         "dropout": trial.suggest_float("dropout", 0.0, 0.5, step=0.05),  # Dropout rate for the model
         "head_dropout": trial.suggest_float("head_dropout", 0.0, 0.5, step=0.05),  # Dropout rate for the head layers
         "e_layers": trial.suggest_int("e_layers", 1, 4),  # Number of PatchMixer layers (depth)
-      }
+      })
       model = PatchMixer(_params)
     else:
       raise ValueError("Model not found")
@@ -574,4 +574,4 @@ if __name__ == '__main__':
     parser.add_argument("--model", type=str, default="LSTM")
     args = parser.parse_args()
 
-    best_params = tune_model_with_optuna(args, n_trials=200)
+    best_params = tune_model_with_optuna(args, n_trials=100)
