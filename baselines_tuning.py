@@ -392,10 +392,9 @@ def objective(args, trial):
     }
 
     colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=params['scaler'], seq_len=params['seq_len'], pred_len=params['pred_len'], stride=params['stride'], batch_size=params['batch_size'], num_workers=params['num_workers'], is_persistent=params['is_persistent'])
-    seed_everything(params['seed'], workers=True)
-
     colmod.prepare_data()
-    colmod.setup(stage="fit")
+    colmod.setup(stage="None")
+    seed_everything(params['seed'], workers=True)
 
     model = None
 
@@ -552,18 +551,8 @@ def objective(args, trial):
       
     if isinstance(model, torch.nn.Module):
       print(f"-----Tuning {model.name} model-----")
-      tuned_model = LightningModel(
-          model=model,
-          criterion=params['criterion'],
-          optimizer=params['optimizer'],
-          learning_rate=params['learning_rate']
-      )
-      trainer = L.Trainer(
-          max_epochs=params['max_epochs'],
-          callbacks=[EarlyStopping(monitor="val_loss", mode="min")],
-          log_every_n_steps=0,
-          enable_checkpointing=False
-      )
+      tuned_model = LightningModel(model=model, criterion=params['criterion'], optimizer=params['optimizer'], learning_rate=params['learning_rate'])
+      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, enable_checkpointing=False)
       trainer.fit(tuned_model, colmod)
       train_loss = trainer.callback_metrics["train_loss"].item()
 
