@@ -378,7 +378,7 @@ class Configs:
   def __init__(self, config_dict):
     for key, value in config_dict.items():
       setattr(self, key, value)
-      
+
 def objective(args, trial):
     params = {
         'input_size': 21,
@@ -578,4 +578,4 @@ if __name__ == '__main__':
     parser.add_argument("--model", type=str, default="LSTM")
     args = parser.parse_args()
 
-    best_params = tune_model_with_optuna(args, n_trials=100)
+    best_params = tune_model_with_optuna(args, n_trials=150)
