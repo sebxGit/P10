@@ -374,6 +374,11 @@ class LightningModel(L.LightningModule):
   def configure_optimizers(self):
     return self.optimizer(self.parameters(), lr=self.learning_rate)
 
+class Configs:
+  def __init__(self, config_dict):
+    for key, value in config_dict.items():
+      setattr(self, key, value)
+      
 def objective(args, trial):
     params = {
         'input_size': 21,
@@ -397,11 +402,6 @@ def objective(args, trial):
     seed_everything(params['seed'], workers=True)
 
     model = None
-
-    class Configs:
-      def __init__(self, config_dict):
-        for key, value in config_dict.items():
-          setattr(self, key, value)
 
     if args.model == "LSTM":
       _params = {
