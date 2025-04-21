@@ -459,20 +459,32 @@ def objective(args, trial):
         model = DPAD_GCN(input_len=params['seq_len'], output_len=params['pred_len'], input_dim=params['input_size'], enc_hidden=_params['enc_hidden'], dec_hidden=_params['dec_hidden'], dropout=_params['dropout'], num_levels=_params['num_levels'], K_IMP=_params['K_IMP'], RIN=_params['RIN'])
     elif args.model == "xPatch":
       params_xpatch = Configs(
+        # dict(
+        # seq_len = params['seq_len'],
+        # pred_len = params['pred_len'],
+        # enc_in = params['input_size'],
+        # # patch_len = trial.suggest_int('patch_len', 1, 24),
+        # # stride = trial.suggest_int('stride', 1, 24),
+        # patch_len = 16,
+        # stride = 8,
+        # padding_patch = trial.suggest_categorical('padding_patch', ['end', 'None']),
+        # revin = trial.suggest_int('revin', 0, 1),
+        # # ma_type = trial.suggest_categorical('ma_type', ['reg', 'ema', 'dema']),
+        # ma_type = 'ema',
+        # alpha = trial.suggest_float('alpha', 0.0, 1.0),
+        # beta = trial.suggest_float('beta', 0.0, 1.0),
+        # )
         dict(
-        seq_len = params['seq_len'],
-        pred_len = params['pred_len'],
-        enc_in = params['input_size'],
-        # patch_len = trial.suggest_int('patch_len', 1, 24),
-        # stride = trial.suggest_int('stride', 1, 24),
+        seq_len = 12,
+        pred_len = 24,
+        enc_in = 21,
         patch_len = 16,
         stride = 8,
-        padding_patch = trial.suggest_categorical('padding_patch', ['end', 'None']),
-        revin = trial.suggest_int('revin', 0, 1),
-        # ma_type = trial.suggest_categorical('ma_type', ['reg', 'ema', 'dema']),
+        padding_patch = 'end',
+        revin = 1,
         ma_type = 'ema',
-        alpha = trial.suggest_float('alpha', 0.0, 1.0),
-        beta = trial.suggest_float('beta', 0.0, 1.0),
+        alpha=0.3,
+        beta=0.3,
         )
       )
       model = xPatch(params_xpatch)
