@@ -383,7 +383,7 @@ def objective(args, trial):
     params = {
         'input_size': 21,
         'pred_len': 24,
-        'seq_len': trial.suggest_int('seq_len', 24*7, 24*7*3, step=24),
+        'seq_len': 24*7,
         'stride': 24,
         'batch_size': trial.suggest_int('batch_size', 1, 64),
         'criterion': torch.nn.L1Loss(),
