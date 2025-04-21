@@ -391,12 +391,12 @@ def objective(args, trial):
         'scaler': MinMaxScaler(),
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
-        'max_epochs': trial.suggest_int('max_epochs', 50, 1000, step=50),
-        'num_workers': 5,
-        'is_persistent': True,
-        # 'max_epochs': 1,
-        # 'num_workers': 0,
-        # 'is_persistent': False,
+        # 'max_epochs': trial.suggest_int('max_epochs', 50, 1000, step=50),
+        # 'num_workers': 5,
+        # 'is_persistent': True,
+        'max_epochs': 1,
+        'num_workers': 0,
+        'is_persistent': False,
     }
 
     colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=params['scaler'], seq_len=params['seq_len'], pred_len=params['pred_len'], stride=params['stride'], batch_size=params['batch_size'], num_workers=params['num_workers'], is_persistent=params['is_persistent'])
@@ -476,7 +476,7 @@ def objective(args, trial):
         # )
         dict(
         seq_len = 12,
-        pred_len = 24,
+        pred_len = 21,
         enc_in = 21,
         patch_len = 16,
         stride = 8,
@@ -552,7 +552,7 @@ def objective(args, trial):
         dict(
           enc_in = 21,                # Number of input channels (nvals)
           seq_len = 24*7,               # Lookback window length
-          pred_len = 24,              # Forecasting length
+          pred_len = 21,              # Forecasting length
           batch_size = 24,             # Batch size
           patch_len = 16,             # Patch size
           stride = 8,                 # Stride for patching
