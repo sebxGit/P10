@@ -390,10 +390,13 @@ def objective(args, trial):
         'optimizer': torch.optim.Adam,
         'scaler': MinMaxScaler(),
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
+        'seed': 42,
         'max_epochs': trial.suggest_int('max_epochs', 50, 1000, step=50),
         'num_workers': trial.suggest_int('num_workers', 0, 20),
-        'seed': 42,
-        'is_persistent': False,
+        'is_persistent': True,
+        # 'max_epochs': 1,
+        # 'num_workers': 0,
+        # 'is_persistent': False,
     }
 
     colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=params['scaler'], seq_len=params['seq_len'], pred_len=params['pred_len'], stride=params['stride'], batch_size=params['batch_size'], num_workers=params['num_workers'], is_persistent=params['is_persistent'])
@@ -445,15 +448,15 @@ def objective(args, trial):
       }
       model = GradientBoostingRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], min_samples_leaf=_params['min_samples_leaf'], learning_rate=_params['learning_rate_model'], random_state=params['seed'])
     elif args.model == "DPAD":
-       _params = {
-        'enc_hidden': trial.suggest_int('enc_hidden', 1, 400),
-        'dec_hidden': trial.suggest_int('dec_hidden', 1, 400),
-        'num_levels': trial.suggest_int('num_levels', 1, 10),
-        'dropout': trial.suggest_float('dropout', 0.0, 1),
-        'K_IMP': trial.suggest_int('K_IMP', 1, 10),
-        'RIN': trial.suggest_int('RIN', 0, 1)
-       }
-       DPAD_GCN(input_len=params['seq_len'], output_len=params['pred_len'], input_dim=params['input_size'], enc_hidden=_params['enc_hidden'], dec_hidden=_params['dec_hidden'], dropout=_params['dropout'], num_levels=_params['num_levels'], K_IMP=_params['K_IMP'], RIN=_params['RIN'])
+        _params = {
+          'enc_hidden': trial.suggest_int('enc_hidden', 1, 400),
+          'dec_hidden': trial.suggest_int('dec_hidden', 1, 400),
+          'num_levels': trial.suggest_int('num_levels', 1, 10),
+          'dropout': trial.suggest_float('dropout', 0.0, 1),
+          'K_IMP': trial.suggest_int('K_IMP', 1, 10),
+          'RIN': trial.suggest_int('RIN', 0, 1)
+        }
+        model = DPAD_GCN(input_len=params['seq_len'], output_len=params['pred_len'], input_dim=params['input_size'], enc_hidden=_params['enc_hidden'], dec_hidden=_params['dec_hidden'], dropout=_params['dropout'], num_levels=_params['num_levels'], K_IMP=_params['K_IMP'], RIN=_params['RIN'])
     elif args.model == "xPatch":
       params_xpatch = Configs(
         dict(
