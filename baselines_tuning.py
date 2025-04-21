@@ -392,11 +392,11 @@ def objective(args, trial):
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
         'max_epochs': trial.suggest_int('max_epochs', 50, 1000, step=50),
-        'num_workers': 5,
-        'is_persistent': True,
+        # 'num_workers': 5,
+        # 'is_persistent': True,
         # 'max_epochs': 1,
-        # 'num_workers': 0,
-        # 'is_persistent': False,
+        'num_workers': 0,
+        'is_persistent': False,
     }
 
     colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=params['scaler'], seq_len=params['seq_len'], pred_len=params['pred_len'], stride=params['stride'], batch_size=params['batch_size'], num_workers=params['num_workers'], is_persistent=params['is_persistent'])
@@ -554,10 +554,10 @@ def objective(args, trial):
           seq_len = 24*7,               # Lookback window length
           pred_len = 21,              # Forecasting length
           batch_size = 24,             # Batch size
-          patch_len = 16,             # Patch size
-          stride = 8,                 # Stride for patching
+          patch_len = 126,             # Patch size
+          stride = 17,                 # Stride for patching
           mixer_kernel_size = 8,      # Kernel size for the PatchMixer layer
-          d_model = 512,              # Dimension of the model
+          d_model = 128,              # Dimension of the model
           dropout = 0.05,              # Dropout rate for the model
           head_dropout = 0.0,         # Dropout rate for the head layers
           e_layers = 2,               # Number of PatchMixer layers (depth)
@@ -570,7 +570,7 @@ def objective(args, trial):
     if isinstance(model, torch.nn.Module):
       print(f"-----Tuning {model.name} model-----")
       tuned_model = LightningModel(model=model, criterion=params['criterion'], optimizer=params['optimizer'], learning_rate=params['learning_rate'])
-      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
+      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, enable_checkpointing=False)
       trainer.fit(tuned_model, colmod)
       train_loss = trainer.callback_metrics["train_loss"].item()
 
