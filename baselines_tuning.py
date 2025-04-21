@@ -392,7 +392,7 @@ def objective(args, trial):
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
         'max_epochs': trial.suggest_int('max_epochs', 50, 1000, step=50),
-        'num_workers': trial.suggest_int('num_workers', 0, 20),
+        'num_workers': 10,
         'is_persistent': True,
         # 'max_epochs': 1,
         # 'num_workers': 0,
