@@ -559,8 +559,9 @@ def objective(args, trial):
     elif isinstance(model, BaseEstimator):
       name = model.__class__.__name__
       print(f"-----Training {type(model.estimator).__name__ if name == "MultiOutputRegressor" else name} model-----")
-      X_train = colmod.X_train
-      y_train = colmod.y_train.ravel()
+      X_train, y_train = colmod.sklearn_setup("train") 
+      X_test, y_test = colmod.sklearn_setup("test")
+
       model.fit(X_train, y_train)
       train_loss = mean_absolute_error(y_train, model.predict(X_train))
     return train_loss
