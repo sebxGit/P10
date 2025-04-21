@@ -548,21 +548,21 @@ def objective(args, trial):
       #   "head_dropout": trial.suggest_float("head_dropout", 0.0, 0.5, step=0.05),  # Dropout rate for the head layers
       #   "e_layers": trial.suggest_int("e_layers", 1, 4),  # Number of PatchMixer layers (depth)
       # })
-      _params = Configs(
-        dict(
-          enc_in = 21,                # Number of input channels (nvals)
-          seq_len = 24*7,               # Lookback window length
-          pred_len = 21,              # Forecasting length
-          batch_size = 24,             # Batch size
-          patch_len = 126,             # Patch size
-          stride = 17,                 # Stride for patching
-          mixer_kernel_size = 8,      # Kernel size for the PatchMixer layer
-          d_model = 128,              # Dimension of the model
-          dropout = 0.05,              # Dropout rate for the model
-          head_dropout = 0.0,         # Dropout rate for the head layers
-          e_layers = 2,               # Number of PatchMixer layers (depth)
-        )
-      )
+      # _params = Configs(
+      #   dict(
+      #     enc_in = 21,                # Number of input channels (nvals)
+      #     seq_len = 24*7,               # Lookback window length
+      #     pred_len = 21,              # Forecasting length
+      #     batch_size = 24,             # Batch size
+      #     patch_len = 126,             # Patch size
+      #     stride = 17,                 # Stride for patching
+      #     mixer_kernel_size = 8,      # Kernel size for the PatchMixer layer
+      #     d_model = 128,              # Dimension of the model
+      #     dropout = 0.05,              # Dropout rate for the model
+      #     head_dropout = 0.0,         # Dropout rate for the head layers
+      #     e_layers = 2,               # Number of PatchMixer layers (depth)
+      #   )
+      # )
       model = PatchMixer(_params)
     else:
       raise ValueError("Model not found")
@@ -570,7 +570,7 @@ def objective(args, trial):
     if isinstance(model, torch.nn.Module):
       print(f"-----Tuning {model.name} model-----")
       tuned_model = LightningModel(model=model, criterion=params['criterion'], optimizer=params['optimizer'], learning_rate=params['learning_rate'])
-      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, enable_checkpointing=False)
+      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
       trainer.fit(tuned_model, colmod)
       train_loss = trainer.callback_metrics["train_loss"].item()
 
