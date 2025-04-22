@@ -30,6 +30,8 @@ from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from lightning.pytorch.callbacks import BasePredictionWriter
 from lightning.pytorch import seed_everything
 
+# os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+
 # tensorboard --logdir=Predictions/MLP-GRU-LSTM
 
 def convert_to_hourly(data):
@@ -385,18 +387,15 @@ def objective(args, trial):
         'pred_len': 24,
         'seq_len': 24*7,
         'stride': 24,
-        'batch_size': trial.suggest_int('batch_size', 1, 64),
+        'batch_size': trial.suggest_int('batch_size', 32, 128, step=32),
         'criterion': torch.nn.L1Loss(),
         'optimizer': torch.optim.Adam,
         'scaler': MinMaxScaler(),
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
-        'max_epochs': trial.suggest_int('max_epochs', 50, 1000, step=50),
-        # 'num_workers': 5,
-        # 'is_persistent': True,
-        # 'max_epochs': 1,
-        'num_workers': 0,
-        'is_persistent': False,
+        'max_epochs': trial.suggest_int('max_epochs', 100, 1500, step=50),
+        'num_workers': trial.suggest_int('num_workers', 5, 12),
+        'is_persistent': True,
     }
 
     colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=params['scaler'], seq_len=params['seq_len'], pred_len=params['pred_len'], stride=params['stride'], batch_size=params['batch_size'], num_workers=params['num_workers'], is_persistent=params['is_persistent'])
@@ -548,21 +547,21 @@ def objective(args, trial):
       #   "head_dropout": trial.suggest_float("head_dropout", 0.0, 0.5, step=0.05),  # Dropout rate for the head layers
       #   "e_layers": trial.suggest_int("e_layers", 1, 4),  # Number of PatchMixer layers (depth)
       # })
-      # _params = Configs(
-      #   dict(
-      #     enc_in = 21,                # Number of input channels (nvals)
-      #     seq_len = 24*7,               # Lookback window length
-      #     pred_len = 21,              # Forecasting length
-      #     batch_size = 24,             # Batch size
-      #     patch_len = 126,             # Patch size
-      #     stride = 17,                 # Stride for patching
-      #     mixer_kernel_size = 8,      # Kernel size for the PatchMixer layer
-      #     d_model = 128,              # Dimension of the model
-      #     dropout = 0.05,              # Dropout rate for the model
-      #     head_dropout = 0.0,         # Dropout rate for the head layers
-      #     e_layers = 2,               # Number of PatchMixer layers (depth)
-      #   )
-      # )
+      _params = Configs(
+        dict(
+            enc_in = 21,                # Number of input channels (nvals)
+            seq_len = 24*7,               # Lookback window length
+            pred_len = 21,              # Forecasting length
+            batch_size = 24,             # Batch size
+            patch_len = 16,             # Patch size
+            stride = 24,                 # Stride for patching
+            mixer_kernel_size = 8,      # Kernel size for the PatchMixer layer
+            d_model = 512,              # Dimension of the model
+            dropout = 0.05,              # Dropout rate for the model
+            head_dropout = 0.0,         # Dropout rate for the head layers
+            e_layers = 2,               # Number of PatchMixer layers (depth)
+        )
+      )
       model = PatchMixer(_params)
     else:
       raise ValueError("Model not found")
@@ -570,7 +569,7 @@ def objective(args, trial):
     if isinstance(model, torch.nn.Module):
       print(f"-----Tuning {model.name} model-----")
       tuned_model = LightningModel(model=model, criterion=params['criterion'], optimizer=params['optimizer'], learning_rate=params['learning_rate'])
-      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
+      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, deterministic=True, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
       trainer.fit(tuned_model, colmod)
       train_loss = trainer.callback_metrics["train_loss"].item()
 
@@ -578,23 +577,44 @@ def objective(args, trial):
       name = model.__class__.__name__
       print(f"-----Training {type(model.estimator).__name__ if name == "MultiOutputRegressor" else name} model-----")
       X_train, y_train = colmod.sklearn_setup("train") 
-      X_test, y_test = colmod.sklearn_setup("test")
+      # X_test, y_test = colmod.sklearn_setup("test")
 
       model.fit(X_train, y_train)
       train_loss = mean_absolute_error(y_train, model.predict(X_train))
     return train_loss
 
-def tune_model_with_optuna(args, n_trials=50):
-    study = optuna.create_study(direction="minimize")
-    study.optimize(lambda trial: objective(args, trial), n_trials=n_trials)
+def safe_objective(args, trial):
+  try:
+    return objective(args, trial)
+  except Exception as e:
+    print(f"Failed trial: {e}. Skipped this trial.")
+    return float('inf')
+  
+def tune_model_with_optuna(args, n_trials):
+  study = optuna.create_study(direction="minimize")
+  study.optimize(lambda trial: safe_objective(args, trial), n_trials=n_trials, gc_after_trial=True, timeout=43000)
 
-    print("Best params:", study.best_params)
-    print("Best validation loss:", study.best_value)
+  print("Len trials:", len(study.trials))
+  print("Best params:", study.best_params)
+  print("Best validation loss:", study.best_value)
+
+  if study.best_value != float('inf'):
+    try:
+      df_tuning = pd.read_csv('tuning.csv')
+    except:
+      df_tuning = pd.DataFrame(columns=['model', 'trials', 'train_loss', 'parameters'])
+
+    new_row = {'model': args.model, 'trials': len(study.trials), 'train_loss': study.best_value, 'parameters': study.best_params}
+    new_row_df = pd.DataFrame([new_row]).dropna(axis=1, how='all')
+    df_tuning = pd.concat([df_tuning, new_row_df], ignore_index=True)
+    df_tuning = df_tuning.sort_values(by=['model', 'train_loss'], ascending=True).reset_index(drop=True)
+    df_tuning.to_csv('tuning.csv', index=False)
+
     return study.best_params
 
 if __name__ == '__main__':
-    parser = ArgumentParser()
-    parser.add_argument("--model", type=str, default="LSTM")
-    args = parser.parse_args()
+  parser = ArgumentParser()
+  parser.add_argument("--model", type=str, default="LSTM")
+  args = parser.parse_args()
 
-    best_params = tune_model_with_optuna(args, n_trials=150)
+  best_params = tune_model_with_optuna(args, n_trials=150)

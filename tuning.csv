@@ -1,6 +1,0 @@
-name, tuning
-ADA, {'seq_len': 192, 'batch_size': 23, 'learning_rate': 0.0006925733841183088, 'max_epochs': 700, 'num_workers': 7, 'n_estimators': 61, 'learning_rate_model': 0.2604528643454411}
-GRU, {'seq_len': 288, 'batch_size': 45, 'learning_rate': 0.0008890961514965549, 'max_epochs': 700, 'num_workers': 15, 'hidden_size': 105, 'num_layers': 1, 'dropout': 0.558886574521809}
-GradientBoostingRegressor, {'seq_len': 480, 'batch_size': 54, 'learning_rate': 0.00015895223300215408, 'max_epochs': 800, 'num_workers': 5, 'n_estimators': 200, 'max_depth': 20, 'min_samples_split': 4, 'min_samples_leaf': 4, 'max_features': 0.5602151883040576, 'learning_rate_model': 0.516949044988661}
-MLP, {'seq_len': 288, 'batch_size': 12, 'learning_rate': 0.003499501835731551, 'max_epochs': 300, 'num_workers': 8, 'hidden_size': 150}
-RandomForestRegressor, {'seq_len': 408, 'batch_size': 17, 'learning_rate': 0.00016806745363827448, 'max_epochs': 800, 'num_workers': 11, 'n_estimators': 148, 'max_depth': 20, 'min_samples_split': 2, 'min_samples_leaf': 1, 'max_features': 0.6900227452767658}
