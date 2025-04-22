@@ -394,8 +394,10 @@ def objective(args, trial):
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
         'max_epochs': trial.suggest_int('max_epochs', 100, 1500, step=50),
-        'num_workers': trial.suggest_int('num_workers', 5, 12),
-        'is_persistent': True,
+        # 'num_workers': trial.suggest_int('num_workers', 5, 12),
+        # 'is_persistent': True,
+        'num_workers': 0,
+        'is_persistent': False,
     }
 
     colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=params['scaler'], seq_len=params['seq_len'], pred_len=params['pred_len'], stride=params['stride'], batch_size=params['batch_size'], num_workers=params['num_workers'], is_persistent=params['is_persistent'])
@@ -458,32 +460,17 @@ def objective(args, trial):
         model = DPAD_GCN(input_len=params['seq_len'], output_len=params['pred_len'], input_dim=params['input_size'], enc_hidden=_params['enc_hidden'], dec_hidden=_params['dec_hidden'], dropout=_params['dropout'], num_levels=_params['num_levels'], K_IMP=_params['K_IMP'], RIN=_params['RIN'])
     elif args.model == "xPatch":
       params_xpatch = Configs(
-        # dict(
-        # seq_len = params['seq_len'],
-        # pred_len = params['pred_len'],
-        # enc_in = params['input_size'],
-        # # patch_len = trial.suggest_int('patch_len', 1, 24),
-        # # stride = trial.suggest_int('stride', 1, 24),
-        # patch_len = 16,
-        # stride = 8,
-        # padding_patch = trial.suggest_categorical('padding_patch', ['end', 'None']),
-        # revin = trial.suggest_int('revin', 0, 1),
-        # # ma_type = trial.suggest_categorical('ma_type', ['reg', 'ema', 'dema']),
-        # ma_type = 'ema',
-        # alpha = trial.suggest_float('alpha', 0.0, 1.0),
-        # beta = trial.suggest_float('beta', 0.0, 1.0),
-        # )
         dict(
-        seq_len = 12,
-        pred_len = 21,
-        enc_in = 21,
-        patch_len = 16,
-        stride = 8,
-        padding_patch = 'end',
-        revin = 1,
-        ma_type = 'ema',
-        alpha=0.3,
-        beta=0.3,
+        seq_len = params['seq_len'],
+        pred_len = params['pred_len'],
+        enc_in = params['input_size'],
+        patch_len = trial.suggest_int('patch_len', 1, 24),
+        stride = trial.suggest_int('stride', 1, 24),
+        padding_patch = trial.suggest_categorical('padding_patch', ['end', 'None']),
+        revin = trial.suggest_int('revin', 0, 1),
+        ma_type = trial.suggest_categorical('ma_type', ['reg', 'ema', 'dema']),
+        alpha = trial.suggest_float('alpha', 0.0, 1.0),
+        beta = trial.suggest_float('beta', 0.0, 1.0),
         )
       )
       model = xPatch(params_xpatch)
@@ -534,34 +521,19 @@ def objective(args, trial):
       )
       model = Fredformer(_params)
     elif args.model == "PatchMixer":
-      # _params = Configs({
-      #   "enc_in": params['input_size'],                # Number of input channels
-      #   "seq_len": params['seq_len'],               # Context window (lookback length)
-      #   "pred_len": params['pred_len'],
-      #   "batch_size": params['batch_size'],
-      #   "patch_len": trial.suggest_int("patch_len", 4, 32, step=4),  # Patch size
-      #   "stride": trial.suggest_int("stride", 1, 16, step=1),  # Stride for patching
-      #   "mixer_kernel_size": trial.suggest_int("mixer_kernel_size", 2, 16, step=2),  # Kernel size for the PatchMixer layer
-      #   "d_model": trial.suggest_int("d_model", 128, 1024, step=64),  # Dimension of the model
-      #   "dropout": trial.suggest_float("dropout", 0.0, 0.5, step=0.05),  # Dropout rate for the model
-      #   "head_dropout": trial.suggest_float("head_dropout", 0.0, 0.5, step=0.05),  # Dropout rate for the head layers
-      #   "e_layers": trial.suggest_int("e_layers", 1, 4),  # Number of PatchMixer layers (depth)
-      # })
-      _params = Configs(
-        dict(
-            enc_in = 21,                # Number of input channels (nvals)
-            seq_len = 24*7,               # Lookback window length
-            pred_len = 21,              # Forecasting length
-            batch_size = 24,             # Batch size
-            patch_len = 16,             # Patch size
-            stride = 24,                 # Stride for patching
-            mixer_kernel_size = 8,      # Kernel size for the PatchMixer layer
-            d_model = 512,              # Dimension of the model
-            dropout = 0.05,              # Dropout rate for the model
-            head_dropout = 0.0,         # Dropout rate for the head layers
-            e_layers = 2,               # Number of PatchMixer layers (depth)
-        )
-      )
+      _params = Configs({
+        "enc_in": params['input_size'],                # Number of input channels
+        "seq_len": params['seq_len'],               # Context window (lookback length)
+        "pred_len": params['pred_len'],
+        "batch_size": params['batch_size'],
+        "patch_len": trial.suggest_int("patch_len", 4, 32, step=4),  # Patch size
+        "stride": trial.suggest_int("stride", 1, 16, step=1),  # Stride for patching
+        "mixer_kernel_size": trial.suggest_int("mixer_kernel_size", 2, 16, step=2),  # Kernel size for the PatchMixer layer
+        "d_model": trial.suggest_int("d_model", 128, 1024, step=64),  # Dimension of the model
+        "dropout": trial.suggest_float("dropout", 0.0, 0.5, step=0.05),  # Dropout rate for the model
+        "head_dropout": trial.suggest_float("head_dropout", 0.0, 0.5, step=0.05),  # Dropout rate for the head layers
+        "e_layers": trial.suggest_int("e_layers", 1, 4),  # Number of PatchMixer layers (depth)
+      })
       model = PatchMixer(_params)
     else:
       raise ValueError("Model not found")
@@ -592,7 +564,7 @@ def safe_objective(args, trial):
   
 def tune_model_with_optuna(args, n_trials):
   study = optuna.create_study(direction="minimize")
-  study.optimize(lambda trial: safe_objective(args, trial), n_trials=n_trials, gc_after_trial=True, timeout=43000)
+  study.optimize(lambda trial: objective(args, trial), n_trials=n_trials, gc_after_trial=True, timeout=43000)
 
   print("Len trials:", len(study.trials))
   print("Best params:", study.best_params)
@@ -614,7 +586,7 @@ def tune_model_with_optuna(args, n_trials):
 
 if __name__ == '__main__':
   parser = ArgumentParser()
-  parser.add_argument("--model", type=str, default="LSTM")
+  parser.add_argument("--model", type=str, default="PatchMixer")
   args = parser.parse_args()
 
   best_params = tune_model_with_optuna(args, n_trials=150)

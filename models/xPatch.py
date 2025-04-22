@@ -56,4 +56,4 @@ class xPatch(nn.Module):
         if self.revin:
             x = self.revin_layer(x, 'denorm')
 
-        return x
+        return x[:, :, 0]

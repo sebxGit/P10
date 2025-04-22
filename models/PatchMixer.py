@@ -100,4 +100,4 @@ class Backbone(nn.Module):
         x = x.permute(0, 2, 1)
         if self.revin:
             x = self.revin_layer(x, 'denorm')
-        return x
+        return x[:, :, 0]
