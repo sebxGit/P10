@@ -319,7 +319,7 @@ class ColoradoDataModule(L.LightningDataModule):
     X_window, y_target = [], []
   
     for i in range(len(X) - seq_len - pred_len + 1):
-        X_window.append(X[i:i + seq_len].flatten())
+        X_window.append(X[i:i + seq_len])
         y_target.append(y[i + seq_len:i + seq_len + pred_len])
 
     return np.array(X_window), np.array(y_target)
