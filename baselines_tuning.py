@@ -16,6 +16,7 @@ from models.PatchMixer import PatchMixer
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.ensemble import RandomForestRegressor, AdaBoostRegressor, GradientBoostingRegressor
+from sklearn.multioutput import MultiOutputRegressor
 from sklearn.base import BaseEstimator
 from sklearn.metrics import mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
 from sklearn.utils import resample
@@ -312,7 +313,6 @@ class ColoradoDataModule(L.LightningDataModule):
     else:
       raise ValueError("Invalid set name. Choose from 'train', 'val', or 'test'.")
 
-
     seq_len = self.seq_len
     pred_len = 24
 
@@ -426,7 +426,7 @@ def objective(args, trial):
         'n_estimators': trial.suggest_int('n_estimators', 50, 200),
         'learning_rate_model': trial.suggest_float('learning_rate_model', 0.01, 1.0),
       }
-      model = AdaBoostRegressor(n_estimators=_params['n_estimators'], learning_rate=_params['learning_rate_model'], random_state=params['seed'])
+      model = MultiOutputRegressor(AdaBoostRegressor(n_estimators=_params['n_estimators'], learning_rate=_params['learning_rate_model'], random_state=params['seed']))
     elif args.model == "RandomForest":
       _params = {
         'n_estimators': trial.suggest_int('n_estimators', 50, 200),
@@ -435,7 +435,7 @@ def objective(args, trial):
         'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 20),
         'max_features': trial.suggest_float('max_features', 0.1, 1.0),
       }
-      model = RandomForestRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], min_samples_leaf=_params['min_samples_leaf'], max_features=_params['max_features'], random_state=params['seed'])
+      model =  MultiOutputRegressor(RandomForestRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], min_samples_leaf=_params['min_samples_leaf'], max_features=_params['max_features'], random_state=params['seed']))
     elif args.model == "GradientBoosting":
       _params = {
         'n_estimators': trial.suggest_int('n_estimators', 50, 200),
@@ -445,7 +445,7 @@ def objective(args, trial):
         'max_features': trial.suggest_float('max_features', 0.1, 1.0),
         'learning_rate_model': trial.suggest_float('learning_rate_model', 0.01, 1.0),
       }
-      model = GradientBoostingRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], min_samples_leaf=_params['min_samples_leaf'], learning_rate=_params['learning_rate_model'], random_state=params['seed'])
+      model = MultiOutputRegressor(GradientBoostingRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], min_samples_leaf=_params['min_samples_leaf'], learning_rate=_params['learning_rate_model'], random_state=params['seed']))
     elif args.model == "DPAD":
         _params = {
           'enc_hidden': trial.suggest_int('enc_hidden', 1, 400),
