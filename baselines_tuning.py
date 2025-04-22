@@ -31,7 +31,7 @@ from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from lightning.pytorch.callbacks import BasePredictionWriter
 from lightning.pytorch import seed_everything
 
-# os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
 # tensorboard --logdir=Predictions/MLP-GRU-LSTM
 
@@ -313,6 +313,7 @@ class ColoradoDataModule(L.LightningDataModule):
     else:
       raise ValueError("Invalid set name. Choose from 'train', 'val', or 'test'.")
 
+
     seq_len = self.seq_len
     pred_len = 24
 
@@ -323,7 +324,7 @@ class ColoradoDataModule(L.LightningDataModule):
         y_target.append(y[i + seq_len:i + seq_len + pred_len])
 
     return np.array(X_window), np.array(y_target)
-  
+   
 class CustomWriter(BasePredictionWriter):
   def __init__(self, output_dir, write_interval, combined_name, model_name):
     super().__init__(write_interval)
@@ -584,7 +585,7 @@ def tune_model_with_optuna(args, n_trials):
 
 if __name__ == '__main__':
   parser = ArgumentParser()
-  parser.add_argument("--model", type=str, default="PatchMixer")
+  parser.add_argument("--model", type=str, default="LSTM")
   args = parser.parse_args()
 
   best_params = tune_model_with_optuna(args, n_trials=150)
