@@ -467,7 +467,7 @@ def objective(args, trial):
         stride = trial.suggest_int('stride', 1, 24),
         padding_patch = trial.suggest_categorical('padding_patch', ['end', 'None']),
         revin = trial.suggest_int('revin', 0, 1),
-        ma_type = trial.suggest_categorical('ma_type', ['reg', 'ema', 'dema']),
+        ma_type = trial.suggest_categorical('ma_type', ['reg', 'ema']),
         alpha = trial.suggest_float('alpha', 0.0, 1.0),
         beta = trial.suggest_float('beta', 0.0, 1.0),
         )
