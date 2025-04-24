@@ -386,30 +386,6 @@ class Configs:
     for key, value in config_dict.items():
       setattr(self, key, value)
 
-def run_models(ensemble_models, _hparams, args, colmod):
-  model_names = [m.name if isinstance(m, torch.nn.Module) else m.__class__.__name__ for m in ensemble_models]
-  combined_name = "-".join(model_names)
-
-  for _model in ensemble_models:
-    if isinstance(_model, torch.nn.Module):
-      print(f"-----Training {_model.name} model-----")
-      model = LightningModel(model=_model, criterion=criterion_map.get(args.criterion), optimizer=optimizer_map.get(args.optimizer), learning_rate=_hparams['learning_rate'])
-      pred_writer = CustomWriter(output_dir="Predictions", write_interval="epoch", combined_name=combined_name, model_name=_model.name)
-      trainer = L.Trainer(max_epochs=_hparams['max_epochs'], callbacks=[EarlyStopping(monitor="val_loss", mode="min"), pred_writer], log_every_n_steps=_hparams['batch_size']//2, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
-      trainer.fit(model, colmod)
-      trainer.predict(model, colmod, return_predictions=False)
-    
-    if isinstance(_model, BaseEstimator):
-      print(f"-----Training {_model.__class__.__name__} model-----")
-      X_train_sample, y_train_sample = resample(colmod.X_train, colmod.y_train, replace=True, n_samples=len(colmod.X_train), random_state=42)
-      _model.fit(X_train_sample, y_train_sample.ravel()) # ravel() converts a 2D to a 1D array
-      y_pred = _model.predict(colmod.X_test)
-      if not os.path.exists(f"Predictions/{combined_name}"):
-        os.makedirs(f"Predictions/{combined_name}")
-      torch.save(y_pred, f"Predictions/{combined_name}/predictions_{_model.__class__.__name__}.pt")
-
-  return combined_name
-
 def create_and_save_ensemble(combined_name):
   all_predictions = []
   lengths = []
@@ -521,6 +497,9 @@ if __name__ == "__main__":
     xPatch(xpatch_params),
   ]
 
+  model_names = [m.name if isinstance(m, torch.nn.Module) else m.__class__.__name__ for m in ensemble_models]
+  combined_name = "-".join(model_names)
+
   for model in ensemble_models:
     model_name = model.name if isinstance(model, torch.nn.Module) else model.__class__.__name__
     _hparams = ast.literal_eval(hparams[hparams['model'] == model_name]['parameters'].values[0])
@@ -528,6 +507,22 @@ if __name__ == "__main__":
     colmod.prepare_data()
     colmod.setup(stage=None)
 
-    combined_name = run_models(ensemble_models, _hparams, args, colmod)
-    create_and_save_ensemble(combined_name)
-    plot_and_save_with_metrics(combined_name, colmod)
+    if isinstance(model, torch.nn.Module):
+      print(f"-----Training {model_name} model-----")
+      model = LightningModel(model=model, criterion=criterion_map.get(args.criterion)(), optimizer=optimizer_map.get(args.optimizer), learning_rate=_hparams['learning_rate'])
+      pred_writer = CustomWriter(output_dir="Predictions", write_interval="epoch", combined_name=combined_name, model_name=model_name)
+      trainer = L.Trainer(max_epochs=_hparams['max_epochs'], callbacks=[EarlyStopping(monitor="val_loss", mode="min"), pred_writer], log_every_n_steps=_hparams['batch_size']//2, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
+      trainer.fit(model, colmod)
+      trainer.predict(model, colmod, return_predictions=False)
+    
+    if isinstance(model, BaseEstimator):
+      print(f"-----Training {model_name} model-----")
+      X_train_sample, y_train_sample = resample(colmod.X_train, colmod.y_train, replace=True, n_samples=len(colmod.X_train), random_state=42)
+      model.fit(X_train_sample, y_train_sample.ravel()) # ravel() converts a 2D to a 1D array
+      y_pred = model.predict(colmod.X_test)
+      if not os.path.exists(f"Predictions/{combined_name}"):
+        os.makedirs(f"Predictions/{combined_name}")
+      torch.save(y_pred, f"Predictions/{combined_name}/predictions_{model_name}.pt")
+
+  create_and_save_ensemble(combined_name)
+  plot_and_save_with_metrics(combined_name, colmod)
