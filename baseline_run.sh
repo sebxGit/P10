@@ -8,4 +8,4 @@
 #SBATCH --cpus-per-task=20
 #SBATCH --mem=175G
 
-singularity exec --nv energycontainerblackbox.sif python3 baselines.py --input_size 21 --pred_len 24 --stride 24 --seq_len 168 --criterion MAELoss --optimizer Adam --scaler MinMaxScaler
+singularity exec --nv energycontainerblackbox.sif python3 baselines_run.py --input_size 21 --pred_len 24 --stride 24 --seq_len 168 --criterion MAELoss --optimizer Adam --scaler MinMaxScaler

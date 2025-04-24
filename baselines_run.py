@@ -519,7 +519,7 @@ if __name__ == "__main__":
   for model in ensemble_models:
     model_name = model.name if isinstance(model, torch.nn.Module) else model.__class__.__name__
     _hparams = ast.literal_eval(hparams[hparams['model'] == model_name]['parameters'].values[0])
-    colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=scaler_map.get(args.scaler)(), seq_len=args.seq_len, batch_size=args.batch_size, pred_len=args.pred_len, stride=args.stride, num_workers=_hparams['num_workers'], is_persistent=True if _hparams['num_workers'] > 0 else False)
+    colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=scaler_map.get(args.scaler)(), seq_len=args.seq_len, batch_size=_hparams['batch_size'], pred_len=args.pred_len, stride=args.stride, num_workers=_hparams['num_workers'], is_persistent=True if _hparams['num_workers'] > 0 else False)
     colmod.prepare_data()
     colmod.setup(stage=None)
 
