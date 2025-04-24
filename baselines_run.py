@@ -395,7 +395,7 @@ def run_models(ensemble_models, _hparams, args, colmod):
       print(f"-----Training {_model.name} model-----")
       model = LightningModel(model=_model, criterion=criterion_map.get(args.criterion), optimizer=optimizer_map.get(args.optimizer), learning_rate=_hparams['learning_rate'])
       pred_writer = CustomWriter(output_dir="Predictions", write_interval="epoch", combined_name=combined_name, model_name=_model.name)
-      trainer = L.Trainer(max_epochs=_hparams['max_epochs'], callbacks=[EarlyStopping(monitor="val_loss", mode="min"), pred_writer], log_every_n_steps=_hparams['batch_size']//2)
+      trainer = L.Trainer(max_epochs=_hparams['max_epochs'], callbacks=[EarlyStopping(monitor="val_loss", mode="min"), pred_writer], log_every_n_steps=_hparams['batch_size']//2, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
       trainer.fit(model, colmod)
       trainer.predict(model, colmod, return_predictions=False)
     
