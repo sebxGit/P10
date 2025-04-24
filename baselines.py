@@ -4,11 +4,24 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 import holidays
+import optuna
+from models.LSTM import LSTM
+from models.GRU import GRU
+from models.MLP import MLP
+from models.D_PAD_adpGCN import DPAD_GCN
+from models.xPatch import xPatch
+from models.Fredformer import Fredformer
+from models.PatchMixer import PatchMixer
+from lossfunctions.AsymmetricMAEandMSELoss import AsymmetricMAEandMSELoss
+from lossfunctions.WeightedAsymmetricMAEandMSELoss import WeightedAsymmetricMAEandMSELoss
+from lossfunctions.CustomLogCoshLoss import CustomLogCoshLoss
+from lossfunctions.WeightedMSELoss import WeightedMSELoss
+import ast
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.ensemble import RandomForestRegressor, AdaBoostRegressor
-from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor, AdaBoostRegressor, GradientBoostingRegressor
+from sklearn.multioutput import MultiOutputRegressor
 from sklearn.base import BaseEstimator
 from sklearn.metrics import mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
 from sklearn.utils import resample
@@ -16,10 +29,12 @@ from sklearn.utils import resample
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, Dataset, Sampler
+from torch.utils.tensorboard import SummaryWriter
 
 import lightning as L
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from lightning.pytorch.callbacks import BasePredictionWriter
+from lightning.pytorch import seed_everything
 
 # commands
 # python baselines.py --seq_len 12 --batch_size 8 --criterion MSELoss --max_epochs 1000 --n_features 7 --hidden_size 100 --num_layers 1 --dropout 1 --learning_rate 0.001 --num_workers 6 --scaler MinMaxScaler
@@ -230,51 +245,6 @@ class ColoradoDataModule(L.LightningDataModule):
     test_dataset = TimeSeriesDataset(self.X_test, self.y_test, seq_len=self.seq_len)
     test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
     return test_loader
-
-class WeightedMSELoss(nn.Module):
-    def __init__(self):
-        super(WeightedMSELoss, self).__init__()
-
-    def forward(self, predictions, targets):
-        loss = torch.mean((predictions - targets) ** 2) #MSE
-        weight = torch.where(predictions < targets, 2.0, 1.0)
-        weighted_loss = torch.mean(loss * weight)
-        return weighted_loss
-
-class AsymmetricMAEandMSELoss(nn.Module):
-    def __init__(self):
-        super(AsymmetricMAEandMSELoss, self).__init__()
-
-    def forward(self, predictions, targets):
-        mae_loss = torch.mean(torch.abs(predictions - targets))
-        mse_loss = torch.mean((predictions - targets) ** 2)
-        loss = torch.where(predictions > targets, mae_loss, mse_loss)
-
-        mean_loss = torch.mean(loss)
-        return mean_loss
-
-class WeightedAsymmetricMAEandMSELoss(nn.Module): 
-    def __init__(self):
-        super(WeightedAsymmetricMAEandMSELoss, self).__init__()
-
-    def forward(self, predictions, targets):
-        mae_loss = torch.mean(torch.abs(predictions - targets))
-        mse_loss = torch.mean((predictions - targets) ** 2)
-        loss = torch.where(predictions > targets, mae_loss, mse_loss*2)
-
-        mean_loss = torch.mean(loss)
-        return mean_loss
-
-class CustomLogCoshLoss(nn.Module):
-    def __init__(self):
-        super(CustomLogCoshLoss, self).__init__()
-
-    def forward(self, predictions, targets):
-        error = predictions - targets
-        lc_loss = torch.log(torch.cosh(error))
-        mse_loss = torch.mean(error ** 2)
-        loss = torch.where(predictions > targets, lc_loss, mse_loss*2)
-        return torch.mean(loss)
 
 class CustomWriter(BasePredictionWriter):
   def __init__(self, output_dir, write_interval, combined_name, model_name):
@@ -542,15 +512,11 @@ criterion_map = {
                   "CustomLogCoshLoss": CustomLogCoshLoss 
                 }
 
-optimizer_map = {
-                  "Adam": torch.optim.Adam,
-                }
+optimizer_map = { "Adam": torch.optim.Adam }
 
 scaler_map = { "MinMaxScaler": MinMaxScaler }
 
 args = parser.parse_args()
-
-# Consider speed up trainer by reduce precision (e.g. Trainer(precision="16-mixed")) https://lightning.ai/docs/pytorch/stable/common/precision_basic.html
 
 if __name__ == '__main__':
     colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=scaler_map.get(args.scaler)(), seq_len=args.seq_len, batch_size=args.batch_size, num_workers=args.num_workers, is_persistent=True if args.num_workers > 0 else False)
