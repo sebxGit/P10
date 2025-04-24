@@ -203,7 +203,7 @@ class DPAD_GCN(nn.Module):
         self.dropout = dropout
         self.K_IMP = K_IMP
         self.RIN = RIN
-        self.name = "DPAD_GCN"
+        self.name = "DPAD"
 
         self.DPAD = DPAD(
             input_dim=self.input_dim,
