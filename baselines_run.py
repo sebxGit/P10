@@ -36,6 +36,7 @@ from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from lightning.pytorch.callbacks import BasePredictionWriter
 from lightning.pytorch import seed_everything
 
+seed_everything(42, workers=True)
 # tensorboard --logdir=Predictions/MLP-GRU-LSTM
 
 def convert_to_hourly(data):
@@ -385,14 +386,14 @@ class Configs:
     for key, value in config_dict.items():
       setattr(self, key, value)
 
-def run_models(ensemble_models, _hparams, colmod):
+def run_models(ensemble_models, _hparams, args, colmod):
   model_names = [m.name if isinstance(m, torch.nn.Module) else m.__class__.__name__ for m in ensemble_models]
   combined_name = "-".join(model_names)
 
   for _model in ensemble_models:
     if isinstance(_model, torch.nn.Module):
       print(f"-----Training {_model.name} model-----")
-      model = LightningModel(model=_model, criterion=params['criterion'], optimizer=params['optimizer'], learning_rate=_hparams['learning_rate'])
+      model = LightningModel(model=_model, criterion=criterion_map.get(args.criterion), optimizer=optimizer_map.get(args.optimizer), learning_rate=_hparams['learning_rate'])
       pred_writer = CustomWriter(output_dir="Predictions", write_interval="epoch", combined_name=combined_name, model_name=_model.name)
       trainer = L.Trainer(max_epochs=_hparams['max_epochs'], callbacks=[EarlyStopping(monitor="val_loss", mode="min"), pred_writer], log_every_n_steps=_hparams['batch_size']//2)
       trainer.fit(model, colmod)
@@ -509,11 +510,15 @@ if __name__ == "__main__":
   mlp_params = ast.literal_eval(hparams[hparams['model'] == 'MLP']['parameters'].values[0])
   gru_params = ast.literal_eval(hparams[hparams['model'] == 'GRU']['parameters'].values[0])
   lstm_params = ast.literal_eval(hparams[hparams['model'] == 'LSTM']['parameters'].values[0])
-  
+  patchmixer_params = Configs(ast.literal_eval(hparams[hparams['model'] == 'PatchMixer']['parameters'].values[0]))
+  xpatch_params = Configs(ast.literal_eval(hparams[hparams['model'] == 'xPatch']['parameters'].values[0]))
+
   ensemble_models = [
     MLP(num_features=args.seq_len*args.input_size, pred_len=args.pred_len, seq_len=mlp_params['batch_size'], hidden_size=mlp_params['hidden_size']),
     GRU(input_size=args.input_size, pred_len=args.pred_len, hidden_size=gru_params['hidden_size'], num_layers=gru_params['num_layers'], dropout=gru_params['dropout']),
     LSTM(input_size=args.input_size, pred_len=args.pred_len, hidden_size=lstm_params['hidden_size'], num_layers=lstm_params['num_layers'], dropout=lstm_params['dropout']),
+    PatchMixer(patchmixer_params),
+    xPatch(xpatch_params),
   ]
 
   for model in ensemble_models:
@@ -523,6 +528,6 @@ if __name__ == "__main__":
     colmod.prepare_data()
     colmod.setup(stage=None)
 
-    combined_name = run_models(ensemble_models, _hparams, colmod)
+    combined_name = run_models(ensemble_models, _hparams, args, colmod)
     create_and_save_ensemble(combined_name)
     plot_and_save_with_metrics(combined_name, colmod)
