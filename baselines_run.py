@@ -395,7 +395,7 @@ def create_and_save_ensemble(combined_name):
     file_path = os.path.join(folder_path, pt_file)
     predictions = torch.load(file_path)
     if type(predictions[0]) == torch.Tensor:
-      predictions = [item.item() for sublist in predictions for item in sublist]
+      predictions = torch.cat(predictions).tolist()
     elif type(predictions[0]) == np.float64:
       predictions = predictions.tolist()
     lengths.append(len(predictions))
@@ -426,7 +426,7 @@ def plot_and_save_with_metrics(combined_name, colmod):
   writer = SummaryWriter(folder_path)
 
   for i, value in enumerate(actuals_flat):
-    writer.add_scalar("Predictions/Actuals", value, step=i)
+    writer.add_scalar("Predictions/Actuals", value, global_step=i)
 
   metrics = []
 
@@ -435,10 +435,13 @@ def plot_and_save_with_metrics(combined_name, colmod):
     predictions = torch.load(file_path)
     model_name = pt_file.split('.')[0].split('_')[-1]
 
+    # print(model_name, predictions)
+    # continue
+
     if len(predictions) > len(actuals_flat):
       predictions = predictions[-len(actuals_flat):]
     if type(predictions[0]) == torch.Tensor: 
-      predictions = [item.item() for sublist in predictions for item in sublist]
+      predictions = torch.cat(predictions).tolist()
     elif type(predictions[0]) == np.float64:
       predictions = predictions.tolist()
 
@@ -497,7 +500,7 @@ if __name__ == "__main__":
     # LSTM(input_size=args.input_size, pred_len=args.pred_len, hidden_size=lstm_params['hidden_size'], num_layers=lstm_params['num_layers'], dropout=lstm_params['dropout']),
     PatchMixer(patchmixer_params),
     xPatch(xpatch_params),
-    Fredformer(fredformer_params),
+    # Fredformer(fredformer_params),
     DPAD_GCN(input_len=args.seq_len, output_len=args.pred_len, input_dim=args.input_size, enc_hidden=dpad_params['enc_hidden'], dec_hidden=dpad_params['dec_hidden'], dropout=dpad_params['dropout'], num_levels=dpad_params['num_levels'], K_IMP=dpad_params['K_IMP'], RIN=dpad_params['RIN']),
   ]
 
@@ -527,6 +530,9 @@ if __name__ == "__main__":
       if not os.path.exists(f"Predictions/{combined_name}"):
         os.makedirs(f"Predictions/{combined_name}")
       torch.save(y_pred, f"Predictions/{combined_name}/predictions_{model_name}.pt")
-
   create_and_save_ensemble(combined_name)
+  # combined_name = "LSTM-PatchMixer-xPatch"
+  # colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=scaler_map.get(args.scaler)(), seq_len=args.seq_len, batch_size=96, pred_len=args.pred_len, stride=args.stride, num_workers=5, is_persistent=True if 5 > 0 else False)
+  # colmod.prepare_data()
+  # colmod.setup(stage=None)
   plot_and_save_with_metrics(combined_name, colmod)
