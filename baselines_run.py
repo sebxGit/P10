@@ -12,6 +12,10 @@ from models.D_PAD_adpGCN import DPAD_GCN
 from models.xPatch import xPatch
 from models.Fredformer import Fredformer
 from models.PatchMixer import PatchMixer
+from lossfunctions.AsymmetricMAEandMSELoss import AsymmetricMAEandMSELoss
+from lossfunctions.WeightedAsymmetricMAEandMSELoss import WeightedAsymmetricMAEandMSELoss
+from lossfunctions.CustomLogCoshLoss import CustomLogCoshLoss
+from lossfunctions.WeightedMSELoss import WeightedMSELoss
 import ast
 
 from sklearn.model_selection import train_test_split
@@ -476,16 +480,29 @@ def plot_and_save_with_metrics(combined_name, colmod):
 
   writer.close()
 
-params = dict(
-  input_size = 21,
-  pred_len = 24,
-  stride = 24,
-  seq_len = 24*7,
-  criterion = nn.MSELoss(),
-  optimizer = torch.optim.Adam,
-  is_persistent = True,
-  scaler = MinMaxScaler()
-)
+parser = ArgumentParser()
+parser.add_argument("--input_size", type=int, default=21)
+parser.add_argument("--pred_len", type=int, default=24)
+parser.add_argument("--stride", type=int, default=24)
+parser.add_argument("--seq_len", type=int, default=24*7)
+parser.add_argument("--criterion", type=str, default="MAELoss")
+parser.add_argument("--optimizer", type=str, default="Adam")
+parser.add_argument("--scaler", type=str, default="MinMaxScaler")
+
+criterion_map = { 
+                  "MSELoss": nn.MSELoss, 
+                  "MAELoss": nn.L1Loss,
+                  "WeightedMSELoss": WeightedMSELoss,
+                  "AsymmetricMAEandMSELoss": AsymmetricMAEandMSELoss,
+                  "WeightedAsymmetricMAEandMSELoss": WeightedAsymmetricMAEandMSELoss,
+                  "CustomLogCoshLoss": CustomLogCoshLoss 
+                }
+
+optimizer_map = { "Adam": torch.optim.Adam }
+
+scaler_map = { "MinMaxScaler": MinMaxScaler }
+
+args = parser.parse_args()
 
 if __name__ == "__main__":
   hparams = pd.read_csv('tuning.csv')
@@ -494,15 +511,15 @@ if __name__ == "__main__":
   lstm_params = ast.literal_eval(hparams[hparams['model'] == 'LSTM']['parameters'].values[0])
   
   ensemble_models = [
-    MLP(num_features=params['seq_len']*params['input_size'], pred_len=params['pred_len'], seq_len=mlp_params['batch_size'], hidden_size=mlp_params['hidden_size']),
-    GRU(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=gru_params['hidden_size'], num_layers=gru_params['num_layers'], dropout=gru_params['dropout']),
-    LSTM(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=lstm_params['hidden_size'], num_layers=lstm_params['num_layers'], dropout=lstm_params['dropout']),
+    MLP(num_features=args.seq_len*args.input_size, pred_len=args.pred_len, seq_len=mlp_params['batch_size'], hidden_size=mlp_params['hidden_size']),
+    GRU(input_size=args.input_size, pred_len=args.pred_len, hidden_size=gru_params['hidden_size'], num_layers=gru_params['num_layers'], dropout=gru_params['dropout']),
+    LSTM(input_size=args.input_size, pred_len=args.pred_len, hidden_size=lstm_params['hidden_size'], num_layers=lstm_params['num_layers'], dropout=lstm_params['dropout']),
   ]
 
   for model in ensemble_models:
     model_name = model.name if isinstance(model, torch.nn.Module) else model.__class__.__name__
     _hparams = ast.literal_eval(hparams[hparams['model'] == model_name]['parameters'].values[0])
-    colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=params['scaler'], seq_len=params['seq_len'], batch_size=_hparams['batch_size'], pred_len=params['pred_len'], stride=params['stride'], num_workers=_hparams['num_workers'], is_persistent=params['is_persistent'])
+    colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=scaler_map.get(args.scaler)(), seq_len=args.seq_len, batch_size=args.batch_size, pred_len=args.pred_len, stride=args.stride, num_workers=_hparams['num_workers'], is_persistent=True if _hparams['num_workers'] > 0 else False)
     colmod.prepare_data()
     colmod.setup(stage=None)
 
