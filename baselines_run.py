@@ -2,11 +2,22 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from argparse import ArgumentParser
 import holidays
+import optuna
+from models.LSTM import LSTM
+from models.GRU import GRU
+from models.MLP import MLP
+from models.D_PAD_adpGCN import DPAD_GCN
+from models.xPatch import xPatch
+from models.Fredformer import Fredformer
+from models.PatchMixer import PatchMixer
+import ast
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestRegressor, AdaBoostRegressor, GradientBoostingRegressor
+from sklearn.multioutput import MultiOutputRegressor
 from sklearn.base import BaseEstimator
 from sklearn.metrics import mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
 from sklearn.utils import resample
@@ -19,14 +30,9 @@ from torch.utils.tensorboard import SummaryWriter
 import lightning as L
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from lightning.pytorch.callbacks import BasePredictionWriter
+from lightning.pytorch import seed_everything
 
 # tensorboard --logdir=Predictions/MLP-GRU-LSTM
-
-features_cols = ["Session_Count", "Day_of_Week", "Hour_of_Day", "Month_of_Year", "Year", "Day/Night", "IsHolidays",
-                 "Weekend", "HourSin", "HourCos", "DayOfWeekSin", "DayOfWeekCos", "MonthOfYearSin", "MonthOfYearCos", 
-                 "Energy_Consumption_1h","Energy_Consumption_6h", "Energy_Consumption_12h", "Energy_Consumption_24h", 
-                 "Energy_Consumption_1w", "Energy_Consumption_rolling"]
-target_col = "Energy_Consumption"
 
 def convert_to_hourly(data):
 
@@ -174,16 +180,22 @@ def filter_data(start_date, end_date, data):
     return data
 
 class TimeSeriesDataset(Dataset):
-  def __init__(self, X: np.ndarray, y: np.ndarray, seq_len: int = 1):
+  def __init__(self, X: np.ndarray, y: np.ndarray, seq_len: int = 1, pred_len: int = 24, stride: int = 24):
+    self.seq_len = seq_len
+    self.pred_len = pred_len
+    self.stride = stride
+
     self.X = torch.tensor(X).float()
     self.y = torch.tensor(y).float()
-    self.seq_len = seq_len
 
   def __len__(self):
-    return self.X.__len__() - (self.seq_len-1)
+    return (len(self.X) - (self.seq_len + self.pred_len - 1)) // self.stride + 1
 
   def __getitem__(self, index):
-    return (self.X[index:index+self.seq_len], self.y[index+self.seq_len-1])
+    start_idx = index * self.stride
+    x_window = self.X[start_idx: start_idx + self.seq_len]
+    y_target = self.y[start_idx + self.seq_len: start_idx + self.seq_len + self.pred_len]
+    return x_window, y_target
 
 class BootstrapSampler(Sampler):
   def __init__(self, data_source, window_size, num_samples=None):
@@ -202,11 +214,13 @@ class BootstrapSampler(Sampler):
     return self.num_samples
 
 class ColoradoDataModule(L.LightningDataModule):
-  def __init__(self, data_dir: str, scaler: int, seq_len: int, batch_size: int, num_workers: int, is_persistent: bool):
+  def __init__(self, data_dir: str, scaler: int, seq_len: int, pred_len: int, stride: int, batch_size: int, num_workers: int, is_persistent: bool):
     super().__init__()
     self.data_dir = data_dir
     self.scaler = scaler
     self.seq_len = seq_len
+    self.pred_len = pred_len
+    self.stride = stride
     self.batch_size = batch_size
     self.num_workers = num_workers
     self.is_persistent = is_persistent
@@ -218,58 +232,98 @@ class ColoradoDataModule(L.LightningDataModule):
     self.y_test = None
 
   def setup(self, stage: str):
+    start_date = pd.to_datetime('2021-05-30')
+    end_date = pd.to_datetime('2023-05-30')
+
+    # Load and preprocess the data
     data = pd.read_csv(self.data_dir)
     data = convert_to_hourly(data)
     data = add_features(data)
-
-    start_date = pd.to_datetime('2021-11-30')
-    end_date = pd.to_datetime('2023-11-30')
-
-    data = pd.get_dummies(data, columns=['Season'])
-
     df = filter_data(start_date, end_date, data)
+
     df = df.dropna()
+
+    #df.to_csv('final_df_hourly.csv', index=True)  
+
     X = df.copy()
-    y = X['Energy_Consumption'].shift(-1).ffill()
+
+    y = X.pop('Energy_Consumption')
+
+    #y = create_multi_step_targets(X['Energy_Consumption'], horizon=24)
+    #X=X.iloc[:-24]
+    #y=y[:-24] 
+
+    # 60/20/20 split
     X_tv, self.X_test, y_tv, self.y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
     self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(X_tv, y_tv, test_size=0.25, shuffle=False)
 
     preprocessing = self.scaler
     preprocessing.fit(self.X_train)  # should only fit to training data
+    
 
     if stage == "fit" or stage is None:
       self.X_train = preprocessing.transform(self.X_train)
-      self.y_train = self.y_train.values.reshape((-1, 1))
+      self.y_train = np.array(self.y_train)
+
+      y_train_df = pd.DataFrame(self.y_train, columns=["target"])
+      combined = pd.concat([y_train_df, pd.DataFrame(self.X_train),], axis=1)
+      combined.to_csv('train.csv', index=True)
+
       self.X_val = preprocessing.transform(self.X_val)
-      self.y_val = self.y_val.values.reshape((-1, 1))
+      self.y_val = np.array(self.y_val)
 
     if stage == "test" or "predict" or stage is None:
       self.X_test = preprocessing.transform(self.X_test)
-      self.y_test = self.y_test.values.reshape((-1, 1))
+      self.y_test = np.array(self.y_test)
 
   def train_dataloader(self):
-    train_dataset = TimeSeriesDataset(self.X_train, self.y_train, seq_len=self.seq_len)
-    window_size = round(len(self.X_train)*0.80)
+    train_dataset = TimeSeriesDataset(self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+    # window_size = round(len(self.X_train)*0.97)
     # bootstrap_sampler = BootstrapSampler(train_dataset, window_size=window_size)
     # train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=bootstrap_sampler, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
-    train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
+    train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return train_loader
   
   def val_dataloader(self):
-    val_dataset = TimeSeriesDataset(self.X_val, self.y_val, seq_len=self.seq_len)
-    val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
+    val_dataset = TimeSeriesDataset(self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+    val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return val_loader
 
   def test_dataloader(self):
-    test_dataset = TimeSeriesDataset(self.X_test, self.y_test, seq_len=self.seq_len)
-    test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
+    test_dataset = TimeSeriesDataset(self.X_test, self.y_test, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+    test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return test_loader
 
   def predict_dataloader(self):
-    test_dataset = TimeSeriesDataset(self.X_test, self.y_test, seq_len=self.seq_len)
-    test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
+    test_dataset = TimeSeriesDataset(self.X_test, self.y_test, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+    test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return test_loader
+  
+  def sklearn_setup(self, set_name: str = "train"): 
+    if set_name == "train": 
+      X = self.X_train 
+      y = self.y_train
+    elif set_name == "val":
+      X = self.X_val 
+      y = self.y_val
+    elif set_name == "test":
+      X = self.X_test 
+      y = self.y_test
+    else:
+      raise ValueError("Invalid set name. Choose from 'train', 'val', or 'test'.")
 
+
+    seq_len = self.seq_len
+    pred_len = 24
+
+    X_window, y_target = [], []
+  
+    for i in range(len(X) - seq_len - pred_len + 1):
+        X_window.append(X[i:i + seq_len].flatten())
+        y_target.append(y[i + seq_len:i + seq_len + pred_len])
+
+    return np.array(X_window), np.array(y_target)
+   
 class CustomWriter(BasePredictionWriter):
   def __init__(self, output_dir, write_interval, combined_name, model_name):
     super().__init__(write_interval)
@@ -321,78 +375,23 @@ class LightningModel(L.LightningModule):
 
   def configure_optimizers(self):
     return self.optimizer(self.parameters(), lr=self.learning_rate)
-  
-class MLP(torch.nn.Module):
-  def __init__(self, num_features, seq_len, num_classes):
-    super().__init__()
-    self.name = "MLP"
 
-    self.all_layers = torch.nn.Sequential(
-      torch.nn.Linear(num_features, seq_len),
-      torch.nn.ReLU(),
-      torch.nn.Linear(seq_len, 25),
-      torch.nn.ReLU(),
-      torch.nn.Linear(25, num_classes),
-    )
+class Configs:
+  def __init__(self, config_dict):
+    for key, value in config_dict.items():
+      setattr(self, key, value)
 
-  def forward(self, x):
-    x = torch.flatten(x, start_dim=1)
-    logits = self.all_layers(x)
-    return logits
-  
-class LSTM(torch.nn.Module):
-  def __init__(self, input_size, hidden_size, num_layers, dropout):
-    super().__init__()
-    self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, dropout=dropout)
-    self.fc = nn.Linear(hidden_size, 1)
-    self.name = "LSTM"
-
-  def forward(self, x):
-    out, _ = self.lstm(x)
-    out = self.fc(out[:, -1, :])  # Get the last time step
-    return out
-
-class GRU(torch.nn.Module):
-  def __init__(self, input_size, hidden_size, num_layers, dropout):
-    super().__init__()
-    self.gru = nn.GRU(input_size, hidden_size, num_layers, batch_first=True, dropout=dropout)
-    self.fc = nn.Linear(hidden_size, 1)
-    self.name = "GRU"
-
-  def forward(self, x):
-    out, _ = self.gru(x)
-    out = self.fc(out[:, -1, :])  # Get the last time step
-    return out
-  
-params = dict(
-  input_size = 26,
-  seq_len = 12,
-  batch_size = 8,
-  criterion = nn.MSELoss(),
-  optimizer = torch.optim.Adam,
-  max_epochs = 1000,
-  n_features = 7,
-  hidden_size = 100,
-  num_layers = 1,
-  dropout = 0, # can be 0.2 if more output layers are present
-  learning_rate = 0.001,
-  num_workers = 3, # only work in .py for me
-  is_persistent = True, # only work in .py for me
-  scaler = MinMaxScaler()
-)
-
-def run_models(ensemble_models, colmod):
+def run_models(ensemble_models, _hparams, colmod):
   model_names = [m.name if isinstance(m, torch.nn.Module) else m.__class__.__name__ for m in ensemble_models]
   combined_name = "-".join(model_names)
 
   for _model in ensemble_models:
     if isinstance(_model, torch.nn.Module):
       print(f"-----Training {_model.name} model-----")
-      model = LightningModel(model=_model, criterion=params['criterion'], optimizer=params['optimizer'], learning_rate=params['learning_rate'])
+      model = LightningModel(model=_model, criterion=params['criterion'], optimizer=params['optimizer'], learning_rate=_hparams['learning_rate'])
       pred_writer = CustomWriter(output_dir="Predictions", write_interval="epoch", combined_name=combined_name, model_name=_model.name)
-      trainer = L.Trainer(max_epochs=params['max_epochs'], callbacks=[EarlyStopping(monitor="val_loss", mode="min"), pred_writer], log_every_n_steps=params['batch_size']//2)
+      trainer = L.Trainer(max_epochs=_hparams['max_epochs'], callbacks=[EarlyStopping(monitor="val_loss", mode="min"), pred_writer], log_every_n_steps=_hparams['batch_size']//2)
       trainer.fit(model, colmod)
-      # trainer.test(model, colmod)
       trainer.predict(model, colmod, return_predictions=False)
     
     if isinstance(_model, BaseEstimator):
@@ -477,19 +476,36 @@ def plot_and_save_with_metrics(combined_name, colmod):
 
   writer.close()
 
-if __name__ == "__main__":
-  colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=params['scaler'], seq_len=params['seq_len'], batch_size=params['batch_size'], num_workers=params['num_workers'], is_persistent=params['is_persistent'])
-  colmod.prepare_data()
-  colmod.setup(stage=None)
+params = dict(
+  input_size = 21,
+  pred_len = 24,
+  stride = 24,
+  seq_len = 24*7,
+  criterion = nn.MSELoss(),
+  optimizer = torch.optim.Adam,
+  is_persistent = True,
+  scaler = MinMaxScaler()
+)
 
+if __name__ == "__main__":
+  hparams = pd.read_csv('tuning.csv')
+  mlp_params = ast.literal_eval(hparams[hparams['model'] == 'MLP']['parameters'].values[0])
+  gru_params = ast.literal_eval(hparams[hparams['model'] == 'GRU']['parameters'].values[0])
+  lstm_params = ast.literal_eval(hparams[hparams['model'] == 'LSTM']['parameters'].values[0])
+  
   ensemble_models = [
-    MLP(num_features=params['seq_len']*params['input_size'], seq_len=params['batch_size'], num_classes=1),
-    GRU(input_size=params['input_size'], hidden_size=params['hidden_size'], num_layers=params['num_layers'], dropout=params['dropout']),
-    LSTM(input_size=params['input_size'], hidden_size=params['hidden_size'], num_layers=params['num_layers'], dropout=params['dropout']),
-    # RandomForestRegressor(n_estimators=100, random_state=42),
+    MLP(num_features=params['seq_len']*params['input_size'], pred_len=params['pred_len'], seq_len=mlp_params['batch_size'], hidden_size=mlp_params['hidden_size']),
+    GRU(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=gru_params['hidden_size'], num_layers=gru_params['num_layers'], dropout=gru_params['dropout']),
+    LSTM(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=lstm_params['hidden_size'], num_layers=lstm_params['num_layers'], dropout=lstm_params['dropout']),
   ]
 
-  combined_name = "MLP-GRU-LSTM"
-  # combined_name = run_models(ensemble_models, colmod)
-  # create_and_save_ensemble(combined_name)
-  plot_and_save_with_metrics(combined_name, colmod)
+  for model in ensemble_models:
+    model_name = model.name if isinstance(model, torch.nn.Module) else model.__class__.__name__
+    _hparams = ast.literal_eval(hparams[hparams['model'] == model_name]['parameters'].values[0])
+    colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=params['scaler'], seq_len=params['seq_len'], batch_size=_hparams['batch_size'], pred_len=params['pred_len'], stride=params['stride'], num_workers=_hparams['num_workers'], is_persistent=params['is_persistent'])
+    colmod.prepare_data()
+    colmod.setup(stage=None)
+
+    combined_name = run_models(ensemble_models, _hparams, colmod)
+    create_and_save_ensemble(combined_name)
+    plot_and_save_with_metrics(combined_name, colmod)
