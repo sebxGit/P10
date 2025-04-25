@@ -429,41 +429,42 @@ def plot_and_save_with_metrics(combined_name, colmod):
     writer.add_scalar("Predictions/Actuals", value, global_step=i)
 
   metrics = []
-
+  
   for pt_file in pt_files:
     file_path = os.path.join(folder_path, pt_file)
     predictions = torch.load(file_path)
     model_name = pt_file.split('.')[0].split('_')[-1]
 
-    # print(model_name, predictions)
-    # continue
+    print(model_name, predictions)
 
     if len(predictions) > len(actuals_flat):
       predictions = predictions[-len(actuals_flat):]
-    if type(predictions[0]) == torch.Tensor: 
-      predictions = torch.cat(predictions).tolist()
-    elif type(predictions[0]) == np.float64:
-      predictions = predictions.tolist()
-
-    metrics.append({
-      'model': model_name,
-      'mse': mean_squared_error(predictions, actuals_flat),
-      'mae': mean_absolute_error(predictions, actuals_flat),
-      'mape': mean_absolute_percentage_error(predictions, actuals_flat)})
+      
+    if type(predictions[0]) == torch.Tensor or type(predictions[0]) == np.ndarray: 
+      predictions = [elem.item() for sublist in predictions for elem in sublist.flatten()]
     
-    for i, value in enumerate(predictions):
-      writer.add_scalar(f"Predictions/{model_name}", value, step=i)
+    print(type(predictions[0]), model_name, len(predictions), len(actuals_flat))
+    continue
 
-  loss_func_df = pd.concat([pd.DataFrame([m]) for m in metrics])
-  loss_func_df.set_index('model', inplace=True)
-  loss_func_df.to_csv(f'{folder_path}/loss_metrics_{combined_name}.csv')
+  #   metrics.append({
+  #     'model': model_name,
+  #     'mse': mean_squared_error(predictions, actuals_flat),
+  #     'mae': mean_absolute_error(predictions, actuals_flat),
+  #     'mape': mean_absolute_percentage_error(predictions, actuals_flat)})
+    
+  #   for i, value in enumerate(predictions):
+  #     writer.add_scalar(f"Predictions/{model_name}", value, step=i)
 
-  writer.close()
+  # loss_func_df = pd.concat([pd.DataFrame([m]) for m in metrics])
+  # loss_func_df.set_index('model', inplace=True)
+  # loss_func_df.to_csv(f'{folder_path}/loss_metrics_{combined_name}.csv')
+
+  # writer.close()
 
 parser = ArgumentParser()
 parser.add_argument("--input_size", type=int, default=21)
 parser.add_argument("--pred_len", type=int, default=24)
-parser.add_argument("--stride", type=int, default=24)
+parser.add_argument("--stride", type=int, default=0)
 parser.add_argument("--seq_len", type=int, default=24*7)
 parser.add_argument("--criterion", type=str, default="MAELoss")
 parser.add_argument("--optimizer", type=str, default="Adam")
@@ -498,10 +499,10 @@ if __name__ == "__main__":
     # MLP(num_features=args.seq_len*args.input_size, pred_len=args.pred_len, seq_len=mlp_params['batch_size'], hidden_size=mlp_params['hidden_size']),
     # GRU(input_size=args.input_size, pred_len=args.pred_len, hidden_size=gru_params['hidden_size'], num_layers=gru_params['num_layers'], dropout=gru_params['dropout']),
     # LSTM(input_size=args.input_size, pred_len=args.pred_len, hidden_size=lstm_params['hidden_size'], num_layers=lstm_params['num_layers'], dropout=lstm_params['dropout']),
-    PatchMixer(patchmixer_params),
+    # PatchMixer(patchmixer_params),
     xPatch(xpatch_params),
     # Fredformer(fredformer_params),
-    DPAD_GCN(input_len=args.seq_len, output_len=args.pred_len, input_dim=args.input_size, enc_hidden=dpad_params['enc_hidden'], dec_hidden=dpad_params['dec_hidden'], dropout=dpad_params['dropout'], num_levels=dpad_params['num_levels'], K_IMP=dpad_params['K_IMP'], RIN=dpad_params['RIN']),
+    # DPAD_GCN(input_len=args.seq_len, output_len=args.pred_len, input_dim=args.input_size, enc_hidden=dpad_params['enc_hidden'], dec_hidden=dpad_params['dec_hidden'], dropout=dpad_params['dropout'], num_levels=dpad_params['num_levels'], K_IMP=dpad_params['K_IMP'], RIN=dpad_params['RIN']),
   ]
 
   model_names = [m.name if isinstance(m, torch.nn.Module) else m.__class__.__name__ for m in ensemble_models]
@@ -530,8 +531,9 @@ if __name__ == "__main__":
       if not os.path.exists(f"Predictions/{combined_name}"):
         os.makedirs(f"Predictions/{combined_name}")
       torch.save(y_pred, f"Predictions/{combined_name}/predictions_{model_name}.pt")
-  create_and_save_ensemble(combined_name)
+
   # combined_name = "LSTM-PatchMixer-xPatch"
+  # create_and_save_ensemble(combined_name)
   # colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=scaler_map.get(args.scaler)(), seq_len=args.seq_len, batch_size=96, pred_len=args.pred_len, stride=args.stride, num_workers=5, is_persistent=True if 5 > 0 else False)
   # colmod.prepare_data()
   # colmod.setup(stage=None)
