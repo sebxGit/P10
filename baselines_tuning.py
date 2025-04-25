@@ -301,30 +301,36 @@ class ColoradoDataModule(L.LightningDataModule):
     return test_loader
   
   def sklearn_setup(self, set_name: str = "train"): 
-    if set_name == "train": 
-      X = self.X_train 
+    if set_name == "train":
+      X = self.X_train
       y = self.y_train
     elif set_name == "val":
-      X = self.X_val 
+      X = self.X_val
       y = self.y_val
     elif set_name == "test":
-      X = self.X_test 
+      X = self.X_test
       y = self.y_test
     else:
       raise ValueError("Invalid set name. Choose from 'train', 'val', or 'test'.")
-
-
-    seq_len = self.seq_len
-    pred_len = 24
-
+    
+    seq_len, pred_len, stride = self.seq_len, self.pred_len, self.stride
     X_window, y_target = [], []
-  
-    for i in range(len(X) - seq_len - pred_len + 1):
-        X_window.append(X[i:i + seq_len].flatten())
-        y_target.append(y[i + seq_len:i + seq_len + pred_len])
 
-    return np.array(X_window), np.array(y_target)
+    max_start = len(X) - (seq_len + pred_len)+1
+
+    for i in range(0, max_start, stride):
+        X_win = X[i:i + seq_len]
+        y_tar = y[i + seq_len:i + seq_len + pred_len]
+
+        arr_x = np.asanyarray(X_win).reshape(-1)
+        arr_y = np.asanyarray(y_tar).reshape(-1)
+
+        X_window.append(arr_x)
+        y_target.append(arr_y)
+
+    return np.stack(X_window), np.stack(y_target)
    
+
 class CustomWriter(BasePredictionWriter):
   def __init__(self, output_dir, write_interval, combined_name, model_name):
     super().__init__(write_interval)
@@ -427,7 +433,7 @@ def objective(args, trial):
         'n_estimators': trial.suggest_int('n_estimators', 50, 200),
         'learning_rate_model': trial.suggest_float('learning_rate_model', 0.01, 1.0),
       }
-      model = MultiOutputRegressor(AdaBoostRegressor(n_estimators=_params['n_estimators'], learning_rate=_params['learning_rate_model'], random_state=params['seed']))
+      model = MultiOutputRegressor(AdaBoostRegressor(n_estimators=_params['n_estimators'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "RandomForest":
       _params = {
         'n_estimators': trial.suggest_int('n_estimators', 50, 200),
@@ -436,7 +442,7 @@ def objective(args, trial):
         'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 20),
         'max_features': trial.suggest_float('max_features', 0.1, 1.0),
       }
-      model =  MultiOutputRegressor(RandomForestRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], min_samples_leaf=_params['min_samples_leaf'], max_features=_params['max_features'], random_state=params['seed']))
+      model =  MultiOutputRegressor(RandomForestRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], min_samples_leaf=_params['min_samples_leaf'], max_features=_params['max_features'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "GradientBoosting":
       _params = {
         'n_estimators': trial.suggest_int('n_estimators', 50, 200),
@@ -446,7 +452,7 @@ def objective(args, trial):
         'max_features': trial.suggest_float('max_features', 0.1, 1.0),
         'learning_rate_model': trial.suggest_float('learning_rate_model', 0.01, 1.0),
       }
-      model = MultiOutputRegressor(GradientBoostingRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], min_samples_leaf=_params['min_samples_leaf'], learning_rate=_params['learning_rate_model'], random_state=params['seed']))
+      model = MultiOutputRegressor(GradientBoostingRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], min_samples_leaf=_params['min_samples_leaf'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "DPAD":
         _params = {
           'enc_hidden': trial.suggest_int('enc_hidden', 1, 400),
@@ -546,7 +552,7 @@ def objective(args, trial):
 
     elif isinstance(model, BaseEstimator):
       name = model.__class__.__name__
-      print(f"-----Training {type(model.estimator).__name__ if name == "MultiOutputRegressor" else name} model-----")
+      print(f"-----Training {type(model.estimator).__name__ if name == 'MultiOutputRegressor' else name} model-----")
       X_train, y_train = colmod.sklearn_setup("train") 
       # X_test, y_test = colmod.sklearn_setup("test")
 
