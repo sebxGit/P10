@@ -423,48 +423,46 @@ def plot_and_save_with_metrics(combined_name, colmod):
   folder_path = f'Predictions/{combined_name}'
   pt_files = [f for f in os.listdir(folder_path) if f.endswith('.pt')]
 
-  writer = SummaryWriter(folder_path)
-
-  for i, value in enumerate(actuals_flat):
-    writer.add_scalar("Predictions/Actuals", value, global_step=i)
-
   metrics = []
-  
+  plt.figure(figsize=(15, 5))
+  plt.plot(actuals_flat, label='Actuals')
   for pt_file in pt_files:
     file_path = os.path.join(folder_path, pt_file)
     predictions = torch.load(file_path)
-    model_name = pt_file.split('.')[0].split('_')[-1]
+    model_name = pt_file.split('_')[1].split('.')[0]
+    # model_name = pt_file.split('.')[0].split('_')[-1] #use this with loss function names
 
-    print(model_name, predictions)
+    if type(predictions[0]) == torch.Tensor: 
+      predictions = [value.item() for tensor in predictions for value in tensor.flatten()]
+    elif type(predictions[0]) == np.float64:
+      predictions = predictions.tolist()
 
-    if len(predictions) > len(actuals_flat):
-      predictions = predictions[-len(actuals_flat):]
-      
-    if type(predictions[0]) == torch.Tensor or type(predictions[0]) == np.ndarray: 
-      predictions = [elem.item() for sublist in predictions for elem in sublist.flatten()]
-    
-    print(type(predictions[0]), model_name, len(predictions), len(actuals_flat))
-    continue
+    predictions = predictions[-len(actuals_flat):] # reduce length of predictions to match actuals
 
-  #   metrics.append({
-  #     'model': model_name,
-  #     'mse': mean_squared_error(predictions, actuals_flat),
-  #     'mae': mean_absolute_error(predictions, actuals_flat),
-  #     'mape': mean_absolute_percentage_error(predictions, actuals_flat)})
-    
-  #   for i, value in enumerate(predictions):
-  #     writer.add_scalar(f"Predictions/{model_name}", value, step=i)
+    if len(predictions) == len(actuals_flat):
+      metrics.append({
+        'model': model_name,
+        'mse': mean_squared_error(predictions, actuals_flat),
+        'mae': mean_absolute_error(predictions, actuals_flat),
+        'mape': mean_absolute_percentage_error(predictions, actuals_flat)})
+      plt.plot(predictions, label=model_name)
 
-  # loss_func_df = pd.concat([pd.DataFrame([m]) for m in metrics])
-  # loss_func_df.set_index('model', inplace=True)
-  # loss_func_df.to_csv(f'{folder_path}/loss_metrics_{combined_name}.csv')
+  loss_func_df = pd.concat([pd.DataFrame([m]) for m in metrics])
+  loss_func_df.set_index('model', inplace=True)
+  loss_func_df.to_csv(f'{folder_path}/loss_func_metrics.csv')
 
-  # writer.close()
+  plt.xlabel('Samples')
+  plt.ylabel('Energy Consumption')
+  plt.title(f'Predictions vs Actuals ({combined_name})')
+  plt.legend()
+
+  plt.savefig(f'{folder_path}/predictions_vs_actuals_{combined_name}.png')
+  plt.show()
 
 parser = ArgumentParser()
 parser.add_argument("--input_size", type=int, default=21)
 parser.add_argument("--pred_len", type=int, default=24)
-parser.add_argument("--stride", type=int, default=0)
+parser.add_argument("--stride", type=int, default=24)
 parser.add_argument("--seq_len", type=int, default=24*7)
 parser.add_argument("--criterion", type=str, default="MAELoss")
 parser.add_argument("--optimizer", type=str, default="Adam")
@@ -496,13 +494,13 @@ if __name__ == "__main__":
   dpad_params = ast.literal_eval(hparams[hparams['model'] == 'DPAD']['parameters'].values[0])
 
   ensemble_models = [
-    # MLP(num_features=args.seq_len*args.input_size, pred_len=args.pred_len, seq_len=mlp_params['batch_size'], hidden_size=mlp_params['hidden_size']),
-    # GRU(input_size=args.input_size, pred_len=args.pred_len, hidden_size=gru_params['hidden_size'], num_layers=gru_params['num_layers'], dropout=gru_params['dropout']),
-    # LSTM(input_size=args.input_size, pred_len=args.pred_len, hidden_size=lstm_params['hidden_size'], num_layers=lstm_params['num_layers'], dropout=lstm_params['dropout']),
-    # PatchMixer(patchmixer_params),
+    MLP(num_features=args.seq_len*args.input_size, pred_len=args.pred_len, seq_len=mlp_params['batch_size'], hidden_size=mlp_params['hidden_size']),
+    GRU(input_size=args.input_size, pred_len=args.pred_len, hidden_size=gru_params['hidden_size'], num_layers=gru_params['num_layers'], dropout=gru_params['dropout']),
+    LSTM(input_size=args.input_size, pred_len=args.pred_len, hidden_size=lstm_params['hidden_size'], num_layers=lstm_params['num_layers'], dropout=lstm_params['dropout']),
+    PatchMixer(patchmixer_params),
     xPatch(xpatch_params),
-    # Fredformer(fredformer_params),
-    # DPAD_GCN(input_len=args.seq_len, output_len=args.pred_len, input_dim=args.input_size, enc_hidden=dpad_params['enc_hidden'], dec_hidden=dpad_params['dec_hidden'], dropout=dpad_params['dropout'], num_levels=dpad_params['num_levels'], K_IMP=dpad_params['K_IMP'], RIN=dpad_params['RIN']),
+    Fredformer(fredformer_params),
+    DPAD_GCN(input_len=args.seq_len, output_len=args.pred_len, input_dim=args.input_size, enc_hidden=dpad_params['enc_hidden'], dec_hidden=dpad_params['dec_hidden'], dropout=dpad_params['dropout'], num_levels=dpad_params['num_levels'], K_IMP=dpad_params['K_IMP'], RIN=dpad_params['RIN']),
   ]
 
   model_names = [m.name if isinstance(m, torch.nn.Module) else m.__class__.__name__ for m in ensemble_models]
@@ -525,9 +523,11 @@ if __name__ == "__main__":
     
     if isinstance(model, BaseEstimator):
       print(f"-----Training {model_name} model-----")
-      X_train_sample, y_train_sample = resample(colmod.X_train, colmod.y_train, replace=True, n_samples=len(colmod.X_train), random_state=42)
-      model.fit(X_train_sample, y_train_sample.ravel()) # ravel() converts a 2D to a 1D array
-      y_pred = model.predict(colmod.X_test)
+      # X_train_sample, y_train_sample = resample(colmod.X_train, colmod.y_train, replace=True, n_samples=len(colmod.X_train), random_state=42)
+      X_train, y_train = colmod.sklearn_setup("train") 
+      X_test, y_test = colmod.sklearn_setup("test")
+      model.fit(X_train, y_train)
+      y_pred = model.predict(X_test)
       if not os.path.exists(f"Predictions/{combined_name}"):
         os.makedirs(f"Predictions/{combined_name}")
       torch.save(y_pred, f"Predictions/{combined_name}/predictions_{model_name}.pt")
