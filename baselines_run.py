@@ -387,7 +387,7 @@ def create_and_save_ensemble(combined_name):
   pt_files = [f for f in os.listdir(folder_path) if f.endswith('.pt')]
   for i, pt_file in enumerate(pt_files):
     file_path = os.path.join(folder_path, pt_file)
-    predictions = torch.load(file_path)
+    predictions = torch.load(file_path, weights_only=False)
     if type(predictions[0]) == torch.Tensor:
       predictions = [elem.item() for sublist in predictions for elem in sublist.flatten()]
     elif type(predictions[0]) == np.float64:
@@ -422,7 +422,7 @@ def plot_and_save_with_metrics(combined_name, colmod):
   plt.plot(actuals_flat, label='Actuals')
   for pt_file in pt_files:
     file_path = os.path.join(folder_path, pt_file)
-    predictions = torch.load(file_path)
+    predictions = torch.load(file_path, weights_only=False)
     model_name = pt_file.split('_')[1].split('.')[0]
     # model_name = pt_file.split('.')[0].split('_')[-1] #use this with loss function names
 
@@ -433,13 +433,12 @@ def plot_and_save_with_metrics(combined_name, colmod):
 
     predictions = predictions[-len(actuals_flat):] # reduce length of predictions to match actuals
 
-    if len(predictions) == len(actuals_flat):
-      metrics.append({
-        'model': model_name,
-        'mse': mean_squared_error(predictions, actuals_flat),
-        'mae': mean_absolute_error(predictions, actuals_flat),
-        'mape': mean_absolute_percentage_error(predictions, actuals_flat)})
-      plt.plot(predictions, label=model_name)
+    metrics.append({
+      'model': model_name,
+      'mse': mean_squared_error(predictions, actuals_flat),
+      'mae': mean_absolute_error(predictions, actuals_flat),
+      'mape': mean_absolute_percentage_error(predictions, actuals_flat)})
+    plt.plot(predictions, label=model_name)
 
   if metrics:
     loss_func_df = pd.concat([pd.DataFrame([m]) for m in metrics], ignore_index=True)
@@ -487,16 +486,16 @@ if __name__ == "__main__":
   lstm_params = ast.literal_eval(hparams[hparams['model'] == 'LSTM']['parameters'].values[0])
   patchmixer_params = Configs(ast.literal_eval(hparams[hparams['model'] == 'PatchMixer']['parameters'].values[0]))
   xpatch_params = Configs(ast.literal_eval(hparams[hparams['model'] == 'xPatch']['parameters'].values[0]))
-  fredformer_params = Configs(ast.literal_eval(hparams[hparams['model'] == 'Fredformer']['parameters'].values[0]))
+  #fredformer_params = Configs(ast.literal_eval(hparams[hparams['model'] == 'Fredformer']['parameters'].values[0]))
   dpad_params = ast.literal_eval(hparams[hparams['model'] == 'DPAD']['parameters'].values[0])
 
   ensemble_models = [
-    MLP(num_features=args.seq_len*args.input_size, pred_len=args.pred_len, seq_len=mlp_params['batch_size'], hidden_size=mlp_params['hidden_size']),
-    GRU(input_size=args.input_size, pred_len=args.pred_len, hidden_size=gru_params['hidden_size'], num_layers=gru_params['num_layers'], dropout=gru_params['dropout']),
-    LSTM(input_size=args.input_size, pred_len=args.pred_len, hidden_size=lstm_params['hidden_size'], num_layers=lstm_params['num_layers'], dropout=lstm_params['dropout']),
-    PatchMixer(patchmixer_params),
-    xPatch(xpatch_params),
-    Fredformer(fredformer_params),
+    #MLP(num_features=args.seq_len*args.input_size, pred_len=args.pred_len, seq_len=mlp_params['batch_size'], hidden_size=mlp_params['hidden_size']),
+    #GRU(input_size=args.input_size, pred_len=args.pred_len, hidden_size=gru_params['hidden_size'], num_layers=gru_params['num_layers'], dropout=gru_params['dropout']),
+    #LSTM(input_size=args.input_size, pred_len=args.pred_len, hidden_size=lstm_params['hidden_size'], num_layers=lstm_params['num_layers'], dropout=lstm_params['dropout']),
+    #PatchMixer(patchmixer_params),
+    #xPatch(xpatch_params),
+    #Fredformer(fredformer_params),
     DPAD_GCN(input_len=args.seq_len, output_len=args.pred_len, input_dim=args.input_size, enc_hidden=dpad_params['enc_hidden'], dec_hidden=dpad_params['dec_hidden'], dropout=dpad_params['dropout'], num_levels=dpad_params['num_levels'], K_IMP=dpad_params['K_IMP'], RIN=dpad_params['RIN']),
   ]
 
