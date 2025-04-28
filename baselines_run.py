@@ -437,13 +437,12 @@ def plot_and_save_with_metrics(combined_name, colmod):
 
     predictions = predictions[-len(actuals_flat):] # reduce length of predictions to match actuals
 
-    if len(predictions) == len(actuals_flat):
-      metrics.append({
-        'model': model_name,
-        'mse': mean_squared_error(predictions, actuals_flat),
-        'mae': mean_absolute_error(predictions, actuals_flat),
-        'mape': mean_absolute_percentage_error(predictions, actuals_flat)})
-      plt.plot(predictions, label=model_name)
+    metrics.append({
+      'model': model_name,
+      'mse': mean_squared_error(predictions, actuals_flat),
+      'mae': mean_absolute_error(predictions, actuals_flat),
+      'mape': mean_absolute_percentage_error(predictions, actuals_flat)})
+    plt.plot(predictions, label=model_name)
 
   if metrics:
     loss_func_df = pd.concat([pd.DataFrame([m]) for m in metrics], ignore_index=True)
