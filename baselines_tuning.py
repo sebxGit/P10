@@ -394,7 +394,7 @@ def objective(args, trial):
         'pred_len': 24,
         'seq_len': 24*7,
         'stride': 24,
-        'batch_size': trial.suggest_int('batch_size', 32, 128, step=32),
+        'batch_size': trial.suggest_int('batch_size', 16, 64, step=16),
         'criterion': torch.nn.L1Loss(),
         'optimizer': torch.optim.Adam,
         'scaler': MinMaxScaler(),

@@ -8,4 +8,4 @@
 #SBATCH --cpus-per-task=20
 #SBATCH --mem=175G
 
-singularity exec --nv p10container.sif python3 baselines_tuning_DeepSpeed.py --model DPAD
+singularity exec --nv p10container.sif python3 baselines_tuning.py --model DPAD
