@@ -260,14 +260,9 @@ class ColoradoDataModule(L.LightningDataModule):
     preprocessing = self.scaler
     preprocessing.fit(self.X_train)  # should only fit to training data
     
-
     if stage == "fit" or stage is None:
       self.X_train = preprocessing.transform(self.X_train)
       self.y_train = np.array(self.y_train)
-
-      y_train_df = pd.DataFrame(self.y_train, columns=["target"])
-      combined = pd.concat([y_train_df, pd.DataFrame(self.X_train),], axis=1)
-      combined.to_csv('train.csv', index=True)
 
       self.X_val = preprocessing.transform(self.X_val)
       self.y_val = np.array(self.y_val)
@@ -301,31 +296,32 @@ class ColoradoDataModule(L.LightningDataModule):
   
   def sklearn_setup(self, set_name: str = "train"): 
     if set_name == "train": 
-      X = self.X_train 
-      y = self.y_train
+      X, y = resample(self.X_train, self.y_train, replace=True, n_samples=len(self.X_train), random_state=SEED)
     elif set_name == "val":
-      X = self.X_val 
-      y = self.y_val
+      X, y = self.X_val, self.y_val
     elif set_name == "test":
-      X = self.X_test 
-      y = self.y_test
+      X, y = self.X_test, self.y_test
     elif set_name == "train_val":
-      X = self.X_train_val 
-      y = self.y_train_val
+      X, y = resample(self.X_train_val, self.y_train_val, replace=True, n_samples=len(self.X_train_val), random_state=SEED)
     else:
       raise ValueError("Invalid set name. Choose from 'train', 'val', or 'test'.")
 
-
-    seq_len = self.seq_len
-    pred_len = 24
-
+    seq_len, pred_len, stride = self.seq_len, self.pred_len, self.stride
     X_window, y_target = [], []
-  
-    for i in range(len(X) - seq_len - pred_len + 1):
-        X_window.append(X[i:i + seq_len].flatten())
-        y_target.append(y[i + seq_len:i + seq_len + pred_len])
 
-    return np.array(X_window), np.array(y_target)
+    max_start = len(X) - (seq_len + pred_len)+1
+
+    for i in range(0, max_start, stride):
+        X_win = X[i:i + seq_len]
+        y_tar = y[i + seq_len:i + seq_len + pred_len]
+
+        arr_x = np.asanyarray(X_win).reshape(-1)
+        arr_y = np.asanyarray(y_tar).reshape(-1)
+
+        X_window.append(arr_x)
+        y_target.append(arr_y)
+
+    return np.stack(X_window), np.stack(y_target)
    
 class CustomWriter(BasePredictionWriter):
   def __init__(self, output_dir, write_interval, combined_name, model_name):
@@ -518,14 +514,12 @@ if __name__ == "__main__":
       print(f"-----Training {model_name} model-----")
       model = LightningModel(model=model, criterion=criterion_map.get(args.criterion)(), optimizer=optimizer_map.get(args.optimizer), learning_rate=_hparams['learning_rate'])
       pred_writer = CustomWriter(output_dir="Predictions", write_interval="epoch", combined_name=combined_name, model_name=model_name)
-      # trainer = L.Trainer(max_epochs=_hparams['max_epochs'], callbacks=[EarlyStopping(monitor="val_loss", mode="min"), pred_writer], log_every_n_steps=_hparams['batch_size']//2, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
-      trainer = L.Trainer(max_epochs=30, callbacks=[EarlyStopping(monitor="val_loss", mode="min"), pred_writer], log_every_n_steps=_hparams['batch_size']//2, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
+      trainer = L.Trainer(max_epochs=_hparams['max_epochs'], callbacks=[EarlyStopping(monitor="val_loss", mode="min"), pred_writer], log_every_n_steps=_hparams['batch_size']//2, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
       trainer.fit(model, colmod)
       trainer.predict(model, colmod, return_predictions=False)
     
-    if isinstance(model, BaseEstimator):
+    elif isinstance(model, BaseEstimator):
       print(f"-----Training {model_name} model-----")
-      # X_train_sample, y_train_sample = resample(colmod.X_train, colmod.y_train, replace=True, n_samples=len(colmod.X_train), random_state=42)
       X_train_val, y_train_val = colmod.sklearn_setup("train_val") 
       X_test, y_test = colmod.sklearn_setup("test")
       model.fit(X_train_val, y_train_val)
@@ -534,9 +528,5 @@ if __name__ == "__main__":
         os.makedirs(f"Predictions/{combined_name}")
       torch.save(y_pred, f"Predictions/{combined_name}/predictions_{model_name}.pt")
 
-  # combined_name = "LSTM-PatchMixer-xPatch"
   create_and_save_ensemble(combined_name)
-  # colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=scaler_map.get(args.scaler)(), seq_len=args.seq_len, batch_size=96, pred_len=args.pred_len, stride=args.stride, num_workers=5, is_persistent=True if 5 > 0 else False)
-  # colmod.prepare_data()
-  # colmod.setup(stage=None)
   plot_and_save_with_metrics(combined_name, colmod)
