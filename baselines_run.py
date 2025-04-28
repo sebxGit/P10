@@ -391,7 +391,7 @@ def create_and_save_ensemble(combined_name):
   pt_files = [f for f in os.listdir(folder_path) if f.endswith('.pt')]
   for i, pt_file in enumerate(pt_files):
     file_path = os.path.join(folder_path, pt_file)
-    predictions = torch.load(file_path)
+    predictions = torch.load(file_path, weights_only=False)
     if type(predictions[0]) == torch.Tensor:
       predictions = [elem.item() for sublist in predictions for elem in sublist.flatten()]
     elif type(predictions[0]) == np.float64:
@@ -426,7 +426,7 @@ def plot_and_save_with_metrics(combined_name, colmod):
   plt.plot(actuals_flat, label='Actuals')
   for pt_file in pt_files:
     file_path = os.path.join(folder_path, pt_file)
-    predictions = torch.load(file_path, weights_only=True)
+    predictions = torch.load(file_path, weights_only=False)
     model_name = pt_file.split('_')[1].split('.')[0]
     # model_name = pt_file.split('.')[0].split('_')[-1] #use this with loss function names
 
