@@ -426,7 +426,7 @@ def plot_and_save_with_metrics(combined_name, colmod):
   plt.plot(actuals_flat, label='Actuals')
   for pt_file in pt_files:
     file_path = os.path.join(folder_path, pt_file)
-    predictions = torch.load(file_path)
+    predictions = torch.load(file_path, weights_only=True)
     model_name = pt_file.split('_')[1].split('.')[0]
     # model_name = pt_file.split('.')[0].split('_')[-1] #use this with loss function names
 
