@@ -235,6 +235,8 @@ class ColoradoDataModule(L.LightningDataModule):
     self.y_val = None
     self.X_test = None
     self.y_test = None
+    self.X_train_val = None
+    self.y_train_val = None
 
   def setup(self, stage: str):
     start_date = pd.to_datetime('2021-05-30')
@@ -246,21 +248,14 @@ class ColoradoDataModule(L.LightningDataModule):
     data = add_features(data)
     df = filter_data(start_date, end_date, data)
 
-    df = df.dropna()
-
-    #df.to_csv('final_df_hourly.csv', index=True)  
+    df = df.dropna() 
 
     X = df.copy()
 
     y = X.pop('Energy_Consumption')
-
-    #y = create_multi_step_targets(X['Energy_Consumption'], horizon=24)
-    #X=X.iloc[:-24]
-    #y=y[:-24] 
-
     # 60/20/20 split
-    X_tv, self.X_test, y_tv, self.y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
-    self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(X_tv, y_tv, test_size=0.25, shuffle=False)
+    self.X_train_val, self.X_test, self.y_train_val, self.y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
+    self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(self.X_train_val, self.y_train_val, test_size=0.25, shuffle=False)
 
     preprocessing = self.scaler
     preprocessing.fit(self.X_train)  # should only fit to training data
@@ -314,6 +309,9 @@ class ColoradoDataModule(L.LightningDataModule):
     elif set_name == "test":
       X = self.X_test 
       y = self.y_test
+    elif set_name == "train_val":
+      X = self.X_train_val 
+      y = self.y_train_val
     else:
       raise ValueError("Invalid set name. Choose from 'train', 'val', or 'test'.")
 
@@ -447,7 +445,10 @@ def plot_and_save_with_metrics(combined_name, colmod):
         'mape': mean_absolute_percentage_error(predictions, actuals_flat)})
       plt.plot(predictions, label=model_name)
 
-  loss_func_df = pd.concat([pd.DataFrame([m]) for m in metrics])
+  if metrics:
+    loss_func_df = pd.concat([pd.DataFrame([m]) for m in metrics], ignore_index=True)
+  else:
+    loss_func_df = pd.DataFrame(columns=['model', 'mse', 'mae', 'mape'])
   loss_func_df.set_index('model', inplace=True)
   loss_func_df.to_csv(f'{folder_path}/loss_func_metrics.csv')
 
@@ -524,17 +525,17 @@ if __name__ == "__main__":
     if isinstance(model, BaseEstimator):
       print(f"-----Training {model_name} model-----")
       # X_train_sample, y_train_sample = resample(colmod.X_train, colmod.y_train, replace=True, n_samples=len(colmod.X_train), random_state=42)
-      X_train, y_train = colmod.sklearn_setup("train") 
+      X_train_val, y_train_val = colmod.sklearn_setup("train_val") 
       X_test, y_test = colmod.sklearn_setup("test")
-      model.fit(X_train, y_train)
+      model.fit(X_train_val, y_train_val)
       y_pred = model.predict(X_test)
       if not os.path.exists(f"Predictions/{combined_name}"):
         os.makedirs(f"Predictions/{combined_name}")
       torch.save(y_pred, f"Predictions/{combined_name}/predictions_{model_name}.pt")
 
-  # combined_name = "LSTM-PatchMixer-xPatch"
+  combined_name = "LSTM-PatchMixer-xPatch"
   # create_and_save_ensemble(combined_name)
-  # colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=scaler_map.get(args.scaler)(), seq_len=args.seq_len, batch_size=96, pred_len=args.pred_len, stride=args.stride, num_workers=5, is_persistent=True if 5 > 0 else False)
-  # colmod.prepare_data()
-  # colmod.setup(stage=None)
+  colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=scaler_map.get(args.scaler)(), seq_len=args.seq_len, batch_size=96, pred_len=args.pred_len, stride=args.stride, num_workers=5, is_persistent=True if 5 > 0 else False)
+  colmod.prepare_data()
+  colmod.setup(stage=None)
   plot_and_save_with_metrics(combined_name, colmod)
