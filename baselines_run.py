@@ -393,7 +393,7 @@ def create_and_save_ensemble(combined_name):
     file_path = os.path.join(folder_path, pt_file)
     predictions = torch.load(file_path)
     if type(predictions[0]) == torch.Tensor:
-      predictions = torch.cat(predictions).tolist()
+      predictions = [elem.item() for sublist in predictions for elem in sublist.flatten()]
     elif type(predictions[0]) == np.float64:
       predictions = predictions.tolist()
     lengths.append(len(predictions))
@@ -431,7 +431,7 @@ def plot_and_save_with_metrics(combined_name, colmod):
     # model_name = pt_file.split('.')[0].split('_')[-1] #use this with loss function names
 
     if type(predictions[0]) == torch.Tensor: 
-      predictions = [value.item() for tensor in predictions for value in tensor.flatten()]
+      predictions = [elem.item() for tensor in predictions for elem in tensor.flatten()]
     elif type(predictions[0]) == np.float64:
       predictions = predictions.tolist()
 
@@ -533,9 +533,9 @@ if __name__ == "__main__":
         os.makedirs(f"Predictions/{combined_name}")
       torch.save(y_pred, f"Predictions/{combined_name}/predictions_{model_name}.pt")
 
-  combined_name = "LSTM-PatchMixer-xPatch"
-  # create_and_save_ensemble(combined_name)
-  colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=scaler_map.get(args.scaler)(), seq_len=args.seq_len, batch_size=96, pred_len=args.pred_len, stride=args.stride, num_workers=5, is_persistent=True if 5 > 0 else False)
-  colmod.prepare_data()
-  colmod.setup(stage=None)
+  # combined_name = "LSTM-PatchMixer-xPatch"
+  create_and_save_ensemble(combined_name)
+  # colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=scaler_map.get(args.scaler)(), seq_len=args.seq_len, batch_size=96, pred_len=args.pred_len, stride=args.stride, num_workers=5, is_persistent=True if 5 > 0 else False)
+  # colmod.prepare_data()
+  # colmod.setup(stage=None)
   plot_and_save_with_metrics(combined_name, colmod)
