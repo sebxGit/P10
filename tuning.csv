@@ -1,8 +1,2 @@
-model,trials,train_loss,parameters
-GRU,150,3.598787307739258,"{'batch_size': 128, 'learning_rate': 0.006667198273896171, 'max_epochs': 1400, 'num_workers': 9, 'hidden_size': 191, 'num_layers': 1, 'dropout': 0.11120571195689413}"
-LSTM,150,6.006853103637695,"{'batch_size': 96, 'learning_rate': 0.0005627875512478204, 'max_epochs': 950, 'num_workers': 5, 'hidden_size': 69, 'num_layers': 5, 'dropout': 0.9367099661758592}"
-MLP,150,2.56441068649292,"{'batch_size': 128, 'learning_rate': 0.004962250902015445, 'max_epochs': 1400, 'num_workers': 5, 'hidden_size': 250}"
-PatchMixer,150,0.3717921078205108,"{'enc_in': 21, 'pred_len': 24, 'seq_len': 168, 'batch_size': 96, 'learning_rate': 0.00045243730580049173, 'max_epochs': 1400, 'num_workers': 9, 'patch_len': 16, 'stride': 8, 'mixer_kernel_size': 12, 'd_model': 832, 'dropout': 0.0, 'head_dropout': 0.0, 'e_layers': 3}"
-xPatch,150,0.8120997548103333,"{'enc_in': 21, 'pred_len': 24, 'seq_len': 168, 'batch_size': 32, 'learning_rate': 0.0024867976019166513, 'max_epochs': 1400, 'num_workers': 9, 'patch_len': 22, 'stride': 1, 'padding_patch': 'None', 'revin': 1, 'ma_type': 'reg', 'alpha': 0.41990106074306444, 'beta': 0.9680273495938516}"
-Fredformer,0,0,"{'enc_in': 21, 'seq_len': 12, 'pred_len': 24, 'batch_size': 96, 'learning_rate': 0.00045243730580049173, 'max_epochs': 1400, 'num_workers': 9, 'output': 0, 'e_layers': 2, 'n_heads': 8, 'd_model': 512, 'd_ff': 2048, 'dropout': 0.05, 'fc_dropout': 0.05, 'head_dropout': 0.0, 'individual': 1, 'patch_len': 12, 'stride': 8, 'padding_patch': 'end', 'revin': 1, 'affine': 0, 'subtract_last': 0, 'use_nys': 0, 'ablation': 0, 'cf_dim': 48, 'cf_depth': 2, 'cf_heads': 6, 'cf_mlp': 128, 'cf_head_dim': 32, 'cf_drop': 0.2, 'mlp_hidden': 64, 'mlp_drop': 0.3}"
-DPAD,0,0,"{'input_len': 168,'output_len': 24, 'batch_size': 96, 'learning_rate': 0.00045243730580049173, 'max_epochs': 1400, 'num_workers': 9, 'input_dim': 21,'enc_hidden': 24,'dec_hidden': 24,'dropout': 0.5,'num_levels': 2,'K_IMP': 6,'RIN': 1}"
+model,trials,val_loss,parameters
+test,10,10,{}
