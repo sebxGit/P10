@@ -546,7 +546,7 @@ def objective(args, trial):
       trainer.fit(tuned_model, colmod)
       # train_loss = trainer.callback_metrics["train_loss"].item()
       pred_losses = trainer.predict(tuned_model, colmod, return_predictions=True)
-      train_loss = torch.cat(pred_losses, dim=0)
+      train_loss = mean_absolute_error(colmod.y_val, pred_losses[0].cpu().numpy())
 
     elif isinstance(model, BaseEstimator):
       name = model.__class__.__name__
