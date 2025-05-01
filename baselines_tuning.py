@@ -544,9 +544,9 @@ def objective(args, trial):
       tuned_model = LightningModel(model=model, criterion=params['criterion'], optimizer=params['optimizer'], learning_rate=params['learning_rate'])
       trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
       trainer.fit(tuned_model, colmod)
-      train_loss = trainer.callback_metrics["train_loss"].item()
-      # pred_losses = trainer.predict(tuned_model, colmod)
-      # train_loss = torch.stack(pred_losses).mean().item()
+      # train_loss = trainer.callback_metrics["train_loss"].item()
+      pred_losses = trainer.predict(tuned_model, colmod)
+      train_loss = torch.cat(pred_losses, dim=0)
 
     elif isinstance(model, BaseEstimator):
       name = model.__class__.__name__
