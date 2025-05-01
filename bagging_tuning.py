@@ -391,7 +391,7 @@ def objective(args, trial, all_subsets):
       X_val, y_val = colmod.sklearn_setup("val")
 
       model.fit(X_train, y_train)
-      y_pred = model.predict(X_val)
+      y_pred = model.predict(X_val).reshape(-1)
       if not os.path.exists(f"Tunings/{combined_name}"):
         os.makedirs(f"Tunings/{combined_name}")
       torch.save(y_pred, f"Tunings/{combined_name}/predictions_{model_name}.pt")

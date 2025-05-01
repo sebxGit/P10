@@ -186,8 +186,8 @@ class TimeSeriesDataset(Dataset):
     self.pred_len = pred_len
     self.stride = stride
 
-    self.X = X.values.astype(float) if type(X) == pd.array else torch.tensor(X).float()
-    self.y = y.values.astype(float) if type(y) == pd.array else torch.tensor(y).float()
+    self.X = X.values.astype(float) if type(X) == pd.DataFrame else torch.tensor(X).float()
+    self.y = y.values.astype(float) if type(y) == pd.DataFrame else torch.tensor(y).float()
 
   def __len__(self):
     return (len(self.X) - (self.seq_len + self.pred_len - 1)) // self.stride + 1
