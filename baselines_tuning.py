@@ -279,26 +279,13 @@ class ColoradoDataModule(L.LightningDataModule):
 
   def train_dataloader(self):
     train_dataset = TimeSeriesDataset(self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-    # window_size = round(len(self.X_train)*0.97)
-    # bootstrap_sampler = BootstrapSampler(train_dataset, window_size=window_size)
-    # train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=bootstrap_sampler, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
     train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return train_loader
   
-  def val_dataloader(self):
+  def predict_dataloader(self):
     val_dataset = TimeSeriesDataset(self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
     val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return val_loader
-
-  def test_dataloader(self):
-    test_dataset = TimeSeriesDataset(self.X_test, self.y_test, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-    test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
-    return test_loader
-
-  def predict_dataloader(self):
-    test_dataset = TimeSeriesDataset(self.X_test, self.y_test, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-    test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
-    return test_loader
   
   def sklearn_setup(self, set_name: str = "train"): 
     if set_name == "train":
@@ -329,7 +316,6 @@ class ColoradoDataModule(L.LightningDataModule):
         y_target.append(arr_y)
 
     return np.stack(X_window), np.stack(y_target)
-   
 
 class CustomWriter(BasePredictionWriter):
   def __init__(self, output_dir, write_interval, combined_name, model_name):
@@ -360,20 +346,6 @@ class LightningModel(L.LightningModule):
     train_loss = self.criterion(y_hat, y) 
     self.log("train_loss", train_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
     return train_loss
-
-  def validation_step(self, batch, batch_idx):
-    x, y = batch
-    y_hat = self(x)
-    val_loss = self.criterion(y_hat, y)
-    self.log("val_loss", val_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
-    return val_loss
-
-  def test_step(self, batch, batch_idx):
-    x, y = batch
-    y_hat = self(x)
-    test_loss = self.criterion(y_hat, y)
-    self.log("test_loss", test_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
-    return test_loss
 
   def predict_step(self, batch, batch_idx):
     x, y = batch
@@ -547,7 +519,7 @@ def objective(args, trial):
       print(f"-----Tuning {model.name} model-----")
       tuned_model = LightningModel(model=model, criterion=params['criterion'], optimizer=params['optimizer'], learning_rate=params['learning_rate'])
       trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
-      trainer.fit(tuned_model, colmod)
+      trainer.fit(tuned_model, train_dataloaders=colmod.train_dataloader())
       train_loss = trainer.callback_metrics["train_loss"].item()
 
     elif isinstance(model, BaseEstimator):
