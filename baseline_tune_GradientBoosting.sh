@@ -4,7 +4,7 @@
 #SBATCH --error=error_GB_%j.err
 #SBATCH --time=12:00:00 # 
 #SBATCH --ntasks=1
-#SBATCH --gres=gpu:8
+#SBATCH --gres=gpu:4
 #SBATCH --cpus-per-task=125
 #SBATCH --mem=175G
 
