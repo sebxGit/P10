@@ -541,7 +541,7 @@ def objective(args, trial):
     if isinstance(model, torch.nn.Module):
       print(f"-----Tuning {model.name} model-----")
       tuned_model = LightningModel(model=model, criterion=params['criterion'], optimizer=params['optimizer'], learning_rate=params['learning_rate'])
-      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
+      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
       trainer.fit(tuned_model, train_dataloaders=colmod.train_dataloader())
       val_loss = trainer.callback_metrics["val_loss"].item()
 
