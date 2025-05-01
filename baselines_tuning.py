@@ -181,13 +181,13 @@ def filter_data(start_date, end_date, data):
     return data
 
 class TimeSeriesDataset(Dataset):
-  def __init__(self, X, y, seq_len: int = 1, pred_len: int = 24, stride: int = 24):
+  def __init__(self, X: np.ndarray, y: np.ndarray, seq_len: int = 1, pred_len: int = 24, stride: int = 24):
     self.seq_len = seq_len
     self.pred_len = pred_len
     self.stride = stride
 
-    self.X = X.values.astype(float) if type(X) == pd.DataFrame else torch.tensor(X).float()
-    self.y = y.values.astype(float) if type(y) == pd.DataFrame else torch.tensor(y).float()
+    self.X = torch.tensor(X).float()
+    self.y = torch.tensor(y).float()
 
   def __len__(self):
     return (len(self.X) - (self.seq_len + self.pred_len - 1)) // self.stride + 1
@@ -266,6 +266,10 @@ class ColoradoDataModule(L.LightningDataModule):
       self.X_train = preprocessing.transform(self.X_train)
       self.y_train = np.array(self.y_train)
 
+      y_train_df = pd.DataFrame(self.y_train, columns=["target"])
+      combined = pd.concat([y_train_df, pd.DataFrame(self.X_train),], axis=1)
+      combined.to_csv('train.csv', index=True)
+
       self.X_val = preprocessing.transform(self.X_val)
       self.y_val = np.array(self.y_val)
 
@@ -326,6 +330,7 @@ class ColoradoDataModule(L.LightningDataModule):
 
     return np.stack(X_window), np.stack(y_target)
    
+
 class CustomWriter(BasePredictionWriter):
   def __init__(self, output_dir, write_interval, combined_name, model_name):
     super().__init__(write_interval)
@@ -541,20 +546,19 @@ def objective(args, trial):
     if isinstance(model, torch.nn.Module):
       print(f"-----Tuning {model.name} model-----")
       tuned_model = LightningModel(model=model, criterion=params['criterion'], optimizer=params['optimizer'], learning_rate=params['learning_rate'])
-      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
-      trainer.fit(tuned_model, train_dataloaders=colmod.train_dataloader())
-      val_loss = trainer.callback_metrics["val_loss"].item()
+      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
+      trainer.fit(tuned_model, colmod)
+      train_loss = trainer.callback_metrics["train_loss"].item()
 
     elif isinstance(model, BaseEstimator):
       name = model.__class__.__name__
       print(f"-----Training {type(model.estimator).__name__ if name == 'MultiOutputRegressor' else name} model-----")
       X_train, y_train = colmod.sklearn_setup("train") 
-      X_val, y_val = colmod.sklearn_setup("val")
       # X_test, y_test = colmod.sklearn_setup("test")
 
       model.fit(X_train, y_train)
-      val_loss = mean_absolute_error(y_val, model.predict(X_val))
-    return val_loss
+      train_loss = mean_absolute_error(y_train, model.predict(X_train))
+    return train_loss
 
 def safe_objective(args, trial):
   try:
@@ -575,13 +579,14 @@ def tune_model_with_optuna(args, n_trials):
     try:
       df_tuning = pd.read_csv('tuning.csv')
     except:
-      df_tuning = pd.DataFrame(columns=['model', 'trials', 'val_loss', 'parameters'])
+      df_tuning = pd.DataFrame(columns=['model', 'trials', 'train_loss', 'parameters'])
 
-    new_row = {'model': args.model, 'trials': len(study.trials), 'val_loss': study.best_value, 'parameters': study.best_params}
+    new_row = {'model': args.model, 'trials': len(study.trials), 'train_loss': study.best_value, 'parameters': study.best_params}
     new_row_df = pd.DataFrame([new_row]).dropna(axis=1, how='all')
     df_tuning = pd.concat([df_tuning, new_row_df], ignore_index=True)
-    df_tuning = df_tuning.sort_values(by=['model', 'val_loss'], ascending=True).reset_index(drop=True)
+    df_tuning = df_tuning.sort_values(by=['model', 'train_loss'], ascending=True).reset_index(drop=True)
     df_tuning.to_csv('tuning.csv', index=False)
+
     return study.best_params
 
 if __name__ == '__main__':
