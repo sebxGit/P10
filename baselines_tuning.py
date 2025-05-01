@@ -181,13 +181,13 @@ def filter_data(start_date, end_date, data):
     return data
 
 class TimeSeriesDataset(Dataset):
-  def __init__(self, X: np.ndarray, y: np.ndarray, seq_len: int = 1, pred_len: int = 24, stride: int = 24):
+  def __init__(self, X, y, seq_len: int = 1, pred_len: int = 24, stride: int = 24):
     self.seq_len = seq_len
     self.pred_len = pred_len
     self.stride = stride
 
-    self.X = torch.tensor(X).float()
-    self.y = torch.tensor(y).float()
+    self.X = X.values.astype(float) if type(X) == pd.array else torch.tensor(X).float()
+    self.y = y.values.astype(float) if type(y) == pd.array else torch.tensor(y).float()
 
   def __len__(self):
     return (len(self.X) - (self.seq_len + self.pred_len - 1)) // self.stride + 1
@@ -266,10 +266,6 @@ class ColoradoDataModule(L.LightningDataModule):
       self.X_train = preprocessing.transform(self.X_train)
       self.y_train = np.array(self.y_train)
 
-      y_train_df = pd.DataFrame(self.y_train, columns=["target"])
-      combined = pd.concat([y_train_df, pd.DataFrame(self.X_train),], axis=1)
-      combined.to_csv('train.csv', index=True)
-
       self.X_val = preprocessing.transform(self.X_val)
       self.y_val = np.array(self.y_val)
 
@@ -330,7 +326,6 @@ class ColoradoDataModule(L.LightningDataModule):
 
     return np.stack(X_window), np.stack(y_target)
    
-
 class CustomWriter(BasePredictionWriter):
   def __init__(self, output_dir, write_interval, combined_name, model_name):
     super().__init__(write_interval)
@@ -587,7 +582,6 @@ def tune_model_with_optuna(args, n_trials):
     df_tuning = pd.concat([df_tuning, new_row_df], ignore_index=True)
     df_tuning = df_tuning.sort_values(by=['model', 'val_loss'], ascending=True).reset_index(drop=True)
     df_tuning.to_csv('tuning.csv', index=False)
-
     return study.best_params
 
 if __name__ == '__main__':
