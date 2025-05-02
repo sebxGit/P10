@@ -31,7 +31,7 @@ from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from lightning.pytorch.callbacks import BasePredictionWriter
 from lightning.pytorch import seed_everything
 
-os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:64"
 
 # tensorboard --logdir=Predictions/MLP-GRU-LSTM
 
