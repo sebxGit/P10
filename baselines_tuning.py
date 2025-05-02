@@ -384,6 +384,19 @@ class Configs:
     for key, value in config_dict.items():
       setattr(self, key, value)
 
+def get_actuals_and_prediction_flattened(colmod, prediction):
+  actuals = []
+  for batch in colmod.predict_dataloader():
+    x, y = batch
+    actuals.extend(y.numpy())
+
+  predictions_flattened = [value.item() for tensor in prediction for value in tensor.flatten()]
+  actuals_flattened = [item for sublist in actuals for item in sublist]
+
+  return predictions_flattened, actuals_flattened
+
+
+
 def objective(args, trial):
     params = {
         'input_size': 21,
@@ -544,9 +557,9 @@ def objective(args, trial):
       tuned_model = LightningModel(model=model, criterion=params['criterion'], optimizer=params['optimizer'], learning_rate=params['learning_rate'])
       trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
       trainer.fit(tuned_model, colmod)
-      pred_losses = trainer.predict(tuned_model, colmod, return_predictions=True)
-      train_loss = trainer.callback_metrics["train_loss"].item()
-      raise RuntimeError(pred_losses)
+      predictions = trainer.predict(tuned_model, colmod, return_predictions=True)
+      pred, act = get_actuals_and_prediction_flattened(colmod, predictions)
+      train_loss = mean_absolute_error(act, pred)
 
     elif isinstance(model, BaseEstimator):
       name = model.__class__.__name__
