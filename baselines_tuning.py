@@ -31,8 +31,6 @@ from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from lightning.pytorch.callbacks import BasePredictionWriter
 from lightning.pytorch import seed_everything
 
-os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:64"
-
 # tensorboard --logdir=Predictions/MLP-GRU-LSTM
 
 def convert_to_hourly(data):
@@ -403,7 +401,7 @@ def objective(args, trial):
         'pred_len': 24,
         'seq_len': 24*7,
         'stride': 24,
-        'batch_size': trial.suggest_int('batch_size', 32, 128, step=32),
+        'batch_size': trial.suggest_int('batch_size', 16, 64, step=16),
         'criterion': torch.nn.L1Loss(),
         'optimizer': torch.optim.Adam,
         'scaler': MinMaxScaler(),
