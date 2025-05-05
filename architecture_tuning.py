@@ -361,32 +361,35 @@ def create_and_save_ensemble(combined_name):
   torch.save(ensemble_predictions, filename)
 
 def objective(args, trial, all_subsets):
-  all_subsets_as_strings = [str(subset) for subset in all_subsets]
-  selected_subset_as_string = trial.suggest_categorical("model_subsets", all_subsets_as_strings)
-  selected_subset = ast.literal_eval(selected_subset_as_string)
-  ensemble_models = [model_initializers[model]() for model in selected_subset if model in model_initializers]
-  
-  print(f"Selected subset: {selected_subset}")
-  print(ensemble_models)
-  exit()
+  # all_subsets_as_strings = [str(subset) for subset in all_subsets]
+  # selected_subset_as_string = trial.suggest_categorical("model_subsets", all_subsets_as_strings)
+  # selected_subset = ast.literal_eval(selected_subset_as_string)
 
-  for model in ensemble_models:
+  selected_subset = "['LSTM', 'GRU', 'S[xPatch, PatchMixer]', S['LSTM', 'GRU']]"
+  bagging_models = [model_initializers[model]() for model in selected_subset if model in model_initializers]
+
+  stacked_models = []
+  for m in selected_models:
+    if "S[" in m:
+      model = m[2:-1].split(', ')
+      stacked_models.append([model_initializers[model]() for model in model])
+
+  # for bagging models
+  for model in bagging_models:
     model_name = model.name if isinstance(model, torch.nn.Module) else model.__class__.__name__
     _hparams = ast.literal_eval(hparams[hparams['model'] == model_name]['parameters'].values[0])
     colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=scaler_map.get(args.scaler)(), seq_len=args.seq_len, batch_size=_hparams['batch_size'], pred_len=args.pred_len, stride=args.stride, num_workers=_hparams['num_workers'], is_persistent=True if _hparams['num_workers'] > 0 else False)
     colmod.prepare_data()
     colmod.setup(stage=None)
 
+    print(f"-----Training {model_name} model-----")
     if isinstance(model, torch.nn.Module):
-      print(f"-----Training {model.name} model-----")
       model = LightningModel(model=model, criterion=criterion_map.get(args.criterion)(), optimizer=optimizer_map.get(args.optimizer), learning_rate=_hparams['learning_rate'])
       trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False) #strategy='ddp_find_unused_parameters_true'
       trainer.fit(model, colmod)
       trainer.predict(model, colmod, return_predictions=False)
 
     elif isinstance(model, BaseEstimator):
-      name = model.__class__.__name__
-      print(f"-----Training {type(model.estimator).__name__ if name == 'MultiOutputRegressor' else name} model-----")
       X_train, y_train = colmod.sklearn_setup("train") 
       X_val, y_val = colmod.sklearn_setup("val")
 
@@ -396,6 +399,42 @@ def objective(args, trial, all_subsets):
         os.makedirs(f"Tunings/{combined_name}")
       torch.save(y_pred, f"Tunings/{combined_name}/predictions_{model_name}.pt")
 
+  # for stacking models
+  for base_learners in stacked_models:
+    meta_model = LinearRegression()
+    predictions = {}
+
+    print(f"-----Training Stack -----")
+    for model in base_learners:
+      model_name = model.name if isinstance(model, torch.nn.Module) else model.__class__.__name__
+      _hparams = ast.literal_eval(hparams[hparams['model'] == model_name]['parameters'].values[0])
+      colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=scaler_map.get(args.scaler)(), seq_len=args.seq_len, batch_size=_hparams['batch_size'], pred_len=args.pred_len, stride=args.stride, num_workers=_hparams['num_workers'], is_persistent=True if _hparams['num_workers'] > 0 else False)
+      colmod.prepare_data()
+      colmod.setup(stage=None)
+
+      print(f"-----Training {model_name} model-----")
+      if isinstance(model, torch.nn.Module):
+        model = LightningModel(model=model, criterion=criterion_map.get(args.criterion)(), optimizer=optimizer_map.get(args.optimizer), learning_rate=_hparams['learning_rate'])
+        trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False) #strategy='ddp_find_unused_parameters_true'
+        trainer.fit(model, colmod)
+        predictions.append(trainer.predict(model, colmod, return_predictions=True))
+      elif isinstance(model, BaseEstimator):
+        X_train, y_train = colmod.sklearn_setup("train") 
+        X_val, y_val = colmod.sklearn_setup("val")
+
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_val).reshape(-1)
+        predictions.append(y_pred)
+
+    # Stack the predictions
+    stacked_predictions = np.column_stack(predictions)
+    # Train the meta-model
+    for preds in stacked_predictions:
+      print(preds.shape)
+    # meta_model.fit(stacked_predictions, y_val)
+    # Make predictions on the validation set'
+
+  exit()
   create_and_save_ensemble(combined_name)
   y_pred = torch.load(f"Tunings/{combined_name}/predictions_{combined_name}.pt")
   y_pred = y_pred.flatten()
@@ -404,7 +443,7 @@ def objective(args, trial, all_subsets):
 
 parser = ArgumentParser()
 parser.add_argument("--criterion", type=str, default="MAELoss")
-parser.add_argument("--models", type=str, default="['LSTM', 'GRU', 'MLP', 'DPAD']")
+parser.add_argument("--models", type=str, default="['LSTM', 'GRU', 'MLP', 'DPAD', 'S[xPatch, PatchMixer]']")
 parser.add_argument("--input_size", type=int, default=21)
 parser.add_argument("--pred_len", type=int, default=24)
 parser.add_argument("--stride", type=int, default=24)
@@ -445,7 +484,7 @@ if __name__ == "__main__":
   gb_params = ast.literal_eval(hparams[hparams['model'] == 'GradientBoosting']['parameters'].values[0])
 
   selected_models = ast.literal_eval(args.models)
-  combined_name = "-".join([m.name if isinstance(m, torch.nn.Module) else m.__class__.__name__ for m in selected_models])
+  combined_name = "-".join([m for m in selected_models])
 
   all_subsets = []
   for r in range(1, len(selected_models) + 1):
