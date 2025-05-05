@@ -148,6 +148,9 @@ class TimeSeriesDataset(Dataset):
     self.pred_len = pred_len
     self.stride = stride
 
+    X = np.asarray(X, dtype=np.float32)
+    y = np.asarray(y, dtype=np.float32)
+
     self.X = torch.tensor(X).float()
     self.y = torch.tensor(y).float()
 
@@ -385,7 +388,7 @@ def objective(args, trial, all_subsets):
     print(f"-----Training {model_name} model-----")
     if isinstance(model, torch.nn.Module):
       model = LightningModel(model=model, criterion=criterion_map.get(args.criterion)(), optimizer=optimizer_map.get(args.optimizer), learning_rate=_hparams['learning_rate'])
-      trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=50, precision='16-mixed', enable_checkpointing=False) #strategy='ddp_find_unused_parameters_true'
+      trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=50, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
       trainer.fit(model, colmod)
       trainer.predict(model, colmod, return_predictions=False)
 
@@ -415,7 +418,7 @@ def objective(args, trial, all_subsets):
       print(f"-----Training {model_name} model-----")
       if isinstance(model, torch.nn.Module):
         model = LightningModel(model=model, criterion=criterion_map.get(args.criterion)(), optimizer=optimizer_map.get(args.optimizer), learning_rate=_hparams['learning_rate'])
-        trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=50, precision='16-mixed', enable_checkpointing=False) #strategy='ddp_find_unused_parameters_true'
+        trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=50, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
         trainer.fit(model, colmod)
         predictions.append(trainer.predict(model, colmod, return_predictions=True))
       elif isinstance(model, BaseEstimator):
