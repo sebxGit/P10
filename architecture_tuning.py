@@ -388,7 +388,7 @@ def objective(args, trial, all_subsets):
     print(f"-----Training {model_name} model-----")
     if isinstance(model, torch.nn.Module):
       model = LightningModel(model=model, criterion=criterion_map.get(args.criterion)(), optimizer=optimizer_map.get(args.optimizer), learning_rate=_hparams['learning_rate'])
-      trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=50, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
+      trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=50, precision='16-mixed', enable_checkpointing=False) #, strategy='ddp_find_unused_parameters_true'
       trainer.fit(model, colmod)
       trainer.predict(model, colmod, return_predictions=False)
 
@@ -418,7 +418,7 @@ def objective(args, trial, all_subsets):
       print(f"-----Training {model_name} model-----")
       if isinstance(model, torch.nn.Module):
         model = LightningModel(model=model, criterion=criterion_map.get(args.criterion)(), optimizer=optimizer_map.get(args.optimizer), learning_rate=_hparams['learning_rate'])
-        trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=50, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
+        trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=50, precision='16-mixed', enable_checkpointing=False) #, strategy='ddp_find_unused_parameters_true'
         trainer.fit(model, colmod)
         y_pred = trainer.predict(model, colmod, return_predictions=True)
         print(y_pred)
