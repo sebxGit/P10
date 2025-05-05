@@ -407,7 +407,7 @@ def objective(args, trial, all_subsets):
     meta_model = LinearRegression()
     predictions = []
 
-    print(f"-----Training Stack -----")
+    print(f"-----Starting Stack -----")
     for model in base_learners:
       model_name = model.name if isinstance(model, torch.nn.Module) else model.__class__.__name__
       _hparams = ast.literal_eval(hparams[hparams['model'] == model_name]['parameters'].values[0])
@@ -420,7 +420,9 @@ def objective(args, trial, all_subsets):
         model = LightningModel(model=model, criterion=criterion_map.get(args.criterion)(), optimizer=optimizer_map.get(args.optimizer), learning_rate=_hparams['learning_rate'])
         trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=50, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
         trainer.fit(model, colmod)
-        predictions.append(trainer.predict(model, colmod, return_predictions=True))
+        y_pred = trainer.predict(model, colmod, return_predictions=True)
+        print(y_pred)
+        predictions.append(y_pred)
       elif isinstance(model, BaseEstimator):
         X_train, y_train = colmod.sklearn_setup("train") 
         X_val, y_val = colmod.sklearn_setup("val")
