@@ -388,8 +388,9 @@ def get_actuals_and_prediction_flattened(colmod, prediction):
     x, y = batch
     actuals.extend(y.numpy())
 
-  predictions_flattened = [value.item() for tensor in prediction for value in tensor.flatten()]
   actuals_flattened = [item for sublist in actuals for item in sublist]
+  predictions_flattened = [value.item() for tensor in prediction for value in tensor.flatten()]
+  predictions = predictions[-len(actuals_flattened):]
 
   return predictions_flattened, actuals_flattened
 
@@ -557,15 +558,16 @@ def objective(args, trial):
       trainer.fit(tuned_model, colmod)
       predictions = trainer.predict(tuned_model, colmod, return_predictions=True)
       pred, act = get_actuals_and_prediction_flattened(colmod, predictions)
-      train_loss = mean_absolute_error(act, pred)
+      val_loss = mean_absolute_error(act, pred)
 
     elif isinstance(model, BaseEstimator):
       name = model.__class__.__name__
       print(f"-----Training {type(model.estimator).__name__ if name == 'MultiOutputRegressor' else name} model-----")
-      X_train, y_train = colmod.sklearn_setup("train") 
+      X_train, y_train = colmod.sklearn_setup("train")
+      X_val, y_val = colmod.sklearn_setup("val")
       model.fit(X_train, y_train)
-      train_loss = mean_absolute_error(y_train, model.predict(X_train))
-    return train_loss
+      val_loss = mean_absolute_error(y_val, model.predict(X_val))
+    return val_loss
 
 def safe_objective(args, trial):
   try:
