@@ -621,7 +621,7 @@ def tune_model_with_optuna(args, n_trials):
 
 if __name__ == '__main__':
   parser = ArgumentParser()
-  parser.add_argument("--model", type=str, default="DPAD")
+  parser.add_argument("--model", type=str, default="RandomForest")
   args = parser.parse_args()
 
-  best_params = tune_model_with_optuna(args, n_trials=1)
+  best_params = tune_model_with_optuna(args, n_trials=150)
