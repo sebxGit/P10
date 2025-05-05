@@ -101,7 +101,7 @@ def convert_to_hourly(data):
     # Return the hourly data
     return hourly_df
 
-def add_features(hourly_df):
+def add_features(hourly_df, weather_df=None):
   ####################### TIMED BASED FEATURES  #######################
   hourly_df['Day_of_Week'] = hourly_df.index.dayofweek
 
@@ -144,6 +144,17 @@ def add_features(hourly_df):
                      7: 1, 8: 1, 9: 2, 10: 2, 11: 2, 12: 3}
   hourly_df['Season'] = hourly_df['Month_of_Year'].map(month_to_season)
 
+  ####################### WEATHER FEATURES  #######################
+  if weather_df is not None:
+    weather_df = pd.read_csv(weather_df, parse_dates=['time']).set_index(
+        'time').rename(columns={'temperature': 'Temperature'})
+    
+
+    # make sure tempture is a number
+    weather_df['Temperature'] = pd.to_numeric(weather_df['Temperature'], errors='coerce')
+
+    hourly_df = hourly_df.join(weather_df, how='left')
+
   ####################### HISTORICAL CONSUMPTION FEATURES  #######################
   # Lag features
   # 1h
@@ -171,6 +182,7 @@ def add_features(hourly_df):
 
   return hourly_df
 
+
 def filter_data(start_date, end_date, data):
     ####################### FILTER DATASET  #######################
     data = data[(data.index >= start_date) & (data.index <= end_date)].copy()
@@ -183,6 +195,15 @@ class TimeSeriesDataset(Dataset):
     self.seq_len = seq_len
     self.pred_len = pred_len
     self.stride = stride
+
+    if isinstance(X, pd.DataFrame):
+            X = X.to_numpy()
+    if isinstance(y, pd.Series):
+        y = y.to_numpy()
+
+    # Ensure data is numeric and handle non-numeric values
+    X = np.asarray(X, dtype=np.float32)
+    y = np.asarray(y, dtype=np.float32)
 
     self.X = torch.tensor(X).float()
     self.y = torch.tensor(y).float()
@@ -237,7 +258,7 @@ class ColoradoDataModule(L.LightningDataModule):
     # Load and preprocess the data
     data = pd.read_csv(self.data_dir)
     data = convert_to_hourly(data)
-    data = add_features(data)
+    data = add_features(data, weather_df='Colorado/denver_weather.csv')
     df = filter_data(start_date, end_date, data)
 
     df = df.dropna()
@@ -390,7 +411,7 @@ def get_actuals_and_prediction_flattened(colmod, prediction):
 
   actuals_flattened = [item for sublist in actuals for item in sublist]
   predictions_flattened = [value.item() for tensor in prediction for value in tensor.flatten()]
-  predictions = predictions[-len(actuals_flattened):]
+  predictions_flattened = predictions_flattened[-len(actuals_flattened):]
 
   return predictions_flattened, actuals_flattened
 
@@ -398,7 +419,7 @@ def get_actuals_and_prediction_flattened(colmod, prediction):
 
 def objective(args, trial):
     params = {
-        'input_size': 21,
+        'input_size': 22,
         'pred_len': 24,
         'seq_len': 24*7,
         'stride': 24,
@@ -554,7 +575,7 @@ def objective(args, trial):
     if isinstance(model, torch.nn.Module):
       print(f"-----Tuning {model.name} model-----")
       tuned_model = LightningModel(model=model, criterion=params['criterion'], optimizer=params['optimizer'], learning_rate=params['learning_rate'])
-      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
+      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False)
       trainer.fit(tuned_model, colmod)
       predictions = trainer.predict(tuned_model, colmod, return_predictions=True)
       pred, act = get_actuals_and_prediction_flattened(colmod, predictions)
@@ -600,7 +621,7 @@ def tune_model_with_optuna(args, n_trials):
 
 if __name__ == '__main__':
   parser = ArgumentParser()
-  parser.add_argument("--model", type=str, default="LSTM")
+  parser.add_argument("--model", type=str, default="DPAD")
   args = parser.parse_args()
 
-  best_params = tune_model_with_optuna(args, n_trials=150)
+  best_params = tune_model_with_optuna(args, n_trials=1)
