@@ -434,8 +434,7 @@ def objective(args, trial, all_subsets):
     # Stack the predictions
     stacked_predictions = np.column_stack(predictions)
     # Train the meta-model
-    for preds in stacked_predictions:
-      print(preds.shape)
+    print(stacked_predictions.shape, colmod.y_val.shape, y_val.shape)
     # meta_model.fit(stacked_predictions, y_val)
     # Make predictions on the validation set'
 
