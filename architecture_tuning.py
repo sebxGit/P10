@@ -430,6 +430,9 @@ def objective(args, trial, all_subsets):
         model.fit(X_train, y_train)
         y_pred = model.predict(X_val).reshape(-1)
         predictions.append(y_pred)
+        if not os.path.exists(f"Predictions/{combined_name}"):
+          os.makedirs(f"Predictions/{combined_name}")
+        torch.save(y_pred, f"Predictions/{combined_name}/predictions_{model_name}.pt")
 
     # Stack the predictions
     stacked_predictions = np.column_stack(predictions)
