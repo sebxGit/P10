@@ -154,8 +154,6 @@ class TimeSeriesDataset(Dataset):
     self.X = torch.tensor(X).float()
     self.y = torch.tensor(y).float()
 
-    print(f"From Dataset - seq_len: {self.seq_len}, pred_len: {self.pred_len}, stride: {self.stride}")
-
   def __len__(self):
     return (len(self.X) - (self.seq_len + self.pred_len - 1)) // self.stride + 1
 
@@ -439,7 +437,7 @@ def objective(args, trial, all_subsets):
           os.makedirs(f"Predictions/{combined_name}")
         torch.save(y_pred, f"Predictions/{combined_name}/predictions_{model_name}.pt")
 
-    stacked_predictions = {}
+    stacked_predictions = []
 
     for pred in predictions:
       X_pred, y_train = colmod.sklearn_setup("prediction", pred) 
@@ -448,10 +446,10 @@ def objective(args, trial, all_subsets):
     X_val, y_val = colmod.sklearn_setup("val")
 
     meta_model.fit(np.column_stack(stacked_predictions), y_train)
-    y_pred = model.predict(X_val).reshape(-1)
+    y_pred = meta_model.predict(X_val).reshape(-1)
     if not os.path.exists(f"Tunings/{combined_name}"):
       os.makedirs(f"Tunings/{combined_name}")
-    torch.save(y_pred, f"Tunings/{combined_name}/predictions_S[{"-".join([m.name if isinstance(m, torch.nn.Module) else m.__class__.__name__ for m in base_learners])}].pt")
+    torch.save(y_pred, f"Tunings/{combined_name}/predictions_S[{'-'.join([m.name if isinstance(m, torch.nn.Module) else m.__class__.__name__ for m in base_learners])}].pt")
 
   exit()
   create_and_save_ensemble(combined_name)
