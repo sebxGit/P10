@@ -154,6 +154,8 @@ class TimeSeriesDataset(Dataset):
     self.X = torch.tensor(X).float()
     self.y = torch.tensor(y).float()
 
+    print(f"From Dataset - seq_len: {self.seq_len}, pred_len: {self.pred_len}, stride: {self.stride}")
+
   def __len__(self):
     return (len(self.X) - (self.seq_len + self.pred_len - 1)) // self.stride + 1
 
@@ -238,20 +240,20 @@ class ColoradoDataModule(L.LightningDataModule):
   
   def val_dataloader(self):
     val_dataset = TimeSeriesDataset(self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-    val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=True)
     return val_loader
 
   def test_dataloader(self):
     test_dataset = TimeSeriesDataset(self.X_test, self.y_test, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-    test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=True)
     return test_loader
 
   def predict_dataloader(self):
     val_dataset = TimeSeriesDataset(self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-    val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=True)
     return val_loader
   
-  def sklearn_setup(self, set_name: str = "train"): 
+  def sklearn_setup(self, set_name: str = "train", prediction: np.ndarray = None): 
     if set_name == "train": 
       X, y = resample(self.X_train, self.y_train, replace=True, n_samples=len(self.X_train), random_state=SEED)
     elif set_name == "val":
@@ -260,6 +262,8 @@ class ColoradoDataModule(L.LightningDataModule):
       X, y = self.X_test, self.y_test
     elif set_name == "train_val":
       X, y = resample(self.X_train_val, self.y_train_val, replace=True, n_samples=len(self.X_train_val), random_state=SEED)
+    elif set_name == "prediction":
+      X, y = prediction, self.y_train
     else:
       raise ValueError("Invalid set name. Choose from 'train', 'val', or 'test'.")
 
@@ -388,7 +392,8 @@ def objective(args, trial, all_subsets):
     print(f"-----Training {model_name} model-----")
     if isinstance(model, torch.nn.Module):
       model = LightningModel(model=model, criterion=criterion_map.get(args.criterion)(), optimizer=optimizer_map.get(args.optimizer), learning_rate=_hparams['learning_rate'])
-      trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=50, precision='16-mixed', enable_checkpointing=False)
+      pred_writer = CustomWriter(output_dir="Predictions", write_interval="epoch", combined_name=combined_name, model_name=model_name)
+      trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=50, precision='16-mixed', enable_checkpointing=False, callbacks=[EarlyStopping(monitor="train_loss", mode="min"), pred_writer])
       trainer.fit(model, colmod)
       trainer.predict(model, colmod, return_predictions=False)
 
@@ -418,15 +423,15 @@ def objective(args, trial, all_subsets):
       print(f"-----Training {model_name} model-----")
       if isinstance(model, torch.nn.Module):
         model = LightningModel(model=model, criterion=criterion_map.get(args.criterion)(), optimizer=optimizer_map.get(args.optimizer), learning_rate=_hparams['learning_rate'])
-        trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=50, precision='16-mixed', enable_checkpointing=False)
+        pred_writer = CustomWriter(output_dir="Predictions", write_interval="epoch", combined_name=combined_name, model_name=model_name)
+        trainer = L.Trainer(max_epochs=10, log_every_n_steps=50, precision='16-mixed', enable_checkpointing=False, callbacks=[EarlyStopping(monitor="train_loss", mode="min"), pred_writer])
         trainer.fit(model, colmod)
         y_pred = trainer.predict(model, colmod, return_predictions=True)
-        print(y_pred)
+        y_pred = torch.cat(y_pred, dim=0).reshape(-1) 
         predictions.append(y_pred)
       elif isinstance(model, BaseEstimator):
         X_train, y_train = colmod.sklearn_setup("train") 
         X_val, y_val = colmod.sklearn_setup("val")
-
         model.fit(X_train, y_train)
         y_pred = model.predict(X_val).reshape(-1)
         predictions.append(y_pred)
@@ -437,9 +442,9 @@ def objective(args, trial, all_subsets):
     # Stack the predictions
     stacked_predictions = np.column_stack(predictions)
     # Train the meta-model
-    print(stacked_predictions.shape, colmod.y_val.shape, y_val.shape)
-    # meta_model.fit(stacked_predictions, y_val)
+    meta_model.fit(stacked_predictions, colmod.y_train[:stacked_predictions.shape[0]])
     # Make predictions on the validation set'
+
 
   exit()
   create_and_save_ensemble(combined_name)
@@ -467,6 +472,7 @@ optimizer_map = { "Adam": torch.optim.Adam }
 scaler_map = { "MinMaxScaler": MinMaxScaler }
 
 args = parser.parse_args()
+
 
 model_initializers = {
   "LSTM": lambda: LSTM(input_size=args.input_size, pred_len=args.pred_len, hidden_size=lstm_params['hidden_size'], num_layers=lstm_params['num_layers'], dropout=lstm_params['dropout'] ),
