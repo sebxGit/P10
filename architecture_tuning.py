@@ -439,12 +439,19 @@ def objective(args, trial, all_subsets):
           os.makedirs(f"Predictions/{combined_name}")
         torch.save(y_pred, f"Predictions/{combined_name}/predictions_{model_name}.pt")
 
-    # Stack the predictions
-    stacked_predictions = np.column_stack(predictions)
-    # Train the meta-model
-    meta_model.fit(stacked_predictions, colmod.y_train[:stacked_predictions.shape[0]])
-    # Make predictions on the validation set'
+    stacked_predictions = {}
 
+    for pred in predictions:
+      X_pred, y_train = colmod.sklearn_setup("prediction", pred) 
+      stacked_predictions.append(X_pred)
+
+    X_val, y_val = colmod.sklearn_setup("val")
+
+    meta_model.fit(np.column_stack(stacked_predictions), y_train)
+    y_pred = model.predict(X_val).reshape(-1)
+    if not os.path.exists(f"Tunings/{combined_name}"):
+      os.makedirs(f"Tunings/{combined_name}")
+    torch.save(y_pred, f"Tunings/{combined_name}/predictions_S[{"-".join([m.name if isinstance(m, torch.nn.Module) else m.__class__.__name__ for m in base_learners])}].pt")
 
   exit()
   create_and_save_ensemble(combined_name)
