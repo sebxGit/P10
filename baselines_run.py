@@ -36,7 +36,8 @@ from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from lightning.pytorch.callbacks import BasePredictionWriter
 from lightning.pytorch import seed_everything
 
-seed_everything(42, workers=True)
+SEED = 42
+seed_everything(SEED, workers=True)
 # tensorboard --logdir=Predictions/MLP-GRU-LSTM
 
 def convert_to_hourly(data):
@@ -107,7 +108,8 @@ def convert_to_hourly(data):
     # Return the hourly data
     return hourly_df
 
-def add_features(hourly_df):
+
+def add_features(hourly_df, weather_df=None):
   ####################### TIMED BASED FEATURES  #######################
   hourly_df['Day_of_Week'] = hourly_df.index.dayofweek
 
@@ -149,6 +151,17 @@ def add_features(hourly_df):
   month_to_season = {1: 4, 2: 4, 3: 0, 4: 0, 5: 0, 6: 1,
                      7: 1, 8: 1, 9: 2, 10: 2, 11: 2, 12: 3}
   hourly_df['Season'] = hourly_df['Month_of_Year'].map(month_to_season)
+
+  ####################### WEATHER FEATURES  #######################
+  if weather_df is not None:
+    weather_df = pd.read_csv(weather_df, parse_dates=['time']).set_index(
+        'time').rename(columns={'temperature': 'Temperature'})
+
+    # make sure tempture is a number
+    weather_df['Temperature'] = pd.to_numeric(
+        weather_df['Temperature'], errors='coerce')
+
+    hourly_df = hourly_df.join(weather_df, how='left')
 
   ####################### HISTORICAL CONSUMPTION FEATURES  #######################
   # Lag features
@@ -245,7 +258,7 @@ class ColoradoDataModule(L.LightningDataModule):
     # Load and preprocess the data
     data = pd.read_csv(self.data_dir)
     data = convert_to_hourly(data)
-    data = add_features(data)
+    data = add_features(data, weather_df='Colorado/denver_weather.csv')
     df = filter_data(start_date, end_date, data)
 
     df = df.dropna() 
@@ -456,7 +469,7 @@ def plot_and_save_with_metrics(combined_name, colmod):
   plt.show()
 
 parser = ArgumentParser()
-parser.add_argument("--input_size", type=int, default=21)
+parser.add_argument("--input_size", type=int, default=22)
 parser.add_argument("--pred_len", type=int, default=24)
 parser.add_argument("--stride", type=int, default=24)
 parser.add_argument("--seq_len", type=int, default=24*7)
