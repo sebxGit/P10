@@ -423,13 +423,13 @@ def objective(args, trial):
         'pred_len': 24,
         'seq_len': 24*7,
         'stride': 24,
-        'batch_size': trial.suggest_int('batch_size', 16, 64, step=16),
+        'batch_size': trial.suggest_int('batch_size', 32, 128, step=16),
         'criterion': torch.nn.L1Loss(),
         'optimizer': torch.optim.Adam,
         'scaler': MinMaxScaler(),
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
-        'max_epochs': trial.suggest_int('max_epochs', 100, 1500, step=50),
+        'max_epochs': trial.suggest_int('max_epochs', 500, 2000, step=100),
         'num_workers': trial.suggest_int('num_workers', 5, 12),
         'is_persistent': True,
     }
@@ -575,8 +575,13 @@ def objective(args, trial):
     if isinstance(model, torch.nn.Module):
       print(f"-----Tuning {model.name} model-----")
       tuned_model = LightningModel(model=model, criterion=params['criterion'], optimizer=params['optimizer'], learning_rate=params['learning_rate'])
+
+      # Trainer for fitting using DDP - Multi GPU
       trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
       trainer.fit(tuned_model, colmod)
+
+      # New Trainer for inference on one GPU
+      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, devices=1)
       predictions = trainer.predict(tuned_model, colmod, return_predictions=True)
       pred, act = get_actuals_and_prediction_flattened(colmod, predictions)
       val_loss = mean_absolute_error(act, pred)
