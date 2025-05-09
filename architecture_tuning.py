@@ -100,44 +100,87 @@ def convert_to_hourly(data):
 
     return hourly_df
 
-def add_features(df):
+
+def add_features(hourly_df, weather_df=None):
   ####################### TIMED BASED FEATURES  #######################
-  df['Day_of_Week'] = df.index.dayofweek
-  df['Hour_of_Day'] = df.index.hour
-  df['Month_of_Year'] = df.index.month
-  df['Year'] = df.index.year
-  df['Day/Night'] = (df['Hour_of_Day'] >= 6) & (df['Hour_of_Day'] <= 18)
+  hourly_df['Day_of_Week'] = hourly_df.index.dayofweek
+
+  # Add hour of the day
+  hourly_df['Hour_of_Day'] = hourly_df.index.hour
+
+  # Add month of the year
+  hourly_df['Month_of_Year'] = hourly_df.index.month
+
+  # Add year
+  hourly_df['Year'] = hourly_df.index.year
+
+  # Add day/night
+  hourly_df['Day/Night'] = (hourly_df['Hour_of_Day']
+                            >= 6) & (hourly_df['Hour_of_Day'] <= 18)
 
   # Add holiday
   us_holidays = holidays.US(years=range(2018, 2023 + 1))
-  df['IsHoliday'] = df.index.map(lambda x: 1 if x.date() in us_holidays else 0)
+  hourly_df['IsHoliday'] = hourly_df.index.map(
+      lambda x: 1 if x.date() in us_holidays else 0)
 
   # Add weekend
-  df['Weekend'] = (df['Day_of_Week'] >= 5).astype(int)
+  hourly_df['Weekend'] = (hourly_df['Day_of_Week'] >= 5).astype(int)
 
   ####################### CYCLIC FEATURES  #######################
+  # Cos and sin transformations for cyclic features (hour of the day, day of the week, month of the year)
 
-  df['HourSin'] = np.sin(2 * np.pi * df['Hour_of_Day'] / 24)
-  df['HourCos'] = np.cos(2 * np.pi * df['Hour_of_Day'] / 24)
-  df['DayOfWeekSin'] = np.sin(2 * np.pi * df['Day_of_Week'] / 7)
-  df['DayOfWeekCos'] = np.cos(2 * np.pi * df['Day_of_Week'] / 7)
-  df['MonthOfYearSin'] = np.sin(2 * np.pi * df['Month_of_Year'] / 12)
-  df['MonthOfYearCos'] = np.cos(2 * np.pi * df['Month_of_Year'] / 12)
+  hourly_df['HourSin'] = np.sin(2 * np.pi * hourly_df['Hour_of_Day'] / 24)
+  hourly_df['HourCos'] = np.cos(2 * np.pi * hourly_df['Hour_of_Day'] / 24)
+  hourly_df['DayOfWeekSin'] = np.sin(2 * np.pi * hourly_df['Day_of_Week'] / 7)
+  hourly_df['DayOfWeekCos'] = np.cos(2 * np.pi * hourly_df['Day_of_Week'] / 7)
+  hourly_df['MonthOfYearSin'] = np.sin(
+      2 * np.pi * hourly_df['Month_of_Year'] / 12)
+  hourly_df['MonthOfYearCos'] = np.cos(
+      2 * np.pi * hourly_df['Month_of_Year'] / 12)
 
   ####################### SEASONAL FEATURES  #######################
-  month_to_season = {1: 0, 2: 0, 3: 1, 4: 1, 5: 1, 6: 2,
-                     7: 2, 8: 2, 9: 3, 10: 3, 11: 3, 12: 0}
-  df['Season'] = df['Month_of_Year'].map(month_to_season)
+  # 0 = Spring, 1 = Summer, 2 = Autumn, 3 = Winter
+  month_to_season = {1: 4, 2: 4, 3: 0, 4: 0, 5: 0, 6: 1,
+                     7: 1, 8: 1, 9: 2, 10: 2, 11: 2, 12: 3}
+  hourly_df['Season'] = hourly_df['Month_of_Year'].map(month_to_season)
+
+  ####################### WEATHER FEATURES  #######################
+  if weather_df is not None:
+    weather_df = pd.read_csv(weather_df, parse_dates=['time']).set_index(
+        'time').rename(columns={'temperature': 'Temperature'})
+
+    # make sure tempture is a number
+    weather_df['Temperature'] = pd.to_numeric(
+        weather_df['Temperature'], errors='coerce')
+
+    hourly_df = hourly_df.join(weather_df, how='left')
 
   ####################### HISTORICAL CONSUMPTION FEATURES  #######################
-  df['Energy_Consumption_1h'] = df['Energy_Consumption'].shift(1)
-  df['Energy_Consumption_6h'] = df['Energy_Consumption'].shift(6)
-  df['Energy_Consumption_12h'] = df['Energy_Consumption'].shift(12)
-  df['Energy_Consumption_24h'] = df['Energy_Consumption'].shift(24)
-  df['Energy_Consumption_1w'] = df['Energy_Consumption'].shift(24*7)
-  df['Energy_Consumption_rolling'] = df['Energy_Consumption'].rolling(window=24).mean()
+  # Lag features
+  # 1h
+  hourly_df['Energy_Consumption_1h'] = hourly_df['Energy_Consumption'].shift(1)
 
-  return df
+  # 6h
+  hourly_df['Energy_Consumption_6h'] = hourly_df['Energy_Consumption'].shift(6)
+
+  # 12h
+  hourly_df['Energy_Consumption_12h'] = hourly_df['Energy_Consumption'].shift(
+      12)
+
+  # 24h
+  hourly_df['Energy_Consumption_24h'] = hourly_df['Energy_Consumption'].shift(
+      24)
+
+  # 1 week
+  hourly_df['Energy_Consumption_1w'] = hourly_df['Energy_Consumption'].shift(
+      24*7)
+
+  # Rolling average
+  # 24h
+  hourly_df['Energy_Consumption_rolling'] = hourly_df['Energy_Consumption'].rolling(
+      window=24).mean()
+
+  return hourly_df
 
 def filter_data(start_date, end_date, data):
     return data[(data.index >= start_date) & (data.index <= end_date)].copy()
@@ -202,7 +245,7 @@ class ColoradoDataModule(L.LightningDataModule):
     # Load and preprocess the data
     data = pd.read_csv(self.data_dir)
     data = convert_to_hourly(data)
-    data = add_features(data)
+    data = add_features(data, weather_df='Colorado/denver_weather.csv')
     df = filter_data(start_date, end_date, data)
 
     df = df.dropna()
@@ -461,7 +504,7 @@ def objective(args, trial, all_subsets):
 parser = ArgumentParser()
 parser.add_argument("--criterion", type=str, default="MAELoss")
 parser.add_argument("--models", type=str, default="['LSTM', 'GRU', 'MLP', 'DPAD', 'S[xPatch, PatchMixer]']")
-parser.add_argument("--input_size", type=int, default=21)
+parser.add_argument("--input_size", type=int, default=22)
 parser.add_argument("--pred_len", type=int, default=24)
 parser.add_argument("--stride", type=int, default=24)
 parser.add_argument("--seq_len", type=int, default=24*7)
@@ -511,4 +554,4 @@ if __name__ == "__main__":
   all_subsets = [list(subset) for subset in all_subsets if len(subset) >= 3]
 
   study = optuna.create_study(direction="minimize", study_name=f"Bagging-{combined_name}")
-  study.optimize(lambda trial: objective(args, trial, all_subsets), n_trials=150, gc_after_trial=True, timeout=43000)
+  study.optimize(lambda trial: objective(args, trial, all_subsets), n_trials=2, gc_after_trial=True, timeout=43000)
