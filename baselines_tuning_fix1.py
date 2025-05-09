@@ -581,7 +581,7 @@ def objective(args, trial):
       trainer.fit(tuned_model, colmod)
 
       # New Trainer for inference on once GPU
-      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, device=1)
+      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, devices=1)
       predictions = trainer.predict(tuned_model, colmod, return_predictions=True)
       pred, act = get_actuals_and_prediction_flattened(colmod, predictions)
       print(f"Len pred: {len(pred)}, len act: {len(act)}")
