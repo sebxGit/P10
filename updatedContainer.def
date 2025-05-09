@@ -1,0 +1,24 @@
+Bootstrap: docker
+From: nvcr.io/nvidia/pytorch:25.04-py3
+
+%labels 
+  Maintainer="P10-Energy"
+  Project="P10 Energy Container"
+
+%post 
+  echo "Setting up the environment and installing P9 Energy dependencies"
+  export TMPDIR=/scratch
+
+  # Update pip
+  python3 -m pip install --upgrade pip
+
+  # Install dependencies with no cache to reduce temporary space usage
+  python3 -m pip install --no-cache-dir pandas numpy scikit-learn optuna lightning
+  
+  echo "P10 Energy dependencies installed"
+
+%test 
+  echo "Testing P10 Energy Container"
+  python3 --version
+  python3 -m pip --version
+  echo "P10 Energy Container is ready to use"
