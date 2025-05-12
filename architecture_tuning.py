@@ -468,7 +468,7 @@ def objective(args, trial, all_subsets):
         trainer = L.Trainer(max_epochs=10, log_every_n_steps=50, precision='16-mixed', enable_checkpointing=False, callbacks=[EarlyStopping(monitor="train_loss", mode="min"), pred_writer])
         trainer.fit(model, colmod)
         y_pred = trainer.predict(model, colmod, return_predictions=True)
-        # y_pred = torch.cat(y_pred, dim=0).reshape(-1) 
+        y_pred = torch.cat(y_pred, dim=0).reshape(-1) 
         predictions.append(y_pred)
       elif isinstance(model, BaseEstimator):
         X_train, y_train = colmod.sklearn_setup("train") 
@@ -481,13 +481,12 @@ def objective(args, trial, all_subsets):
         torch.save(y_pred, f"Predictions/{combined_name}/predictions_{model_name}.pt")
 
     stacked_predictions = []
-    stacked_vals = []
 
     for pred in predictions:
       X_pred, y_train = colmod.sklearn_setup("prediction", pred) 
-      X_val, y_val = colmod.sklearn_setup("val")
       stacked_predictions.append(X_pred)
-      stacked_vals.append(X_val)
+
+    X_val, y_val = colmod.sklearn_setup("val")
 
     meta_model.fit(np.column_stack(stacked_predictions), y_train)
     y_pred = meta_model.predict(X_val).reshape(-1)
