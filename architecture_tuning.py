@@ -235,8 +235,6 @@ class ColoradoDataModule(L.LightningDataModule):
     self.y_val = None
     self.X_test = None
     self.y_test = None
-    self.X_train_val = None
-    self.y_train_val = None
 
   def setup(self, stage: str):
     start_date = pd.to_datetime('2021-05-30')
@@ -250,20 +248,31 @@ class ColoradoDataModule(L.LightningDataModule):
 
     df = df.dropna()
 
+    #df.to_csv('final_df_hourly.csv', index=True)  
+
     X = df.copy()
 
     y = X.pop('Energy_Consumption')
 
+    #y = create_multi_step_targets(X['Energy_Consumption'], horizon=24)
+    #X=X.iloc[:-24]
+    #y=y[:-24] 
+
     # 60/20/20 split
-    self.X_train_val, self.X_test, self.y_train_val, self.y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
-    self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(self.X_train_val, self.y_train_val, test_size=0.25, shuffle=False)
+    X_tv, self.X_test, y_tv, self.y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
+    self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(X_tv, y_tv, test_size=0.25, shuffle=False)
 
     preprocessing = self.scaler
     preprocessing.fit(self.X_train)  # should only fit to training data
     
+
     if stage == "fit" or stage is None:
       self.X_train = preprocessing.transform(self.X_train)
       self.y_train = np.array(self.y_train)
+
+      y_train_df = pd.DataFrame(self.y_train, columns=["target"])
+      combined = pd.concat([y_train_df, pd.DataFrame(self.X_train),], axis=1)
+      combined.to_csv('train.csv', index=True)
 
       self.X_val = preprocessing.transform(self.X_val)
       self.y_val = np.array(self.y_val)
@@ -274,57 +283,55 @@ class ColoradoDataModule(L.LightningDataModule):
 
   def train_dataloader(self):
     train_dataset = TimeSeriesDataset(self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-    bootstrap_sampler = BootstrapSampler(len(train_dataset), random_state=SEED)
-    train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=bootstrap_sampler, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
-    # train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    # train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=bootstrap_sampler, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
+    train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return train_loader
-    
+  
   # def val_dataloader(self):
   #   val_dataset = TimeSeriesDataset(self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-  #   val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=True)
+  #   val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
   #   return val_loader
 
   # def test_dataloader(self):
   #   test_dataset = TimeSeriesDataset(self.X_test, self.y_test, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-  #   test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=True)
+  #   test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
   #   return test_loader
 
   def predict_dataloader(self):
     val_dataset = TimeSeriesDataset(self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-    val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=True)
+    val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return val_loader
   
-  def sklearn_setup(self, set_name: str = "train", prediction: np.ndarray = None): 
-    if set_name == "train": 
-      X, y = resample(self.X_train, self.y_train, replace=True, n_samples=len(self.X_train), random_state=SEED)
+  def sklearn_setup(self, set_name: str = "train"): 
+    if set_name == "train":
+      X = self.X_train
+      y = self.y_train
     elif set_name == "val":
-      X, y = self.X_val, self.y_val
+      X = self.X_val
+      y = self.y_val
     elif set_name == "test":
-      X, y = self.X_test, self.y_test
-    elif set_name == "train_val":
-      X, y = resample(self.X_train_val, self.y_train_val, replace=True, n_samples=len(self.X_train_val), random_state=SEED)
-    elif set_name == "prediction":
-      X, y = prediction, self.y_train
+      X = self.X_test
+      y = self.y_test
     else:
       raise ValueError("Invalid set name. Choose from 'train', 'val', or 'test'.")
-
+    
     seq_len, pred_len, stride = self.seq_len, self.pred_len, self.stride
     X_window, y_target = [], []
 
     max_start = len(X) - (seq_len + pred_len)+1
 
     for i in range(0, max_start, stride):
-      X_win = X[i:i + seq_len]
-      y_tar = y[i + seq_len:i + seq_len + pred_len]
+        X_win = X[i:i + seq_len]
+        y_tar = y[i + seq_len:i + seq_len + pred_len]
 
-      arr_x = np.asanyarray(X_win).reshape(-1)
-      arr_y = np.asanyarray(y_tar).reshape(-1)
+        arr_x = np.asanyarray(X_win).reshape(-1)
+        arr_y = np.asanyarray(y_tar).reshape(-1)
 
-      X_window.append(arr_x)
-      y_target.append(arr_y)
+        X_window.append(arr_x)
+        y_target.append(arr_y)
 
     return np.stack(X_window), np.stack(y_target)
-  
+
 class CustomWriter(BasePredictionWriter):
   def __init__(self, output_dir, write_interval, combined_name, model_name):
     super().__init__(write_interval)
