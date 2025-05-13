@@ -480,19 +480,19 @@ def objective(args, trial, all_subsets):
           os.makedirs(f"Predictions/{combined_name}")
         torch.save(y_pred, f"Predictions/{combined_name}/predictions_{model_name}.pt")
 
-    stacked_predictions = []
+    # stacked_predictions = []
 
-    for pred in predictions:
-      X_pred, y_train = colmod.sklearn_setup("prediction", pred) 
-      stacked_predictions.append(X_pred)
+    # for pred in predictions:
+      # X_pred, y_train = colmod.sklearn_setup("prediction", pred) 
+      # stacked_predictions.append(X_pred)
 
     X_val, y_val = colmod.sklearn_setup("val")
 
-    stack = np.column_stack(stacked_predictions)
+    stack = np.column_stack(predictions)
 
     print(stack.shape, y_val.shape, y_val.flatten().shape, colmod.y_val.shape)
 
-    meta_model.fit(np.column_stack(stacked_predictions), y_val.flatten())
+    meta_model.fit(stack, y_val.flatten())
     y_pred = meta_model.predict(X_val).reshape(-1)
     if not os.path.exists(f"Tunings/{combined_name}"):
       os.makedirs(f"Tunings/{combined_name}")
