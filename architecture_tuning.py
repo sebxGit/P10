@@ -466,7 +466,6 @@ def objective(args, trial, all_subsets):
         trainer = L.Trainer(max_epochs=10, log_every_n_steps=50, precision='16-mixed', enable_checkpointing=False, callbacks=[EarlyStopping(monitor="train_loss", mode="min"), pred_writer])
         trainer.fit(model, colmod)
         y_pred = trainer.predict(model, colmod, return_predictions=True)
-        y_pred = torch.cat(y_pred, dim=0).reshape(-1) 
         predictions.append(y_pred)
       elif isinstance(model, BaseEstimator):
         X_train, y_train = colmod.sklearn_setup("train") 
@@ -478,15 +477,18 @@ def objective(args, trial, all_subsets):
           os.makedirs(f"Predictions/{combined_name}")
         torch.save(y_pred, f"Predictions/{combined_name}/predictions_{model_name}.pt")
 
-    # stacked_predictions = []
-
-    # for pred in predictions:
-    #   X_pred, y_train = colmod.sklearn_setup("prediction", pred) 
-    #   stacked_predictions.append(X_pred)
-
+    stacked_predictions = []
     X_val, y_val = colmod.sklearn_setup("val")
 
-    stack = np.column_stack(predictions)
+    for pred in predictions:
+      if type(pred[0]) == torch.Tensor: 
+        _pred = [value.item() for tensor in pred for value in tensor.flatten()]
+      elif type(predictions[0]) == np.float64:
+        _pred = predictions.tolist()
+      _pred = _pred[-len(y_val.flatten()):]
+      stacked_predictions.append(_pred)
+
+    stack = np.column_stack(stacked_predictions)
 
     # print(np.array(predictions).flatten().shape, stack.flatten().shape, y_val.shape, y_val.flatten().shape, colmod.y_val.shape)
 
