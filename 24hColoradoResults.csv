@@ -1,0 +1,8 @@
+model,trials,val_loss,parameters
+RandomForest,150,6.703756661195442,"{'batch_size': 80, 'learning_rate': 0.0005325110729692237, 'max_epochs': 700, 'num_workers': 5, 'n_estimators': 71, 'max_depth': 19, 'min_samples_split': 4, 'min_samples_leaf': 11, 'max_features': 0.8123150411394304}"
+AdaBoost,150,6.718080606228427,"{'batch_size': 32, 'learning_rate': 0.0012679635194700228, 'max_epochs': 1900, 'num_workers': 10, 'n_estimators': 139, 'learning_rate_model': 0.8532911596858941}"
+GradientBoosting,150,6.729905067953787,"{'batch_size': 64, 'learning_rate': 0.0016565605068191015, 'max_epochs': 1700, 'num_workers': 11, 'n_estimators': 67, 'max_depth': 1, 'min_samples_split': 11, 'min_samples_leaf': 15, 'max_features': 0.5452497599753767, 'learning_rate_model': 0.09188137128932683}"
+GRU,150,7.084619270018983,"{'batch_size': 96, 'learning_rate': 0.002478063052846943, 'max_epochs': 1700, 'num_workers': 5, 'hidden_size': 189, 'num_layers': 3, 'dropout': 0.43810658960184823}"
+LSTM,150,8.82682545207289,"{'batch_size': 112, 'learning_rate': 0.0022791173352546363, 'max_epochs': 1700, 'num_workers': 5, 'hidden_size': 200, 'num_layers': 9, 'dropout': 0.8608552759343305}"
+xPatch,150,11.467920508738205,"{'batch_size': 48, 'learning_rate': 0.00012842333296337008, 'max_epochs': 700, 'num_workers': 9, 'patch_len': 6, 'stride': 10, 'padding_patch': 'None', 'revin': 0, 'ma_type': 'reg', 'alpha': 0.2076031801041531, 'beta': 0.1912212571578303}"
+PatchMixer, 71, 259.57882699139674, "{'batch_size': 48, 'learning_rate': 0.001330465476574318, 'max_epochs': 1000, 'num_workers': 10, 'patch_len': 20, 'stride': 1, 'mixer_kernel_size': 6, 'd_model': 832, 'dropout': 0.15000000000000002, 'head_dropout': 0.5, 'e_layers': 4}"
