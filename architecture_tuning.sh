@@ -8,4 +8,4 @@
 #SBATCH --cpus-per-task=20
 #SBATCH --mem=175G
 
-srun --gres=gpu:8 --mem=150G --cpus-per-task=20 --pty singularity exec --nv energycontainerblackbox.sif python3 architecture_tuning.py
+srun --pty singularity exec --nv energycontainerblackbox.sif python3 architecture_tuning.py

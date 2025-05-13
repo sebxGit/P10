@@ -282,16 +282,6 @@ class ColoradoDataModule(L.LightningDataModule):
     train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return train_loader
   
-  # def val_dataloader(self):
-  #   val_dataset = TimeSeriesDataset(self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-  #   val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
-  #   return val_loader
-
-  # def test_dataloader(self):
-  #   test_dataset = TimeSeriesDataset(self.X_test, self.y_test, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-  #   test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
-  #   return test_loader
-
   def predict_dataloader(self):
     val_dataset = TimeSeriesDataset(self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
     val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
@@ -299,14 +289,11 @@ class ColoradoDataModule(L.LightningDataModule):
   
   def sklearn_setup(self, set_name: str = "train"): 
     if set_name == "train":
-      X = self.X_train
-      y = self.y_train
+      X, y = self.X_train, self.y_train
     elif set_name == "val":
-      X = self.X_val
-      y = self.y_val
+      X, y = self.X_val, self.y_val
     elif set_name == "test":
-      X = self.X_test
-      y = self.y_test
+      X, y = self.X_test, self.y_test
     else:
       raise ValueError("Invalid set name. Choose from 'train', 'val', or 'test'.")
     
@@ -539,7 +526,7 @@ model_initializers = {
 }
 
 if __name__ == "__main__":
-  hparams = pd.read_csv('tuning.csv')
+  hparams = pd.read_csv(f'tuning.csv')
   lstm_params = ast.literal_eval(hparams[hparams['model'] == 'LSTM']['parameters'].values[0])
   gru_params = ast.literal_eval(hparams[hparams['model'] == 'GRU']['parameters'].values[0])
   mlp_params = ast.literal_eval(hparams[hparams['model'] == 'MLP']['parameters'].values[0])

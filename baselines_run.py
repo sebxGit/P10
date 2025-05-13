@@ -286,8 +286,6 @@ class ColoradoDataModule(L.LightningDataModule):
 
   def train_dataloader(self):
     train_dataset = TimeSeriesDataset(self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-    # window_size = round(len(self.X_train)*0.97)
-    # bootstrap_sampler = BootstrapSampler(train_dataset, window_size=window_size)
     # train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=bootstrap_sampler, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
     train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return train_loader
@@ -542,3 +540,4 @@ if __name__ == "__main__":
 
   create_and_save_ensemble(combined_name)
   plot_and_save_with_metrics(combined_name, colmod)
+  # overvej at lave et delta plot
