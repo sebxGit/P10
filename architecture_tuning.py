@@ -466,7 +466,7 @@ def objective(args, trial, all_subsets):
         trainer = L.Trainer(max_epochs=10, log_every_n_steps=50, precision='16-mixed', enable_checkpointing=False, callbacks=[EarlyStopping(monitor="train_loss", mode="min"), pred_writer])
         trainer.fit(model, colmod)
         y_pred = trainer.predict(model, colmod, return_predictions=True)
-        # y_pred = torch.cat(y_pred, dim=0).reshape(-1) 
+        y_pred = torch.cat(y_pred, dim=0).reshape(-1) 
         predictions.append(y_pred)
       elif isinstance(model, BaseEstimator):
         X_train, y_train = colmod.sklearn_setup("train") 
@@ -481,14 +481,14 @@ def objective(args, trial, all_subsets):
     # stacked_predictions = []
 
     # for pred in predictions:
-      # X_pred, y_train = colmod.sklearn_setup("prediction", pred) 
-      # stacked_predictions.append(X_pred)
+    #   X_pred, y_train = colmod.sklearn_setup("prediction", pred) 
+    #   stacked_predictions.append(X_pred)
 
     X_val, y_val = colmod.sklearn_setup("val")
 
     stack = np.column_stack(predictions)
 
-    print(np.array(predictions).flatten().shape, stack.flatten().shape, y_val.shape, y_val.flatten().shape, colmod.y_val.shape)
+    # print(np.array(predictions).flatten().shape, stack.flatten().shape, y_val.shape, y_val.flatten().shape, colmod.y_val.shape)
 
     meta_model.fit(stack, y_val.flatten())
     y_pred = meta_model.predict(X_val).reshape(-1)
