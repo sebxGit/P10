@@ -397,12 +397,10 @@ def create_and_save_ensemble(combined_name):
     lengths.append(len(predictions))
     all_predictions.append(predictions)
 
-  most_freq_len = max(set(lengths), key=lengths.count)
+  shortest_len = min(lengths)
   for i, pred in enumerate(all_predictions):
-    if len(pred) < most_freq_len:
-      all_predictions[i] += [0] * (most_freq_len - len(pred))
-    elif len(pred) > most_freq_len:
-      all_predictions[i] = pred[-most_freq_len:]
+    if len(pred) > shortest_len:
+      all_predictions[i] = pred[-shortest_len:]
 
   ensemble_predictions = np.mean(all_predictions, axis=0)
   filename = f"{folder_path}/predictions_{combined_name}.pt"
@@ -490,7 +488,7 @@ def objective(args, trial, all_subsets):
 
     stack = np.column_stack(predictions)
 
-    print(np.array(predictions).shape, stack.shape, y_val.shape, y_val.flatten().shape, colmod.y_val.shape)
+    print(np.array(predictions).flatten().shape, stack.flatten().shape, y_val.shape, y_val.flatten().shape, colmod.y_val.shape)
 
     meta_model.fit(stack, y_val.flatten())
     y_pred = meta_model.predict(X_val).reshape(-1)
