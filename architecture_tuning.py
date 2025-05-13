@@ -490,7 +490,7 @@ def objective(args, trial, all_subsets):
 
     stack = np.column_stack(predictions)
 
-    print(predictions.shape, stack.shape, y_val.shape, y_val.flatten().shape, colmod.y_val.shape)
+    print(np.array(predictions).shape, stack.shape, y_val.shape, y_val.flatten().shape, colmod.y_val.shape)
 
     meta_model.fit(stack, y_val.flatten())
     y_pred = meta_model.predict(X_val).reshape(-1)
