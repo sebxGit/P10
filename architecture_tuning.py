@@ -488,7 +488,11 @@ def objective(args, trial, all_subsets):
 
     X_val, y_val = colmod.sklearn_setup("val")
 
-    meta_model.fit(np.column_stack(stacked_predictions), y_train)
+    stack = np.column_stack(stacked_predictions)
+
+    print(stack.shape, y_val.shape, y_val.flatten().shape, colmod.y_val.shape)
+
+    meta_model.fit(np.column_stack(stacked_predictions), y_val.flatten())
     y_pred = meta_model.predict(X_val).reshape(-1)
     if not os.path.exists(f"Tunings/{combined_name}"):
       os.makedirs(f"Tunings/{combined_name}")
