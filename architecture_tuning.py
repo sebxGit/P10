@@ -100,7 +100,6 @@ def convert_to_hourly(data):
 
     return hourly_df
 
-
 def add_features(hourly_df, weather_df=None):
   ####################### TIMED BASED FEATURES  #######################
   hourly_df['Day_of_Week'] = hourly_df.index.dayofweek
@@ -269,10 +268,6 @@ class ColoradoDataModule(L.LightningDataModule):
     if stage == "fit" or stage is None:
       self.X_train = preprocessing.transform(self.X_train)
       self.y_train = np.array(self.y_train)
-
-      y_train_df = pd.DataFrame(self.y_train, columns=["target"])
-      combined = pd.concat([y_train_df, pd.DataFrame(self.X_train),], axis=1)
-      combined.to_csv('train.csv', index=True)
 
       self.X_val = preprocessing.transform(self.X_val)
       self.y_val = np.array(self.y_val)
