@@ -278,16 +278,16 @@ class ColoradoDataModule(L.LightningDataModule):
     train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=bootstrap_sampler, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
     # train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return train_loader
-  
-  def val_dataloader(self):
-    val_dataset = TimeSeriesDataset(self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-    val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=True)
-    return val_loader
+    
+  # def val_dataloader(self):
+  #   val_dataset = TimeSeriesDataset(self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+  #   val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=True)
+  #   return val_loader
 
-  def test_dataloader(self):
-    test_dataset = TimeSeriesDataset(self.X_test, self.y_test, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-    test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=True)
-    return test_loader
+  # def test_dataloader(self):
+  #   test_dataset = TimeSeriesDataset(self.X_test, self.y_test, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+  #   test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=True)
+  #   return test_loader
 
   def predict_dataloader(self):
     val_dataset = TimeSeriesDataset(self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
@@ -355,19 +355,19 @@ class LightningModel(L.LightningModule):
     self.log("train_loss", train_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
     return train_loss
 
-  def validation_step(self, batch, batch_idx):
-    x, y = batch
-    y_hat = self(x)
-    val_loss = self.criterion(y_hat, y)
-    self.log("val_loss", val_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
-    return val_loss
+  # def validation_step(self, batch, batch_idx):
+  #   x, y = batch
+  #   y_hat = self(x)
+  #   val_loss = self.criterion(y_hat, y)
+  #   self.log("val_loss", val_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+  #   return val_loss
 
-  def test_step(self, batch, batch_idx):
-    x, y = batch
-    y_hat = self(x)
-    test_loss = self.criterion(y_hat, y)
-    self.log("test_loss", test_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
-    return test_loss
+  # def test_step(self, batch, batch_idx):
+  #   x, y = batch
+  #   y_hat = self(x)
+  #   test_loss = self.criterion(y_hat, y)
+  #   self.log("test_loss", test_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+  #   return test_loss
 
   def predict_step(self, batch, batch_idx):
     x, y = batch
@@ -463,7 +463,7 @@ def objective(args, trial, all_subsets):
       if isinstance(model, torch.nn.Module):
         model = LightningModel(model=model, criterion=criterion_map.get(args.criterion)(), optimizer=optimizer_map.get(args.optimizer), learning_rate=_hparams['learning_rate'])
         pred_writer = CustomWriter(output_dir="Predictions", write_interval="epoch", combined_name=combined_name, model_name=model_name)
-        trainer = L.Trainer(max_epochs=10, log_every_n_steps=50, precision='16-mixed', enable_checkpointing=False, callbacks=[EarlyStopping(monitor="train_loss", mode="min"), pred_writer], devices=1)
+        trainer = L.Trainer(max_epochs=10, log_every_n_steps=50, precision='16-mixed', enable_checkpointing=False, callbacks=[EarlyStopping(monitor="train_loss", mode="min"), pred_writer])
         trainer.fit(model, colmod)
         y_pred = trainer.predict(model, colmod, return_predictions=True)
         # y_pred = torch.cat(y_pred, dim=0).reshape(-1) 
