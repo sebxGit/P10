@@ -421,7 +421,7 @@ def objective(args, trial, all_subsets):
 
       trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, devices=1) 
       wd = trainer.predict(model, colmod, return_predictions=True)
-      print("wd:", wd.shape)
+      print("wd:", len(wd))
 
     elif isinstance(model, BaseEstimator):
       X_train, y_train = colmod.sklearn_setup("train") 
