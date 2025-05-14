@@ -432,6 +432,9 @@ def objective(args, trial, all_subsets):
   y_pred = torch.load(f"Tunings/{combined_name}/predictions_{combined_name}.pt")
   y_pred = y_pred.flatten()
   mae = nn.L1Loss(colmod.y_val, y_pred)
+  print(f"shape of y_pred: {y_pred.shape}")
+  print(f"MAE for {combined_name}: {mae}")
+  print(y_pred)
   return mae
 
 parser = ArgumentParser()
