@@ -119,9 +119,8 @@ def add_features(hourly_df, weather_df=None):
                             >= 6) & (hourly_df['Hour_of_Day'] <= 18)
 
   # Add holiday
-  us_holidays = holidays.US(years=range(2018, 2023 + 1))
-  hourly_df['IsHoliday'] = hourly_df.index.map(
-      lambda x: 1 if x.date() in us_holidays else 0)
+  US_holidays = holidays.US(years=range(hourly_df.index.year.min(), hourly_df.index.year.max() + 1))
+  hourly_df['IsHoliday'] = hourly_df.index.to_series().dt.date.isin(US_holidays).astype(int)
 
   # Add weekend
   hourly_df['Weekend'] = (hourly_df['Day_of_Week'] >= 5).astype(int)
@@ -164,21 +163,17 @@ def add_features(hourly_df, weather_df=None):
   hourly_df['Energy_Consumption_6h'] = hourly_df['Energy_Consumption'].shift(6)
 
   # 12h
-  hourly_df['Energy_Consumption_12h'] = hourly_df['Energy_Consumption'].shift(
-      12)
+  hourly_df['Energy_Consumption_12h'] = hourly_df['Energy_Consumption'].shift(12)
 
   # 24h
-  hourly_df['Energy_Consumption_24h'] = hourly_df['Energy_Consumption'].shift(
-      24)
+  hourly_df['Energy_Consumption_24h'] = hourly_df['Energy_Consumption'].shift(24)
 
   # 1 week
-  hourly_df['Energy_Consumption_1w'] = hourly_df['Energy_Consumption'].shift(
-      24*7)
+  hourly_df['Energy_Consumption_1w'] = hourly_df['Energy_Consumption'].shift(24*7)
 
   # Rolling average
   # 24h
-  hourly_df['Energy_Consumption_rolling'] = hourly_df['Energy_Consumption'].rolling(
-      window=24).mean()
+  hourly_df['Energy_Consumption_rolling'] = hourly_df['Energy_Consumption'].rolling(window=24).mean()
 
   return hourly_df
 
