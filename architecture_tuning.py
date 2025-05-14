@@ -386,6 +386,8 @@ def create_and_save_ensemble(combined_name):
     lengths.append(len(predictions))
     all_predictions.append(predictions)
 
+  print("lengths: ", lengths)
+
   shortest_len = min(lengths)
   for i, pred in enumerate(all_predictions):
     if len(pred) > shortest_len:
@@ -436,10 +438,8 @@ def objective(args, trial, all_subsets):
   y_val_tensor = torch.tensor(colmod.y_val.values if isinstance(colmod.y_val, pd.Series) else colmod.y_val, dtype=torch.float32)
   y_pred_tensor = torch.tensor(y_pred, dtype=torch.float32)
 
+  print(f"mae({y_val_tensor.shape}, {y_pred_tensor.shape})")
   mae = nn.L1Loss()(y_val_tensor, y_pred_tensor)
-  print(f"shape of y_pred: {y_pred.shape}")
-  print(f"MAE for {combined_name}: {mae}")
-  print(y_pred)
   return mae
 
 parser = ArgumentParser()
