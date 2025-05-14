@@ -378,7 +378,6 @@ def create_and_save_ensemble(combined_name):
   for i, pt_file in enumerate(pt_files):
     file_path = os.path.join(folder_path, pt_file)
     predictions = torch.load(file_path, weights_only=False)
-    print(f"predictions shape: {predictions.shape}")
     if type(predictions[0]) == torch.Tensor:
       predictions = [elem.item() for sublist in predictions for elem in sublist.flatten()]
     elif type(predictions[0]) == np.float64:
@@ -421,7 +420,7 @@ def objective(args, trial, all_subsets):
 
       trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, devices=1) 
       wd = trainer.predict(model, colmod, return_predictions=True)
-      print("wd:", len(wd))
+      print("wd:", wd.to_numpy().shape)
 
     elif isinstance(model, BaseEstimator):
       X_train, y_train = colmod.sklearn_setup("train") 
