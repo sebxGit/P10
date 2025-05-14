@@ -33,7 +33,10 @@ from lightning.pytorch import seed_everything
 
 # tensorboard --logdir=Predictions/MLP-GRU-LSTM
 
-def convert_to_hourly(data):
+SEED = 42
+seed_everything(SEED, workers=True)
+
+def convert_Colorado_to_hourly(data):
 
     # Remove unnecessary columns
     data = data.drop(columns=['Zip_Postal_Code'])
@@ -101,7 +104,22 @@ def convert_to_hourly(data):
     # Return the hourly data
     return hourly_df
 
-def add_features(hourly_df, weather_df=None):
+def convert_SDU_to_hourly(df):
+  df = df.set_index('Timestamp')
+
+  hourly = df.resample('h').agg({
+      'Total number of EVs':      'sum',
+      'Number of charging EVs':   'sum',
+      'Number of driving EVs':    'sum',
+      'Total grid load':          'sum',
+      'Aggregated base load':     'sum',
+      'Aggregated charging load': 'sum',
+      'Overload duration [min]':  'sum',
+  })
+
+  return hourly
+
+def add_features(hourly_df, dataset_name, historical_feature, weather_df=None):
   ####################### TIMED BASED FEATURES  #######################
   hourly_df['Day_of_Week'] = hourly_df.index.dayofweek
 
@@ -115,12 +133,16 @@ def add_features(hourly_df, weather_df=None):
   hourly_df['Year'] = hourly_df.index.year
 
   # Add day/night
-  hourly_df['Day/Night'] = (hourly_df['Hour_of_Day']
-                            >= 6) & (hourly_df['Hour_of_Day'] <= 18)
+  hourly_df['Day/Night'] = (hourly_df['Hour_of_Day'] >= 6) & (hourly_df['Hour_of_Day'] <= 18)
 
   # Add holiday
-  US_holidays = holidays.US(years=range(hourly_df.index.year.min(), hourly_df.index.year.max() + 1))
-  hourly_df['IsHoliday'] = hourly_df.index.to_series().dt.date.isin(US_holidays).astype(int)
+  if dataset_name == 'Colorado':
+    us_holidays = holidays.US(years=range(hourly_df.index.year.min(), hourly_df.index.year.max() + 1))
+    hourly_df['IsHoliday'] = hourly_df.index.to_series().dt.date.isin(us_holidays).astype(int)
+  elif dataset_name == 'SDU':
+    dk_holidays = holidays.DK(years=range(
+        hourly_df.index.year.min(), hourly_df.index.year.max() + 1))
+    hourly_df['IsHoliday'] = hourly_df.index.to_series().dt.date.isin(dk_holidays).astype(int)
 
   # Add weekend
   hourly_df['Weekend'] = (hourly_df['Day_of_Week'] >= 5).astype(int)
@@ -147,36 +169,38 @@ def add_features(hourly_df, weather_df=None):
   if weather_df is not None:
     weather_df = pd.read_csv(weather_df, parse_dates=['time']).set_index(
         'time').rename(columns={'temperature': 'Temperature'})
-    
 
     # make sure tempture is a number
-    weather_df['Temperature'] = pd.to_numeric(weather_df['Temperature'], errors='coerce')
+    weather_df['Temperature'] = pd.to_numeric(
+        weather_df['Temperature'], errors='coerce')
 
     hourly_df = hourly_df.join(weather_df, how='left')
 
   ####################### HISTORICAL CONSUMPTION FEATURES  #######################
   # Lag features
   # 1h
-  hourly_df['Energy_Consumption_1h'] = hourly_df['Energy_Consumption'].shift(1)
+  hourly_df['Energy_Consumption_1h'] = hourly_df[historical_feature].shift(1)
 
   # 6h
-  hourly_df['Energy_Consumption_6h'] = hourly_df['Energy_Consumption'].shift(6)
+  hourly_df['Energy_Consumption_6h'] = hourly_df[historical_feature].shift(6)
 
   # 12h
-  hourly_df['Energy_Consumption_12h'] = hourly_df['Energy_Consumption'].shift(12)
+  hourly_df['Energy_Consumption_12h'] = hourly_df[historical_feature].shift(
+      12)
 
   # 24h
-  hourly_df['Energy_Consumption_24h'] = hourly_df['Energy_Consumption'].shift(24)
+  hourly_df['Energy_Consumption_24h'] = hourly_df[historical_feature].shift(
+      24)
 
   # 1 week
-  hourly_df['Energy_Consumption_1w'] = hourly_df['Energy_Consumption'].shift(24*7)
+  hourly_df['Energy_Consumption_1w'] = hourly_df[historical_feature].shift(
+      24*7)
 
   # Rolling average
   # 24h
-  hourly_df['Energy_Consumption_rolling'] = hourly_df['Energy_Consumption'].rolling(window=24).mean()
+  hourly_df['Energy_Consumption_rolling'] = hourly_df[historical_feature].rolling(window=24).mean()
 
   return hourly_df
-
 
 def filter_data(start_date, end_date, data):
     ####################### FILTER DATASET  #######################
@@ -212,21 +236,18 @@ class TimeSeriesDataset(Dataset):
     y_target = self.y[start_idx + self.seq_len: start_idx + self.seq_len + self.pred_len]
     return x_window, y_target
 
-class BootstrapSampler(Sampler):
-  def __init__(self, data_source, window_size, num_samples=None):
-    self.data_source = data_source
-    self.window_size = window_size
-    self.num_samples = num_samples if num_samples is not None else len(data_source) // 2
+class BootstrapSampler:
+    def __init__(self, dataset_size, random_state=None):
+        self.dataset_size = dataset_size
+        self.random_state = random_state
 
-  def __iter__(self):
-    indices = []
-    for _ in range(self.num_samples):
-      start_idx = np.random.randint(0, len(self.data_source) - self.window_size + 1)
-      indices.extend(range(start_idx, start_idx + self.window_size))
-    return iter(indices)
+    def __iter__(self):
+        indices = resample(range(self.dataset_size), replace=True,
+                           n_samples=self.dataset_size, random_state=self.random_state)
+        return iter(indices)
 
-  def __len__(self):
-    return self.num_samples
+    def __len__(self):
+        return self.dataset_size
 
 class ColoradoDataModule(L.LightningDataModule):
   def __init__(self, data_dir: str, scaler: int, seq_len: int, pred_len: int, stride: int, batch_size: int, num_workers: int, is_persistent: bool):
@@ -252,21 +273,15 @@ class ColoradoDataModule(L.LightningDataModule):
 
     # Load and preprocess the data
     data = pd.read_csv(self.data_dir)
-    data = convert_to_hourly(data)
-    data = add_features(data, weather_df='Colorado/denver_weather.csv')
+    data = convert_Colorado_to_hourly(data)
+    data = add_features(data, dataset_name='Colorado', historical_feature='Energy_Consumption', weather_df='Colorado/denver_weather.csv')
     df = filter_data(start_date, end_date, data)
 
     df = df.dropna()
 
-    #df.to_csv('final_df_hourly.csv', index=True)  
-
     X = df.copy()
 
     y = X.pop('Energy_Consumption')
-
-    #y = create_multi_step_targets(X['Energy_Consumption'], horizon=24)
-    #X=X.iloc[:-24]
-    #y=y[:-24] 
 
     # 60/20/20 split
     X_tv, self.X_test, y_tv, self.y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
@@ -280,9 +295,103 @@ class ColoradoDataModule(L.LightningDataModule):
       self.X_train = preprocessing.transform(self.X_train)
       self.y_train = np.array(self.y_train)
 
-      y_train_df = pd.DataFrame(self.y_train, columns=["target"])
-      combined = pd.concat([y_train_df, pd.DataFrame(self.X_train),], axis=1)
-      combined.to_csv('train.csv', index=True)
+      self.X_val = preprocessing.transform(self.X_val)
+      self.y_val = np.array(self.y_val)
+
+    if stage == "test" or "predict" or stage is None:
+      self.X_test = preprocessing.transform(self.X_test)
+      self.y_test = np.array(self.y_test)
+
+  def train_dataloader(self):
+    train_dataset = TimeSeriesDataset(self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+    sampler = BootstrapSampler(len(train_dataset), random_state=SEED)
+    train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
+    #train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    return train_loader
+  
+  def predict_dataloader(self):
+    val_dataset = TimeSeriesDataset(self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+    val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    return val_loader
+  
+  def sklearn_setup(self, set_name: str = "train"):
+    if set_name == "train":
+      X, y = resample(self.X_train, self.y_train, replace=True, n_samples=len(self.X_train), random_state=SEED)
+    elif set_name == "val":
+      X, y = self.X_val, self.y_val
+    elif set_name == "test":
+      X, y = self.X_test, self.y_test
+    else:
+      raise ValueError(
+          "Invalid set name. Choose from 'train', 'val', or 'test'.")
+
+    seq_len, pred_len, stride = self.seq_len, self.pred_len, self.stride
+    X_window, y_target = [], []
+
+    max_start = len(X) - (seq_len + pred_len)+1
+
+    for i in range(0, max_start, stride):
+      X_win = X[i:i + seq_len]
+      y_tar = y[i + seq_len:i + seq_len + pred_len]
+
+      arr_x = np.asanyarray(X_win).reshape(-1)
+      arr_y = np.asanyarray(y_tar).reshape(-1)
+
+      X_window.append(arr_x)
+      y_target.append(arr_y)
+
+    return np.stack(X_window), np.stack(y_target)
+
+class SDUDataModule(L.LightningDataModule):
+  def __init__(self, data_dir: str, scaler: int, seq_len: int, pred_len: int, stride: int, batch_size: int, num_workers: int, is_persistent: bool):
+    super().__init__()
+    self.data_dir = data_dir
+    self.scaler = scaler
+    self.seq_len = seq_len
+    self.pred_len = pred_len
+    self.stride = stride
+    self.batch_size = batch_size
+    self.num_workers = num_workers
+    self.is_persistent = is_persistent
+    self.X_train = None
+    self.y_train = None
+    self.X_val = None
+    self.y_val = None
+    self.X_test = None
+    self.y_test = None
+
+  def setup(self, stage: str):
+    start_date = pd.to_datetime('2024-12-31')
+    end_date = pd.to_datetime('2032-12-31')
+
+    # Load the data
+    # df = pd.read_csv(self.data_dir, parse_dates=['Timestamp'])
+    df = pd.read_csv(self.data_dir, skipinitialspace=True)
+
+
+    df.columns = df.columns.str.strip()
+    df['Timestamp'] = df['Timestamp'].str.strip()  # <-- Add this line
+    df['Timestamp'] = pd.to_datetime(
+    df['Timestamp'], format="%b %d, %Y, %I:%M:%S %p")
+    df = convert_SDU_to_hourly(df)
+    feature_df = add_features(hourly_df=df, dataset_name='SDU', historical_feature='Aggregated charging load')
+    df = filter_data(start_date, end_date, feature_df)
+
+    df = df.dropna()
+    X = df.copy()
+
+    y = X.pop('Aggregated charging load')
+
+    # 60/20/20 split
+    X_tv, self.X_test, y_tv, self.y_test = train_test_split( X, y, test_size=0.2, shuffle=False)
+    self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(X_tv, y_tv, test_size=0.25, shuffle=False)
+
+    preprocessing = self.scaler
+    preprocessing.fit(self.X_train)  # should only fit to training data
+
+    if stage == "fit" or stage is None:
+      self.X_train = preprocessing.transform(self.X_train)
+      self.y_train = np.array(self.y_train)
 
       self.X_val = preprocessing.transform(self.X_val)
       self.y_val = np.array(self.y_val)
@@ -293,51 +402,41 @@ class ColoradoDataModule(L.LightningDataModule):
 
   def train_dataloader(self):
     train_dataset = TimeSeriesDataset(self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-    train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    sampler = BootstrapSampler(len(train_dataset), random_state=SEED)
+    train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
+    # train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return train_loader
-  
-  # def val_dataloader(self):
-  #   val_dataset = TimeSeriesDataset(self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-  #   val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
-  #   return val_loader
-
-  # def test_dataloader(self):
-  #   test_dataset = TimeSeriesDataset(self.X_test, self.y_test, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-  #   test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
-  #   return test_loader
 
   def predict_dataloader(self):
     val_dataset = TimeSeriesDataset(self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
     val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return val_loader
-  
-  def sklearn_setup(self, set_name: str = "train"): 
+
+  def sklearn_setup(self, set_name: str = "train"):
     if set_name == "train":
-      X = self.X_train
-      y = self.y_train
+      X, y = resample(self.X_train, self.y_train, replace=True, n_samples=len(self.X_train), random_state=SEED)
     elif set_name == "val":
-      X = self.X_val
-      y = self.y_val
+      X, y = self.X_val, self.y_val
     elif set_name == "test":
-      X = self.X_test
-      y = self.y_test
+      X, y = self.X_test, self.y_test
     else:
-      raise ValueError("Invalid set name. Choose from 'train', 'val', or 'test'.")
-    
+      raise ValueError(
+          "Invalid set name. Choose from 'train', 'val', or 'test'.")
+
     seq_len, pred_len, stride = self.seq_len, self.pred_len, self.stride
     X_window, y_target = [], []
 
     max_start = len(X) - (seq_len + pred_len)+1
 
     for i in range(0, max_start, stride):
-        X_win = X[i:i + seq_len]
-        y_tar = y[i + seq_len:i + seq_len + pred_len]
+      X_win = X[i:i + seq_len]
+      y_tar = y[i + seq_len:i + seq_len + pred_len]
 
-        arr_x = np.asanyarray(X_win).reshape(-1)
-        arr_y = np.asanyarray(y_tar).reshape(-1)
+      arr_x = np.asanyarray(X_win).reshape(-1)
+      arr_y = np.asanyarray(y_tar).reshape(-1)
 
-        X_window.append(arr_x)
-        y_target.append(arr_y)
+      X_window.append(arr_x)
+      y_target.append(arr_y)
 
     return np.stack(X_window), np.stack(y_target)
 
@@ -371,20 +470,6 @@ class LightningModel(L.LightningModule):
     self.log("train_loss", train_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
     return train_loss
 
-  # def validation_step(self, batch, batch_idx):
-  #   x, y = batch
-  #   y_hat = self(x)
-  #   val_loss = self.criterion(y_hat, y)
-  #   self.log("val_loss", val_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
-  #   return val_loss
-
-  # def test_step(self, batch, batch_idx):
-  #   x, y = batch
-  #   y_hat = self(x)
-  #   test_loss = self.criterion(y_hat, y)
-  #   self.log("test_loss", test_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
-  #   return test_loss
-
   def predict_step(self, batch, batch_idx):
     x, y = batch
     y_hat = self(x)
@@ -410,26 +495,28 @@ def get_actuals_and_prediction_flattened(colmod, prediction):
 
   return predictions_flattened, actuals_flattened
 
-
-
 def objective(args, trial):
     params = {
-        'input_size': 22,
-        'pred_len': 24,
+        'input_size': 22 if args.dataset == "Colorado" else 26,
+        'pred_len': args.pred_len,
         'seq_len': 24*7,
-        'stride': 24,
+        'stride': args.pred_len,
         'batch_size': trial.suggest_int('batch_size', 32, 128, step=16),
         'criterion': torch.nn.L1Loss(),
         'optimizer': torch.optim.Adam,
         'scaler': MinMaxScaler(),
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
-        'max_epochs': trial.suggest_int('max_epochs', 500, 2000, step=100),
+        'max_epochs': trial.suggest_int('max_epochs', 100, 1000, step=100),
         'num_workers': trial.suggest_int('num_workers', 5, 12),
         'is_persistent': True,
     }
 
-    colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=params['scaler'], seq_len=params['seq_len'], pred_len=params['pred_len'], stride=params['stride'], batch_size=params['batch_size'], num_workers=params['num_workers'], is_persistent=params['is_persistent'])
+    if args.dataset == "Colorado":
+      colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=params['scaler'], seq_len=params['seq_len'], pred_len=params['pred_len'], stride=params['stride'], batch_size=params['batch_size'], num_workers=params['num_workers'], is_persistent=params['is_persistent'])
+    elif args.dataset == "SDU":
+      colmod = SDUDataModule(data_dir='SDU Dataset/DumbCharging_2020_to_2032/Measurements.csv', scaler=params['scaler'], seq_len=params['seq_len'], pred_len=params['pred_len'], stride=params['stride'], batch_size=params['batch_size'], num_workers=params['num_workers'], is_persistent=params['is_persistent'])
+    
     colmod.prepare_data()
     colmod.setup(stage="None")
     seed_everything(params['seed'], workers=True)
@@ -572,7 +659,8 @@ def objective(args, trial):
       tuned_model = LightningModel(model=model, criterion=params['criterion'], optimizer=params['optimizer'], learning_rate=params['learning_rate'])
 
       # Trainer for fitting using DDP - Multi GPU
-      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
+      #trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
+      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False)
       trainer.fit(tuned_model, colmod)
 
       # New Trainer for inference on one GPU
@@ -607,21 +695,26 @@ def tune_model_with_optuna(args, n_trials):
 
   if study.best_value != float('inf'):
     try:
-      df_tuning = pd.read_csv('tuning.csv')
+      df_tuning = pd.read_csv(f'Tunings/{args.dataset}_{args.pred_len}h_tuning.csv')
     except:
-      df_tuning = pd.DataFrame(columns=['model', 'trials', 'train_loss', 'parameters'])
+      df_tuning = pd.DataFrame(columns=['model', 'trials', 'val_loss', 'parameters'])
 
-    new_row = {'model': args.model, 'trials': len(study.trials), 'train_loss': study.best_value, 'parameters': study.best_params}
+    new_row = {'model': args.model, 'trials': len(study.trials), 'val_loss': study.best_value, 'parameters': study.best_params}
     new_row_df = pd.DataFrame([new_row]).dropna(axis=1, how='all')
     df_tuning = pd.concat([df_tuning, new_row_df], ignore_index=True)
-    df_tuning = df_tuning.sort_values(by=['model', 'train_loss'], ascending=True).reset_index(drop=True)
-    df_tuning.to_csv('tuning.csv', index=False)
+    df_tuning = df_tuning.sort_values(by=['model', 'val_loss'], ascending=True).reset_index(drop=True)
+
+    if not os.path.exists(f'Tunings'):
+      os.makedirs(f'Tunings', exist_ok=True)
+    df_tuning.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_tuning.csv', index=False)
 
     return study.best_params
 
 if __name__ == '__main__':
   parser = ArgumentParser()
-  parser.add_argument("--model", type=str, default="RandomForest")
+  parser.add_argument("--dataset", type=str, default="Colorado")
+  parser.add_argument("--pred_len", type=int, default=24)
+  parser.add_argument("--model", type=str, default="LSTM")
   args = parser.parse_args()
 
   best_params = tune_model_with_optuna(args, n_trials=150)
