@@ -431,7 +431,12 @@ def objective(args, trial, all_subsets):
   create_and_save_ensemble(combined_name)
   y_pred = torch.load(f"Tunings/{combined_name}/predictions_{combined_name}.pt")
   y_pred = y_pred.flatten()
-  mae = nn.L1Loss(colmod.y_val, y_pred)
+
+  # Ensure colmod.y_val and y_pred are tensors
+  y_val_tensor = torch.tensor(colmod.y_val.values if isinstance(colmod.y_val, pd.Series) else colmod.y_val, dtype=torch.float32)
+  y_pred_tensor = torch.tensor(y_pred, dtype=torch.float32)
+
+  mae = nn.L1Loss()(y_val_tensor, y_pred_tensor)
   print(f"shape of y_pred: {y_pred.shape}")
   print(f"MAE for {combined_name}: {mae}")
   print(y_pred)
