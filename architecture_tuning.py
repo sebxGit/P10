@@ -402,7 +402,7 @@ def objective(args, trial, all_subsets):
   # selected_subset_as_string = trial.suggest_categorical("model_subsets", all_subsets_as_strings)
   # selected_subset = ast.literal_eval(selected_subset_as_string)
 
-  selected_subset = ['LSTM']
+  selected_subset = ['LSTM', 'GRU', 'MLP', 'DPAD']
   bagging_models = [model_initializers[model]() for model in selected_subset if model in model_initializers]
 
   for model in bagging_models:
@@ -420,7 +420,8 @@ def objective(args, trial, all_subsets):
       trainer.fit(model, colmod)
 
       trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, devices=1) 
-      trainer.predict(model, colmod, return_predictions=False)
+      wd = trainer.predict(model, colmod, return_predictions=True)
+      print("wd:", wd.shape)
 
     elif isinstance(model, BaseEstimator):
       X_train, y_train = colmod.sklearn_setup("train") 
