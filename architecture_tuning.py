@@ -402,7 +402,7 @@ def objective(args, trial, all_subsets):
   # selected_subset_as_string = trial.suggest_categorical("model_subsets", all_subsets_as_strings)
   # selected_subset = ast.literal_eval(selected_subset_as_string)
 
-  selected_subset = ['LSTM', 'GRU', 'MLP', 'DPAD']
+  selected_subset = ['LSTM', 'MLP']
   bagging_models = [model_initializers[model]() for model in selected_subset if model in model_initializers]
 
   for model in bagging_models:
