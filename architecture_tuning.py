@@ -378,6 +378,7 @@ def create_and_save_ensemble(combined_name):
   for i, pt_file in enumerate(pt_files):
     file_path = os.path.join(folder_path, pt_file)
     predictions = torch.load(file_path, weights_only=False)
+    print(f"predictions shape: {predictions.shape}")
     if type(predictions[0]) == torch.Tensor:
       predictions = [elem.item() for sublist in predictions for elem in sublist.flatten()]
     elif type(predictions[0]) == np.float64:
@@ -401,7 +402,7 @@ def objective(args, trial, all_subsets):
   # selected_subset_as_string = trial.suggest_categorical("model_subsets", all_subsets_as_strings)
   # selected_subset = ast.literal_eval(selected_subset_as_string)
 
-  selected_subset = ['LSTM', 'GRU', 'MLP', 'DPAD']
+  selected_subset = ['LSTM']
   bagging_models = [model_initializers[model]() for model in selected_subset if model in model_initializers]
 
   for model in bagging_models:
