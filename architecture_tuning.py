@@ -374,7 +374,7 @@ class Configs:
 def create_and_save_ensemble(combined_name):
   all_predictions = []
   lengths = []
-  folder_path = f'Tunings/{combined_name}'
+  folder_path = f'Predictions/{combined_name}'
   pt_files = [f for f in os.listdir(folder_path) if f.endswith('.pt')]
   for i, pt_file in enumerate(pt_files):
     file_path = os.path.join(folder_path, pt_file)
@@ -413,7 +413,7 @@ def objective(args, trial, all_subsets):
     print(f"-----Training {model_name} model-----")
     if isinstance(model, torch.nn.Module):
       model = LightningModel(model=model, criterion=criterion_map.get(args.criterion)(), optimizer=optimizer_map.get(args.optimizer), learning_rate=_hparams['learning_rate'])
-      pred_writer = CustomWriter(output_dir="Predictions", write_interval="epoch", combined_name=combined_name, model_name=model_name)
+      pred_writer = CustomWriter(output_dir="Tunings", write_interval="epoch", combined_name=combined_name, model_name=model_name)
       trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=50, precision='16-mixed', enable_checkpointing=False, callbacks=[EarlyStopping(monitor="train_loss", mode="min"), pred_writer], strategy='ddp_find_unused_parameters_true')
       trainer.fit(model, colmod)
       trainer.predict(model, colmod, return_predictions=False)
