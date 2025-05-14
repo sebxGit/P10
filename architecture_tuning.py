@@ -278,7 +278,6 @@ class ColoradoDataModule(L.LightningDataModule):
 
   def train_dataloader(self):
     train_dataset = TimeSeriesDataset(self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-    # train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=bootstrap_sampler, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
     train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return train_loader
   
@@ -418,6 +417,8 @@ def objective(args, trial, all_subsets):
       pred_writer = CustomWriter(output_dir="Tunings", write_interval="epoch", combined_name=combined_name, model_name=model_name)
       trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=50, precision='16-mixed', enable_checkpointing=False, callbacks=[pred_writer], strategy='ddp_find_unused_parameters_true' if model_name == "DPAD" else 'auto')
       trainer.fit(model, colmod)
+
+      trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, devices=1) 
       trainer.predict(model, colmod, return_predictions=False)
 
     elif isinstance(model, BaseEstimator):
