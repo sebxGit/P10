@@ -8,4 +8,4 @@
 #SBATCH --cpus-per-task=125
 #SBATCH --mem=175G
 
-singularity exec --nv energycontainerblackbox.sif python3 baselines_tuning.py --model GradientBoosting
+singularity exec --nv energycontainerblackbox.sif python3 baselines_tuning.py --dataset SDU --pred_len 6 --model GradientBoosting
