@@ -414,10 +414,7 @@ def objective(args, trial, all_subsets):
     if isinstance(model, torch.nn.Module):
       model = LightningModel(model=model, criterion=criterion_map.get(args.criterion)(), optimizer=optimizer_map.get(args.optimizer), learning_rate=_hparams['learning_rate'])
       pred_writer = CustomWriter(output_dir="Tunings", write_interval="epoch", combined_name=combined_name, model_name=model_name)
-      if model_name == "DPAD":
-        trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=50, precision='16-mixed', enable_checkpointing=False, callbacks=[EarlyStopping(monitor="train_loss", mode="min"), pred_writer], strategy='ddp_find_unused_parameters_true')
-      else:
-        trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=50, precision='16-mixed', enable_checkpointing=False, callbacks=[EarlyStopping(monitor="train_loss", mode="min"), pred_writer])
+      trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=50, precision='16-mixed', enable_checkpointing=False, callbacks=[pred_writer], strategy='ddp_find_unused_parameters_true' if model_name == "DPAD" else 'auto')
       trainer.fit(model, colmod)
       trainer.predict(model, colmod, return_predictions=False)
 
