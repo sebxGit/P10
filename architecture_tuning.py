@@ -319,11 +319,19 @@ class CustomWriter(BasePredictionWriter):
     self.output_dir = output_dir
     self.combined_name = combined_name
     self.model_name = model_name
+  
+  def on_train_end(self, trainer, predictions):
+    filename = os.path.join(self.output_dir, f"{self.combined_name}/predictions_{self.model_name}.pt")
+    os.makedirs(os.path.join(self.output_dir, self.combined_name), exist_ok=True)
+    torch.save(predictions, filename)
+    print(f"From Train endPredictions saved to {filename}")
 
   def write_on_epoch_end(self, trainer, pl_module, predictions, batch_indices):
     filename = os.path.join(self.output_dir, f"{self.combined_name}/predictions_{self.model_name}.pt")
     os.makedirs(os.path.join(self.output_dir, self.combined_name), exist_ok=True)
     torch.save(predictions, filename)
+    print(f"Predictions saved to {filename}")
+    
 
 class LightningModel(L.LightningModule):
   def __init__(self, model, criterion, optimizer, learning_rate):
@@ -418,9 +426,11 @@ def objective(args, trial, all_subsets):
       trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=50, precision='16-mixed', enable_checkpointing=False, callbacks=[pred_writer], strategy='ddp_find_unused_parameters_true' if model_name == "DPAD" else 'auto')
       trainer.fit(model, colmod)
 
-      trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, devices=1) 
+      trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, callbacks=[pred_writer], devices=1)
       wd = trainer.predict(model, colmod, return_predictions=True)
-      print("wd:", wd.to_numpy().shape)
+      print("wd batch shapes:", [w.shape for w in wd])
+      wd_cat = torch.cat(wd, dim=0)
+      print("wd_cat shape:", wd_cat.shape)
 
     elif isinstance(model, BaseEstimator):
       X_train, y_train = colmod.sklearn_setup("train") 
@@ -433,7 +443,7 @@ def objective(args, trial, all_subsets):
       torch.save(y_pred, f"Tunings/{combined_name}/predictions_{model_name}.pt")
 
   create_and_save_ensemble(combined_name)
-  y_pred = torch.load(f"Tunings/{combined_name}/predictions_{combined_name}.pt")
+  y_pred = torch.load(f"Tunings/{combined_name}/predictions_{combined_name}.pt", weights_only=False)
   y_pred = y_pred.flatten()
 
   # Ensure colmod.y_val and y_pred are tensors
@@ -441,7 +451,8 @@ def objective(args, trial, all_subsets):
   y_pred_tensor = torch.tensor(y_pred, dtype=torch.float32)
 
   print(f"mae({y_val_tensor.shape}, {y_pred_tensor.shape})")
-  mae = nn.L1Loss()(y_val_tensor, y_pred_tensor)
+  
+  mae = nn.L1Loss()(y_val_tensor[-len(y_pred_tensor):], y_pred_tensor)
   return mae
 
 parser = ArgumentParser()
