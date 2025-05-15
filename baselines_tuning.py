@@ -1,4 +1,5 @@
 import os
+import gc
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -30,6 +31,7 @@ import lightning as L
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from lightning.pytorch.callbacks import BasePredictionWriter
 from lightning.pytorch import seed_everything
+from joblib import Parallel, delayed
 
 # tensorboard --logdir=Predictions/MLP-GRU-LSTM
 
@@ -249,6 +251,13 @@ class BootstrapSampler:
     def __len__(self):
         return self.dataset_size
 
+def process_window(i, X, y, seq_len, pred_len):
+  X_win = X[i:i + seq_len]
+  y_tar = y[i + seq_len:i + seq_len + pred_len]
+  arr_x = np.asanyarray(X_win).reshape(-1)
+  arr_y = np.asanyarray(y_tar).reshape(-1)
+  return arr_x, arr_y
+
 class ColoradoDataModule(L.LightningDataModule):
   def __init__(self, data_dir: str, scaler: int, seq_len: int, pred_len: int, stride: int, batch_size: int, num_workers: int, is_persistent: bool):
     super().__init__()
@@ -316,31 +325,27 @@ class ColoradoDataModule(L.LightningDataModule):
   
   def sklearn_setup(self, set_name: str = "train"):
     if set_name == "train":
-      X, y = resample(self.X_train, self.y_train, replace=True, n_samples=len(self.X_train), random_state=SEED)
+        X, y = resample(self.X_train, self.y_train, replace=True,
+                        n_samples=len(self.X_train), random_state=SEED)
     elif set_name == "val":
-      X, y = self.X_val, self.y_val
+        X, y = self.X_val, self.y_val
     elif set_name == "test":
-      X, y = self.X_test, self.y_test
+        X, y = self.X_test, self.y_test
     else:
-      raise ValueError(
-          "Invalid set name. Choose from 'train', 'val', or 'test'.")
+        raise ValueError(
+            "Invalid set name. Choose from 'train', 'val', or 'test'.")
 
     seq_len, pred_len, stride = self.seq_len, self.pred_len, self.stride
-    X_window, y_target = [], []
+    max_start = len(X) - (seq_len + pred_len) + 1
 
-    max_start = len(X) - (seq_len + pred_len)+1
+    # Parallelize the loop
+    results = Parallel(n_jobs=-1)(
+        delayed(process_window)(i, X, y, seq_len, pred_len) for i in range(0, max_start, stride)
+    )
 
-    for i in range(0, max_start, stride):
-      X_win = X[i:i + seq_len]
-      y_tar = y[i + seq_len:i + seq_len + pred_len]
-
-      arr_x = np.asanyarray(X_win).reshape(-1)
-      arr_y = np.asanyarray(y_tar).reshape(-1)
-
-      X_window.append(arr_x)
-      y_target.append(arr_y)
-
-    return np.stack(X_window), np.stack(y_target)
+    # Unpack results
+    X_window, y_target = zip(*results)
+    return np.array(X_window), np.array(y_target)
 
 class SDUDataModule(L.LightningDataModule):
   def __init__(self, data_dir: str, scaler: int, seq_len: int, pred_len: int, stride: int, batch_size: int, num_workers: int, is_persistent: bool):
@@ -367,8 +372,6 @@ class SDUDataModule(L.LightningDataModule):
     # Load the data
     # df = pd.read_csv(self.data_dir, parse_dates=['Timestamp'])
     df = pd.read_csv(self.data_dir, skipinitialspace=True)
-
-
     df.columns = df.columns.str.strip()
     df['Timestamp'] = df['Timestamp'].str.strip()  # <-- Add this line
     df['Timestamp'] = pd.to_datetime(
@@ -414,31 +417,27 @@ class SDUDataModule(L.LightningDataModule):
 
   def sklearn_setup(self, set_name: str = "train"):
     if set_name == "train":
-      X, y = resample(self.X_train, self.y_train, replace=True, n_samples=len(self.X_train), random_state=SEED)
+        X, y = resample(self.X_train, self.y_train, replace=True,
+                        n_samples=len(self.X_train), random_state=SEED)
     elif set_name == "val":
-      X, y = self.X_val, self.y_val
+        X, y = self.X_val, self.y_val
     elif set_name == "test":
-      X, y = self.X_test, self.y_test
+        X, y = self.X_test, self.y_test
     else:
-      raise ValueError(
-          "Invalid set name. Choose from 'train', 'val', or 'test'.")
+        raise ValueError(
+            "Invalid set name. Choose from 'train', 'val', or 'test'.")
 
     seq_len, pred_len, stride = self.seq_len, self.pred_len, self.stride
-    X_window, y_target = [], []
+    max_start = len(X) - (seq_len + pred_len) + 1
 
-    max_start = len(X) - (seq_len + pred_len)+1
+    # Parallelize the loop
+    results = Parallel(n_jobs=-1)(
+        delayed(process_window)(i, X, y, seq_len, pred_len) for i in range(0, max_start, stride)
+    )
 
-    for i in range(0, max_start, stride):
-      X_win = X[i:i + seq_len]
-      y_tar = y[i + seq_len:i + seq_len + pred_len]
-
-      arr_x = np.asanyarray(X_win).reshape(-1)
-      arr_y = np.asanyarray(y_tar).reshape(-1)
-
-      X_window.append(arr_x)
-      y_target.append(arr_y)
-
-    return np.stack(X_window), np.stack(y_target)
+    # Unpack results
+    X_window, y_target = zip(*results)
+    return np.array(X_window), np.array(y_target)
 
 class CustomWriter(BasePredictionWriter):
   def __init__(self, output_dir, write_interval, combined_name, model_name):
@@ -684,6 +683,9 @@ def safe_objective(args, trial):
   except Exception as e:
     print(f"Failed trial: {e}. Skipped this trial.")
     return float('inf')
+  finally:
+    gc.collect()
+    torch.cuda.empty_cache()
   
 def tune_model_with_optuna(args, n_trials):
   study = optuna.create_study(direction="minimize")
@@ -712,9 +714,9 @@ def tune_model_with_optuna(args, n_trials):
 
 if __name__ == '__main__':
   parser = ArgumentParser()
-  parser.add_argument("--dataset", type=str, default="Colorado")
-  parser.add_argument("--pred_len", type=int, default=24)
-  parser.add_argument("--model", type=str, default="LSTM")
+  parser.add_argument("--dataset", type=str, default="SDU")
+  parser.add_argument("--pred_len", type=int, default=6)
+  parser.add_argument("--model", type=str, default="xPatch")
   args = parser.parse_args()
 
   best_params = tune_model_with_optuna(args, n_trials=150)

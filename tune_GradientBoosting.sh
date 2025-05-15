@@ -5,7 +5,7 @@
 #SBATCH --time=12:00:00 # 
 #SBATCH --ntasks=1
 #SBATCH --gres=gpu:4
-#SBATCH --cpus-per-task=125
-#SBATCH --mem=175G
+#SBATCH --cpus-per-task=128
+#SBATCH --mem=192G
 
 singularity exec --nv energycontainerblackbox.sif python3 baselines_tuning.py --dataset SDU --pred_len 6 --model GradientBoosting
