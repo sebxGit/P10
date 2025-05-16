@@ -1,5 +1,6 @@
 import sys
 import os
+import joblib
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -26,6 +27,8 @@ from sklearn.utils import resample
 from sklearn.multioutput import MultiOutputRegressor
 import ast
 
+from joblib import Parallel, delayed
+
 
 import torch
 from torch import nn
@@ -40,7 +43,7 @@ from lightning.pytorch import seed_everything
 SEED = 42
 seed_everything(SEED, workers=True)
 
-def convert_to_hourly(data):
+def convert_Colorado_to_hourly(data):
 
     # Remove unnecessary columns
     data = data.drop(columns=['Zip_Postal_Code'])
@@ -52,6 +55,7 @@ def convert_to_hourly(data):
 
     ####################### CONVERT DATASET TO HOURLY  #######################
 
+    # Split the session into hourly intervals
     hourly_rows = []
 
     # Iterate over each row in the dataframe to break charging sessions into hourly intervals
@@ -59,8 +63,9 @@ def convert_to_hourly(data):
         start, end = row['Start_DateTime'], row['Charging_EndTime']
         energy = row['Energy_Consumption']
 
+        # Generate hourly intervals
         hourly_intervals = pd.date_range(
-            start=start.floor('1h'), end=end.ceil('1h'), freq='1h')
+            start=start.floor('h'), end=end.ceil('h'), freq='h')
         total_duration = (end - start).total_seconds()
 
         for i in range(len(hourly_intervals) - 1):
@@ -78,8 +83,10 @@ def convert_to_hourly(data):
                 "Session_Count": 1  # Count of sessions in the interval
             })
 
+    # Create a new dataframe from the hourly intervals
     hourly_df = pd.DataFrame(hourly_rows)
 
+    # Aggregate the hourly intervals
     hourly_df = hourly_df.groupby('Time').agg({
         'Energy_Consumption': 'sum',
         'Session_Count': 'sum'
@@ -92,15 +99,34 @@ def convert_to_hourly(data):
 
     # Define time range for all 24 hours
     start_time = hourly_df.index.min().normalize()  # 00:00:00
-    end_time = hourly_df.index.max().normalize() + pd.Timedelta(days=1) - pd.Timedelta(hours=1)  # 23:00:00
+    end_time = hourly_df.index.max().normalize() + pd.Timedelta(days=1) - \
+        pd.Timedelta(hours=1)  # 23:00:00
 
     # Change range to time_range_full, so from 00:00:00 to 23:00:00
-    time_range_full = pd.date_range(start=start_time, end=end_time, freq='1h')
+    time_range_full = pd.date_range(start=start_time, end=end_time, freq='h')
+
+    # Reindex the hourly data to include all hours in the range
     hourly_df = hourly_df.reindex(time_range_full, fill_value=0)
 
+    # Return the hourly data
     return hourly_df
 
-def add_features(hourly_df, weather_df=None):
+def convert_SDU_to_hourly(df):
+  df = df.set_index('Timestamp')
+
+  hourly = df.resample('h').agg({
+      'Total number of EVs':      'sum',
+      'Number of charging EVs':   'sum',
+      'Number of driving EVs':    'sum',
+      'Total grid load':          'sum',
+      'Aggregated base load':     'sum',
+      'Aggregated charging load': 'sum',
+      'Overload duration [min]':  'sum',
+  })
+
+  return hourly
+
+def add_features(hourly_df, dataset_name, historical_feature, weather_df=None):
   ####################### TIMED BASED FEATURES  #######################
   hourly_df['Day_of_Week'] = hourly_df.index.dayofweek
 
@@ -118,9 +144,16 @@ def add_features(hourly_df, weather_df=None):
                             >= 6) & (hourly_df['Hour_of_Day'] <= 18)
 
   # Add holiday
-  us_holidays = holidays.US(years=range(2018, 2023 + 1))
-  hourly_df['IsHoliday'] = hourly_df.index.map(
-      lambda x: 1 if x.date() in us_holidays else 0)
+  if dataset_name == 'Colorado':
+    us_holidays = holidays.US(years=range(
+        hourly_df.index.year.min(), hourly_df.index.year.max() + 1))
+    hourly_df['IsHoliday'] = hourly_df.index.to_series(
+    ).dt.date.isin(us_holidays).astype(int)
+  elif dataset_name == 'SDU':
+    dk_holidays = holidays.DK(years=range(
+        hourly_df.index.year.min(), hourly_df.index.year.max() + 1))
+    hourly_df['IsHoliday'] = hourly_df.index.to_series(
+    ).dt.date.isin(dk_holidays).astype(int)
 
   # Add weekend
   hourly_df['Weekend'] = (hourly_df['Day_of_Week'] >= 5).astype(int)
@@ -157,26 +190,26 @@ def add_features(hourly_df, weather_df=None):
   ####################### HISTORICAL CONSUMPTION FEATURES  #######################
   # Lag features
   # 1h
-  hourly_df['Energy_Consumption_1h'] = hourly_df['Energy_Consumption'].shift(1)
+  hourly_df['Energy_Consumption_1h'] = hourly_df[historical_feature].shift(1)
 
   # 6h
-  hourly_df['Energy_Consumption_6h'] = hourly_df['Energy_Consumption'].shift(6)
+  hourly_df['Energy_Consumption_6h'] = hourly_df[historical_feature].shift(6)
 
   # 12h
-  hourly_df['Energy_Consumption_12h'] = hourly_df['Energy_Consumption'].shift(
+  hourly_df['Energy_Consumption_12h'] = hourly_df[historical_feature].shift(
       12)
 
   # 24h
-  hourly_df['Energy_Consumption_24h'] = hourly_df['Energy_Consumption'].shift(
+  hourly_df['Energy_Consumption_24h'] = hourly_df[historical_feature].shift(
       24)
 
   # 1 week
-  hourly_df['Energy_Consumption_1w'] = hourly_df['Energy_Consumption'].shift(
+  hourly_df['Energy_Consumption_1w'] = hourly_df[historical_feature].shift(
       24*7)
 
   # Rolling average
   # 24h
-  hourly_df['Energy_Consumption_rolling'] = hourly_df['Energy_Consumption'].rolling(
+  hourly_df['Energy_Consumption_rolling'] = hourly_df[historical_feature].rolling(
       window=24).mean()
 
   return hourly_df
@@ -217,6 +250,14 @@ class BootstrapSampler:
     def __len__(self):
         return self.dataset_size
 
+def process_window(i, X, y, seq_len, pred_len):
+  X_win = X[i:i + seq_len]
+  y_tar = y[i + seq_len:i + seq_len + pred_len]
+  arr_x = np.asanyarray(X_win).reshape(-1)
+  arr_y = np.asanyarray(y_tar).reshape(-1)
+  return arr_x, arr_y
+
+
 class ColoradoDataModule(L.LightningDataModule):
   def __init__(self, data_dir: str, scaler: int, seq_len: int, pred_len: int, stride: int, batch_size: int, num_workers: int, is_persistent: bool):
     super().__init__()
@@ -241,29 +282,24 @@ class ColoradoDataModule(L.LightningDataModule):
 
     # Load and preprocess the data
     data = pd.read_csv(self.data_dir)
-    data = convert_to_hourly(data)
-    data = add_features(data, weather_df='Colorado/denver_weather.csv')
+    data = convert_Colorado_to_hourly(data)
+    data = add_features(data, dataset_name='Colorado', historical_feature='Energy_Consumption', weather_df='Colorado/denver_weather.csv')
     df = filter_data(start_date, end_date, data)
 
     df = df.dropna()
-
-    #df.to_csv('final_df_hourly.csv', index=True)  
 
     X = df.copy()
 
     y = X.pop('Energy_Consumption')
 
-    #y = create_multi_step_targets(X['Energy_Consumption'], horizon=24)
-    #X=X.iloc[:-24]
-    #y=y[:-24] 
-
     # 60/20/20 split
-    X_tv, self.X_test, y_tv, self.y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
-    self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(X_tv, y_tv, test_size=0.25, shuffle=False)
+    X_tv, self.X_test, y_tv, self.y_test = train_test_split(
+        X, y, test_size=0.2, shuffle=False)
+    self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(
+        X_tv, y_tv, test_size=0.25, shuffle=False)
 
     preprocessing = self.scaler
     preprocessing.fit(self.X_train)  # should only fit to training data
-    
 
     if stage == "fit" or stage is None:
       self.X_train = preprocessing.transform(self.X_train)
@@ -277,41 +313,140 @@ class ColoradoDataModule(L.LightningDataModule):
       self.y_test = np.array(self.y_test)
 
   def train_dataloader(self):
-    train_dataset = TimeSeriesDataset(self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-    train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    train_dataset = TimeSeriesDataset(
+        self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+    sampler = BootstrapSampler(len(train_dataset), random_state=SEED)
+    train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
+    # train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return train_loader
-  
+
   def predict_dataloader(self):
-    val_dataset = TimeSeriesDataset(self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-    val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    val_dataset = TimeSeriesDataset(
+        self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+    val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False,
+                            num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return val_loader
-  
-  def sklearn_setup(self, set_name: str = "train"): 
+
+  def sklearn_setup(self, set_name: str = "train"):
     if set_name == "train":
-      X, y = self.X_train, self.y_train
+        X, y = resample(self.X_train, self.y_train, replace=True, n_samples=len(self.X_train), random_state=SEED)
     elif set_name == "val":
-      X, y = self.X_val, self.y_val
+        X, y = self.X_val, self.y_val
     elif set_name == "test":
-      X, y = self.X_test, self.y_test
+        X, y = self.X_test, self.y_test
     else:
-      raise ValueError("Invalid set name. Choose from 'train', 'val', or 'test'.")
-    
+        raise ValueError(
+            "Invalid set name. Choose from 'train', 'val', or 'test'.")
+
     seq_len, pred_len, stride = self.seq_len, self.pred_len, self.stride
-    X_window, y_target = [], []
+    max_start = len(X) - (seq_len + pred_len) + 1
 
-    max_start = len(X) - (seq_len + pred_len)+1
+    # Parallelize the loop
+    results = Parallel(n_jobs=-1)(
+        delayed(process_window)(i, X, y, seq_len, pred_len) for i in range(0, max_start, stride)
+    )
 
-    for i in range(0, max_start, stride):
-        X_win = X[i:i + seq_len]
-        y_tar = y[i + seq_len:i + seq_len + pred_len]
+    # Unpack results
+    X_window, y_target = zip(*results)
+    return np.array(X_window), np.array(y_target)
 
-        arr_x = np.asanyarray(X_win).reshape(-1)
-        arr_y = np.asanyarray(y_tar).reshape(-1)
 
-        X_window.append(arr_x)
-        y_target.append(arr_y)
+class SDUDataModule(L.LightningDataModule):
+  def __init__(self, data_dir: str, scaler: int, seq_len: int, pred_len: int, stride: int, batch_size: int, num_workers: int, is_persistent: bool):
+    super().__init__()
+    self.data_dir = data_dir
+    self.scaler = scaler
+    self.seq_len = seq_len
+    self.pred_len = pred_len
+    self.stride = stride
+    self.batch_size = batch_size
+    self.num_workers = num_workers
+    self.is_persistent = is_persistent
+    self.X_train = None
+    self.y_train = None
+    self.X_val = None
+    self.y_val = None
+    self.X_test = None
+    self.y_test = None
 
-    return np.stack(X_window), np.stack(y_target)
+  def setup(self, stage: str):
+    start_date = pd.to_datetime('2024-12-31')
+    end_date = pd.to_datetime('2032-12-31')
+
+    # Load the data
+    # df = pd.read_csv(self.data_dir, parse_dates=['Timestamp'])
+    df = pd.read_csv(self.data_dir, skipinitialspace=True)
+    df.columns = df.columns.str.strip()
+    df['Timestamp'] = df['Timestamp'].str.strip()  # <-- Add this line
+    df['Timestamp'] = pd.to_datetime(
+        df['Timestamp'], format="%b %d, %Y, %I:%M:%S %p")
+    df = convert_SDU_to_hourly(df)
+    feature_df = add_features(
+        hourly_df=df, dataset_name='SDU', historical_feature='Aggregated charging load')
+    df = filter_data(start_date, end_date, feature_df)
+
+    df = df.dropna()
+    X = df.copy()
+
+    y = X.pop('Aggregated charging load')
+
+    # 60/20/20 split
+    X_tv, self.X_test, y_tv, self.y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
+    self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(X_tv, y_tv, test_size=0.25, shuffle=False)
+
+    preprocessing = self.scaler
+    preprocessing.fit(self.X_train)  # should only fit to training data
+
+    if stage == "fit" or stage is None:
+      self.X_train = preprocessing.transform(self.X_train)
+      self.y_train = np.array(self.y_train)
+
+      self.X_val = preprocessing.transform(self.X_val)
+      self.y_val = np.array(self.y_val)
+
+    if stage == "test" or "predict" or stage is None:
+      self.X_test = preprocessing.transform(self.X_test)
+      self.y_test = np.array(self.y_test)
+
+  def train_dataloader(self):
+    train_dataset = TimeSeriesDataset(
+        self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+    sampler = BootstrapSampler(len(train_dataset), random_state=SEED)
+    train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler,
+                              shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
+    # train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    return train_loader
+
+  def predict_dataloader(self):
+    val_dataset = TimeSeriesDataset(
+        self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+    val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False,
+                            num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    return val_loader
+
+  def sklearn_setup(self, set_name: str = "train"):
+    if set_name == "train":
+        X, y = resample(self.X_train, self.y_train, replace=True,
+                        n_samples=len(self.X_train), random_state=SEED)
+    elif set_name == "val":
+        X, y = self.X_val, self.y_val
+    elif set_name == "test":
+        X, y = self.X_test, self.y_test
+    else:
+        raise ValueError(
+            "Invalid set name. Choose from 'train', 'val', or 'test'.")
+
+    seq_len, pred_len, stride = self.seq_len, self.pred_len, self.stride
+    max_start = len(X) - (seq_len + pred_len) + 1
+
+    # Parallelize the loop
+    results = joblib.Parallel(n_jobs=-1)(
+        delayed(process_window)(i, X, y, seq_len, pred_len) for i in range(0, max_start, stride)
+    )
+
+    # Unpack results
+    X_window, y_target = zip(*results)
+    return np.array(X_window), np.array(y_target)
 
 class CustomWriter(BasePredictionWriter):
   def __init__(self, output_dir, write_interval, combined_name, model_name):
@@ -415,7 +550,12 @@ def objective(args, trial, all_subsets):
   for model in bagging_models:
     model_name = model.name if isinstance(model, torch.nn.Module) else model.__class__.__name__
     _hparams = ast.literal_eval(hparams[hparams['model'] == model_name]['parameters'].values[0])
-    colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=scaler_map.get(args.scaler)(), seq_len=args.seq_len, batch_size=_hparams['batch_size'], pred_len=args.pred_len, stride=args.stride, num_workers=_hparams['num_workers'], is_persistent=True if _hparams['num_workers'] > 0 else False)
+
+    if args.dataset == "Colorado":
+      colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=scaler_map.get(args.scaler)(), seq_len=args.seq_len, batch_size=_hparams['batch_size'], pred_len=args.pred_len, stride=args.stride, num_workers=_hparams['num_workers'], is_persistent=True if _hparams['num_workers'] > 0 else False)
+    else: 
+      colmod = SDUDataModule(data_dir='SDU Dataset/DumbCharging_2020_to_2032/Measurements.csv', scaler=scaler_map.get(args.scaler)(), seq_len=args.seq_len, batch_size=_hparams['batch_size'], pred_len=args.pred_len, stride=args.stride, num_workers=_hparams['num_workers'], is_persistent=True if _hparams['num_workers'] > 0 else False)
+
     colmod.prepare_data()
     colmod.setup(stage=None)
 
@@ -464,6 +604,8 @@ parser.add_argument("--stride", type=int, default=24)
 parser.add_argument("--seq_len", type=int, default=24*7)
 parser.add_argument("--optimizer", type=str, default="Adam")
 parser.add_argument("--scaler", type=str, default="MinMaxScaler")
+parser.add_argument("--load", type=bool, default=False)
+parser.add_argument("--dataset", type=str, default="Colorado")
 criterion_map = { 
                   "MSELoss": nn.MSELoss, 
                   "MAELoss": nn.L1Loss,
@@ -507,5 +649,17 @@ if __name__ == "__main__":
 
   all_subsets = [list(subset) for subset in all_subsets if len(subset) >= 3]
 
-  study = optuna.create_study(direction="minimize", study_name=f"Bagging-{combined_name}")
-  study.optimize(lambda trial: objective(args, trial, all_subsets), n_trials=2, gc_after_trial=True, timeout=43000)
+  if args.load:
+    try:
+      study = joblib.load(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_tuning.pkl')
+      print("Loaded an old study:")
+    except Exception as e:
+      print("No previous tuning found. Starting a new tuning.", e)
+      study = optuna.create_study(direction="minimize", study_name=f"Bagging-{combined_name}")
+  else:
+    print("Starting a new tuning.")
+    study = optuna.create_study(direction="minimize", study_name=f"Bagging-{combined_name}")
+
+  study.optimize(lambda trial: objective(args, trial, all_subsets), n_trials=150, gc_after_trial=True, timeout=37800)
+
+  joblib.dump(study, f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_tuning.pkl')
