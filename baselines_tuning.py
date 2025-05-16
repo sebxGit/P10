@@ -1,5 +1,6 @@
 import os
 import gc
+import joblib
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -688,8 +689,20 @@ def safe_objective(args, trial):
     torch.cuda.empty_cache()
   
 def tune_model_with_optuna(args, n_trials):
-  study = optuna.create_study(direction="minimize")
-  study.optimize(lambda trial: objective(args, trial), n_trials=n_trials, gc_after_trial=True, timeout=43000)
+  if args.load:
+    try:
+      study = joblib.load(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_tuning.pkl')
+      print("Loaded an old study:")
+    except Exception as e:
+      print("No previous tuning found. Starting a new tuning.", e)
+      study = optuna.create_study(direction="minimize")
+  else:
+    print("Starting a new tuning.")
+    study = optuna.create_study(direction="minimize")
+
+  study.optimize(lambda trial: objective(args, trial), n_trials=n_trials, gc_after_trial=True, timeout=37800)
+
+  joblib.dump(study, f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_tuning.pkl')
 
   print("Len trials:", len(study.trials))
   print("Best params:", study.best_params)
@@ -698,7 +711,7 @@ def tune_model_with_optuna(args, n_trials):
   if study.best_value != float('inf'):
     try:
       df_tuning = pd.read_csv(f'Tunings/{args.dataset}_{args.pred_len}h_tuning.csv')
-    except:
+    except Exception:
       df_tuning = pd.DataFrame(columns=['model', 'trials', 'val_loss', 'parameters'])
 
     new_row = {'model': args.model, 'trials': len(study.trials), 'val_loss': study.best_value, 'parameters': study.best_params}
@@ -716,7 +729,8 @@ if __name__ == '__main__':
   parser = ArgumentParser()
   parser.add_argument("--dataset", type=str, default="SDU")
   parser.add_argument("--pred_len", type=int, default=6)
-  parser.add_argument("--model", type=str, default="xPatch")
+  parser.add_argument("--model", type=str, default="LSTM")
+  parser.add_argument("--load", type=bool, default=False)
   args = parser.parse_args()
 
   best_params = tune_model_with_optuna(args, n_trials=150)
