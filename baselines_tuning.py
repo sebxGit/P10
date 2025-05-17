@@ -730,7 +730,7 @@ if __name__ == '__main__':
   parser.add_argument("--dataset", type=str, default="SDU")
   parser.add_argument("--pred_len", type=int, default=6)
   parser.add_argument("--model", type=str, default="LSTM")
-  parser.add_argument("--load", type=bool, default=False)
+  parser.add_argument("--load", type=bool, default=True)
   args = parser.parse_args()
 
   best_params = tune_model_with_optuna(args, n_trials=150)
