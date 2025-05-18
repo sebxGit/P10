@@ -629,7 +629,7 @@ model_initializers = {
 }
 
 if __name__ == "__main__":
-  hparams = pd.read_csv(f'/Tunings/{args.dataset}_{args.pred_len}h_tuning.csv')
+  hparams = pd.read_csv(f'./Tunings/{args.dataset}_{args.pred_len}h_tuning.csv')
   lstm_params = ast.literal_eval(hparams[hparams['model'] == 'LSTM']['parameters'].values[0])
   gru_params = ast.literal_eval(hparams[hparams['model'] == 'GRU']['parameters'].values[0])
   mlp_params = ast.literal_eval(hparams[hparams['model'] == 'MLP']['parameters'].values[0])
