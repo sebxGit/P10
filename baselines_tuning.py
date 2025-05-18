@@ -34,6 +34,8 @@ from lightning.pytorch.callbacks import BasePredictionWriter
 from lightning.pytorch import seed_everything
 from joblib import Parallel, delayed
 
+torch.set_float32_matmul_precision('medium')
+
 # tensorboard --logdir=Predictions/MLP-GRU-LSTM
 
 SEED = 42
@@ -507,7 +509,8 @@ def objective(args, trial):
         'scaler': MinMaxScaler(),
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
-        'max_epochs': trial.suggest_int('max_epochs', 100, 1000, step=100),
+        'max_epochs': 100,
+   #     'max_epochs': trial.suggest_int('max_epochs', 100, 1000, step=100),
         'num_workers': trial.suggest_int('num_workers', 5, 12),
         'is_persistent': True,
     }
@@ -659,13 +662,16 @@ def objective(args, trial):
       tuned_model = LightningModel(model=model, criterion=params['criterion'], optimizer=params['optimizer'], learning_rate=params['learning_rate'])
 
       # Trainer for fitting using DDP - Multi GPU
-      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
-      #trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False)
+      #trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
+      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, enable_checkpointing=False)
       trainer.fit(tuned_model, colmod)
 
       # New Trainer for inference on one GPU
-      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, devices=1)
+      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, enable_checkpointing=False, devices=1)
       predictions = trainer.predict(tuned_model, colmod, return_predictions=True)
+
+      #print("Predictions: ", predictions)
+
       pred, act = get_actuals_and_prediction_flattened(colmod, predictions)
       val_loss = mean_absolute_error(act, pred)
 
@@ -728,9 +734,9 @@ def tune_model_with_optuna(args, n_trials):
 if __name__ == '__main__':
   parser = ArgumentParser()
   parser.add_argument("--dataset", type=str, default="SDU")
-  parser.add_argument("--pred_len", type=int, default=6)
-  parser.add_argument("--model", type=str, default="LSTM")
+  parser.add_argument("--pred_len", type=int, default=24)
+  parser.add_argument("--model", type=str, default="DPAD")
   parser.add_argument("--load", type=bool, default=True)
   args = parser.parse_args()
 
-  best_params = tune_model_with_optuna(args, n_trials=150)
+  best_params = tune_model_with_optuna(args, n_trials=10)
