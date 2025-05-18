@@ -1,3 +1,4 @@
+import argparse
 import os
 import gc
 import joblib
@@ -33,8 +34,6 @@ from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from lightning.pytorch.callbacks import BasePredictionWriter
 from lightning.pytorch import seed_everything
 from joblib import Parallel, delayed
-
-torch.set_float32_matmul_precision('medium')
 
 # tensorboard --logdir=Predictions/MLP-GRU-LSTM
 
@@ -328,8 +327,7 @@ class ColoradoDataModule(L.LightningDataModule):
   
   def sklearn_setup(self, set_name: str = "train"):
     if set_name == "train":
-        X, y = resample(self.X_train, self.y_train, replace=True,
-                        n_samples=len(self.X_train), random_state=SEED)
+        X, y = resample(self.X_train, self.y_train, replace=True, n_samples=len(self.X_train), random_state=SEED)
     elif set_name == "val":
         X, y = self.X_val, self.y_val
     elif set_name == "test":
@@ -509,8 +507,7 @@ def objective(args, trial):
         'scaler': MinMaxScaler(),
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
-        'max_epochs': 100,
-   #     'max_epochs': trial.suggest_int('max_epochs', 100, 1000, step=100),
+        'max_epochs': trial.suggest_int('max_epochs', 100, 1000, step=100),
         'num_workers': trial.suggest_int('num_workers', 5, 12),
         'is_persistent': True,
     }
@@ -663,11 +660,15 @@ def objective(args, trial):
 
       # Trainer for fitting using DDP - Multi GPU
       #trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
-      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, enable_checkpointing=False)
+      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
+
+         
       trainer.fit(tuned_model, colmod)
 
       # New Trainer for inference on one GPU
-      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, enable_checkpointing=False, devices=1)
+      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, devices=1)
+    
+
       predictions = trainer.predict(tuned_model, colmod, return_predictions=True)
 
       #print("Predictions: ", predictions)
@@ -695,12 +696,12 @@ def safe_objective(args, trial):
     torch.cuda.empty_cache()
   
 def tune_model_with_optuna(args, n_trials):
-  if args.load:
+  if args.load == 'True':
     try:
       study = joblib.load(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_tuning.pkl')
       print("Loaded an old study:")
     except Exception as e:
-      print("No previous tuning found. Starting a new tuning.", e)
+      print("No previous tuning found. Starting a new tuning.", e) 
       study = optuna.create_study(direction="minimize")
   else:
     print("Starting a new tuning.")
@@ -735,8 +736,9 @@ if __name__ == '__main__':
   parser = ArgumentParser()
   parser.add_argument("--dataset", type=str, default="SDU")
   parser.add_argument("--pred_len", type=int, default=24)
-  parser.add_argument("--model", type=str, default="DPAD")
-  parser.add_argument("--load", type=bool, default=True)
+  parser.add_argument("--model", type=str, default="LSTM")
+  parser.add_argument("--load", type=str, default='True')
+  parser.add_argument("--mixed", type=str, default='True')
   args = parser.parse_args()
 
-  best_params = tune_model_with_optuna(args, n_trials=10)
+  best_params = tune_model_with_optuna(args, n_trials=150)
