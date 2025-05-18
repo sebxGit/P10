@@ -598,14 +598,14 @@ def objective(args, trial, all_subsets):
 parser = ArgumentParser()
 parser.add_argument("--criterion", type=str, default="MAELoss")
 parser.add_argument("--models", type=str, default="['LSTM', 'GRU', 'MLP', 'DPAD']")
-parser.add_argument("--input_size", type=int, default=22)
+parser.add_argument("--dataset", type=str, default="SDU")
+parser.add_argument("--input_size", type=int, default=26)
 parser.add_argument("--pred_len", type=int, default=24)
 parser.add_argument("--stride", type=int, default=24)
 parser.add_argument("--seq_len", type=int, default=24*7)
 parser.add_argument("--optimizer", type=str, default="Adam")
 parser.add_argument("--scaler", type=str, default="MinMaxScaler")
 parser.add_argument("--load", type=bool, default=False)
-parser.add_argument("--dataset", type=str, default="SDU")
 criterion_map = { 
                   "MSELoss": nn.MSELoss, 
                   "MAELoss": nn.L1Loss,
