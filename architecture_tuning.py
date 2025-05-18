@@ -621,24 +621,24 @@ args = parser.parse_args()
 model_initializers = {
   "LSTM": lambda: LSTM(input_size=args.input_size, pred_len=args.pred_len, hidden_size=lstm_params['hidden_size'], num_layers=lstm_params['num_layers'], dropout=lstm_params['dropout'] ),
   "GRU": lambda: GRU(input_size=args.input_size, pred_len=args.pred_len, hidden_size=gru_params['hidden_size'], num_layers=gru_params['num_layers'], dropout=gru_params['dropout']),
-  "MLP": lambda: MLP(num_features=args.seq_len*args.input_size, pred_len=args.pred_len, seq_len=mlp_params['batch_size'], hidden_size=mlp_params['hidden_size']),
-  "xPatch": lambda: xPatch(xpatch_params),
-  "PatchMixer": lambda: PatchMixer(patchmixer_params),
-  "DPAD": lambda: DPAD_GCN(input_len=args.seq_len, output_len=args.pred_len, input_dim=args.input_size, enc_hidden=dpad_params['enc_hidden'], dec_hidden=dpad_params['dec_hidden'],
-                                dropout=dpad_params['dropout'], num_levels=dpad_params['num_levels'], K_IMP=dpad_params['K_IMP'], RIN=dpad_params['RIN'])
+  # "MLP": lambda: MLP(num_features=args.seq_len*args.input_size, pred_len=args.pred_len, seq_len=mlp_params['batch_size'], hidden_size=mlp_params['hidden_size']),
+  # "xPatch": lambda: xPatch(xpatch_params),
+  # "PatchMixer": lambda: PatchMixer(patchmixer_params),
+  # "DPAD": lambda: DPAD_GCN(input_len=args.seq_len, output_len=args.pred_len, input_dim=args.input_size, enc_hidden=dpad_params['enc_hidden'], dec_hidden=dpad_params['dec_hidden'],
+  #                               dropout=dpad_params['dropout'], num_levels=dpad_params['num_levels'], K_IMP=dpad_params['K_IMP'], RIN=dpad_params['RIN'])
 }
 
 if __name__ == "__main__":
   hparams = pd.read_csv(f'./Tunings/{args.dataset}_{args.pred_len}h_tuning.csv')
   lstm_params = ast.literal_eval(hparams[hparams['model'] == 'LSTM']['parameters'].values[0])
   gru_params = ast.literal_eval(hparams[hparams['model'] == 'GRU']['parameters'].values[0])
-  mlp_params = ast.literal_eval(hparams[hparams['model'] == 'MLP']['parameters'].values[0])
-  xpatch_params = Configs(ast.literal_eval(hparams[hparams['model'] == 'xPatch']['parameters'].values[0]))
-  patchmixer_params = Configs(ast.literal_eval(hparams[hparams['model'] == 'PatchMixer']['parameters'].values[0]))
-  dpad_params = ast.literal_eval(hparams[hparams['model'] == 'DPAD']['parameters'].values[0])
-  rf_params = ast.literal_eval(hparams[hparams['model'] == 'RandomForest']['parameters'].values[0])
-  ada_params = ast.literal_eval(hparams[hparams['model'] == 'AdaBoost']['parameters'].values[0])
-  gb_params = ast.literal_eval(hparams[hparams['model'] == 'GradientBoosting']['parameters'].values[0])
+  # mlp_params = ast.literal_eval(hparams[hparams['model'] == 'MLP']['parameters'].values[0])
+  # xpatch_params = Configs(ast.literal_eval(hparams[hparams['model'] == 'xPatch']['parameters'].values[0]))
+  # patchmixer_params = Configs(ast.literal_eval(hparams[hparams['model'] == 'PatchMixer']['parameters'].values[0]))
+  # dpad_params = ast.literal_eval(hparams[hparams['model'] == 'DPAD']['parameters'].values[0])
+  # rf_params = ast.literal_eval(hparams[hparams['model'] == 'RandomForest']['parameters'].values[0])
+  # ada_params = ast.literal_eval(hparams[hparams['model'] == 'AdaBoost']['parameters'].values[0])
+  # gb_params = ast.literal_eval(hparams[hparams['model'] == 'GradientBoosting']['parameters'].values[0])
 
   selected_models = ast.literal_eval(args.models)
   combined_name = "-".join([m for m in selected_models])
