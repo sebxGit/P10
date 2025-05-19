@@ -36,7 +36,7 @@ from joblib import Parallel, delayed
 
 SEED = 42
 seed_everything(SEED, workers=True)
-# tensorboard --logdir=Predictions/MLP-GRU-LSTM
+
 
 def convert_Colorado_to_hourly(data):
 
@@ -106,6 +106,7 @@ def convert_Colorado_to_hourly(data):
     # Return the hourly data
     return hourly_df
 
+
 def convert_SDU_to_hourly(df):
   df = df.set_index('Timestamp')
 
@@ -120,6 +121,7 @@ def convert_SDU_to_hourly(df):
   })
 
   return hourly
+
 
 def add_features(hourly_df, dataset_name, historical_feature, weather_df=None):
   ####################### TIMED BASED FEATURES  #######################
@@ -209,6 +211,7 @@ def add_features(hourly_df, dataset_name, historical_feature, weather_df=None):
 
   return hourly_df
 
+
 def filter_data(start_date, end_date, data):
     ####################### FILTER DATASET  #######################
     data = data[(data.index >= start_date) & (data.index <= end_date)].copy()
@@ -216,11 +219,21 @@ def filter_data(start_date, end_date, data):
 
     return data
 
+
 class TimeSeriesDataset(Dataset):
   def __init__(self, X: np.ndarray, y: np.ndarray, seq_len: int = 1, pred_len: int = 24, stride: int = 24):
     self.seq_len = seq_len
     self.pred_len = pred_len
     self.stride = stride
+
+    if isinstance(X, pd.DataFrame):
+        X = X.to_numpy()
+    if isinstance(y, pd.Series):
+        y = y.to_numpy()
+
+    # Ensure data is numeric and handle non-numeric values
+    X = np.asarray(X, dtype=np.float32)
+    y = np.asarray(y, dtype=np.float32)
 
     self.X = torch.tensor(X).float()
     self.y = torch.tensor(y).float()
@@ -231,8 +244,10 @@ class TimeSeriesDataset(Dataset):
   def __getitem__(self, index):
     start_idx = index * self.stride
     x_window = self.X[start_idx: start_idx + self.seq_len]
-    y_target = self.y[start_idx + self.seq_len: start_idx + self.seq_len + self.pred_len]
+    y_target = self.y[start_idx + self.seq_len: start_idx +
+                      self.seq_len + self.pred_len]
     return x_window, y_target
+
 
 class BootstrapSampler:
     def __init__(self, dataset_size, random_state=None):
@@ -247,12 +262,14 @@ class BootstrapSampler:
     def __len__(self):
         return self.dataset_size
 
+
 def process_window(i, X, y, seq_len, pred_len):
   X_win = X[i:i + seq_len]
   y_tar = y[i + seq_len:i + seq_len + pred_len]
   arr_x = np.asanyarray(X_win).reshape(-1)
   arr_y = np.asanyarray(y_tar).reshape(-1)
   return arr_x, arr_y
+
 
 class ColoradoDataModule(L.LightningDataModule):
   def __init__(self, data_dir: str, scaler: int, seq_len: int, pred_len: int, stride: int, batch_size: int, num_workers: int, is_persistent: bool):
@@ -349,6 +366,7 @@ class ColoradoDataModule(L.LightningDataModule):
     X_window, y_target = zip(*results)
     return np.array(X_window), np.array(y_target)
 
+
 class SDUDataModule(L.LightningDataModule):
   def __init__(self, data_dir: str, scaler: int, seq_len: int, pred_len: int, stride: int, batch_size: int, num_workers: int, is_persistent: bool):
     super().__init__()
@@ -411,15 +429,16 @@ class SDUDataModule(L.LightningDataModule):
   def train_dataloader(self):
     train_dataset = TimeSeriesDataset(
         self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-    sampler = BootstrapSampler(len(train_dataset), random_state=SEED)
-    train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler,
-                              shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
-    # train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    #sampler = BootstrapSampler(len(train_dataset), random_state=SEED)
+    #train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
+    train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return train_loader
 
   def predict_dataloader(self):
-    val_dataset = TimeSeriesDataset(self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-    val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    val_dataset = TimeSeriesDataset(
+        self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+    val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False,
+                            num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return val_loader
 
   def sklearn_setup(self, set_name: str = "train"):
@@ -446,6 +465,7 @@ class SDUDataModule(L.LightningDataModule):
     X_window, y_target = zip(*results)
     return np.array(X_window), np.array(y_target)
 
+
 class CustomWriter(BasePredictionWriter):
   def __init__(self, output_dir, write_interval, combined_name, model_name):
     super().__init__(write_interval)
@@ -454,9 +474,12 @@ class CustomWriter(BasePredictionWriter):
     self.model_name = model_name
 
   def write_on_epoch_end(self, trainer, pl_module, predictions, batch_indices):
-    filename = os.path.join(self.output_dir, f"{self.combined_name}/predictions_{self.model_name}.pt")
-    os.makedirs(os.path.join(self.output_dir, self.combined_name), exist_ok=True)
+    filename = os.path.join(
+        self.output_dir, f"{self.combined_name}/predictions_{self.model_name}.pt")
+    os.makedirs(os.path.join(self.output_dir,
+                self.combined_name), exist_ok=True)
     torch.save(predictions, filename)
+
 
 class LightningModel(L.LightningModule):
   def __init__(self, model, criterion, optimizer, learning_rate):
@@ -512,6 +535,7 @@ def create_and_save_ensemble(combined_name):
   for i, pt_file in enumerate(pt_files):
     file_path = os.path.join(folder_path, pt_file)
     predictions = torch.load(file_path, weights_only=False)
+    print(f"Type of predictions: {type(predictions[0])}")
     if type(predictions[0]) == torch.Tensor:
       predictions = [elem.item() for sublist in predictions for elem in sublist.flatten()]
     elif type(predictions[0]) == np.float64:
@@ -641,7 +665,7 @@ if __name__ == "__main__":
       trainer = L.Trainer(max_epochs=_hparams['max_epochs'], callbacks=[pred_writer], log_every_n_steps=_hparams['batch_size']//2, precision='16-mixed', enable_checkpointing=False)
       trainer.fit(model, colmod)
 
-      trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, devices=1)
+      trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=0, precision='16-mixed', callbacks=[pred_writer], enable_checkpointing=False, devices=1)
       trainer.predict(model, colmod, return_predictions=False)
     
     elif isinstance(model, BaseEstimator):
