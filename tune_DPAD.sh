@@ -8,4 +8,4 @@
 #SBATCH --cpus-per-task=20
 #SBATCH --mem=192G
 
-singularity exec --nv energycontainerblackbox.sif python3 baselines_tuning_dpad --dataset SDU --pred_len 24 --mixed False --model DPAD
+singularity exec --nv energycontainerblackbox.sif python3 baselines_tuning.py --dataset Colorado --pred_len 24 --mixed True --model DPAD

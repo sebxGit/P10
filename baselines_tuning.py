@@ -501,7 +501,7 @@ def objective(args, trial):
         'pred_len': args.pred_len,
         'seq_len': 24*7,
         'stride': args.pred_len,
-        'batch_size': trial.suggest_int('batch_size', 32, 128, step=16),
+        'batch_size': trial.suggest_int('batch_size', 32, 128, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
         'criterion': torch.nn.L1Loss(),
         'optimizer': torch.optim.Adam,
         'scaler': MinMaxScaler(),
@@ -544,7 +544,7 @@ def objective(args, trial):
         'n_estimators': trial.suggest_int('n_estimators', 50, 200),
         'learning_rate_model': trial.suggest_float('learning_rate_model', 0.01, 1.0),
       }
-      model = MultiOutputRegressor(AdaBoostRegressor(n_estimators=_params['n_estimators'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
+      model = AdaBoostRegressor(n_estimators=_params['n_estimators'], learning_rate=_params['learning_rate_model'], random_state=params['seed'])
     elif args.model == "RandomForest":
       _params = {
         'n_estimators': trial.suggest_int('n_estimators', 50, 200),
@@ -575,13 +575,14 @@ def objective(args, trial):
         }
         model = DPAD_GCN(input_len=params['seq_len'], output_len=params['pred_len'], input_dim=params['input_size'], enc_hidden=_params['enc_hidden'], dec_hidden=_params['dec_hidden'], dropout=_params['dropout'], num_levels=_params['num_levels'], K_IMP=_params['K_IMP'], RIN=_params['RIN'])
     elif args.model == "xPatch":
+      stride_patch = trial.suggest_int('stride_patch', 12, 48, step=12)
       params_xpatch = Configs(
         dict(
         seq_len = params['seq_len'],
         pred_len = params['pred_len'],
         enc_in = params['input_size'],
-        patch_len = trial.suggest_int('patch_len', 1, 24),
-        stride = trial.suggest_int('stride', 1, 24),
+        patch_len = stride_patch,
+        stride = stride_patch,
         padding_patch = trial.suggest_categorical('padding_patch', ['end', 'None']),
         revin = trial.suggest_int('revin', 0, 1),
         ma_type = trial.suggest_categorical('ma_type', ['reg', 'ema']),
@@ -677,8 +678,12 @@ def objective(args, trial):
     elif isinstance(model, BaseEstimator):
       name = model.__class__.__name__
       print(f"-----Training {type(model.estimator).__name__ if name == 'MultiOutputRegressor' else name} model-----")
-      X_train, y_train = colmod.sklearn_setup("train")
-      X_val, y_val = colmod.sklearn_setup("val")
+      # X_train, y_train = colmod.sklearn_setup("train")
+      # X_val, y_val = colmod.sklearn_setup("val")
+
+      X_train, y_train = resample(colmod.X_train, colmod.y_train, replace=True, n_samples=len(colmod.X_train), random_state=SEED)
+      X_val, y_val = colmod.X_val, colmod.y_val
+      
       model.fit(X_train, y_train)
       train_loss = mean_absolute_error(y_val, model.predict(X_val))
     return train_loss
@@ -732,11 +737,11 @@ def tune_model_with_optuna(args, n_trials):
 
 if __name__ == '__main__':
   parser = ArgumentParser()
-  parser.add_argument("--dataset", type=str, default="SDU")
+  parser.add_argument("--dataset", type=str, default="Colorado")
   parser.add_argument("--pred_len", type=int, default=24)
-  parser.add_argument("--model", type=str, default="LSTM")
+  parser.add_argument("--model", type=str, default="AdaBoost")
   parser.add_argument("--load", type=str, default='True')
   parser.add_argument("--mixed", type=str, default='True')
   args = parser.parse_args()
 
-  best_params = tune_model_with_optuna(args, n_trials=150)
+  best_params = tune_model_with_optuna(args, n_trials=3)
