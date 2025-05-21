@@ -158,10 +158,8 @@ def add_features(hourly_df, dataset_name, historical_feature, weather_df=None):
   hourly_df['HourCos'] = np.cos(2 * np.pi * hourly_df['Hour_of_Day'] / 24)
   hourly_df['DayOfWeekSin'] = np.sin(2 * np.pi * hourly_df['Day_of_Week'] / 7)
   hourly_df['DayOfWeekCos'] = np.cos(2 * np.pi * hourly_df['Day_of_Week'] / 7)
-  hourly_df['MonthOfYearSin'] = np.sin(
-      2 * np.pi * hourly_df['Month_of_Year'] / 12)
-  hourly_df['MonthOfYearCos'] = np.cos(
-      2 * np.pi * hourly_df['Month_of_Year'] / 12)
+  hourly_df['MonthOfYearSin'] = np.sin(2 * np.pi * hourly_df['Month_of_Year'] / 12)
+  hourly_df['MonthOfYearCos'] = np.cos(2 * np.pi * hourly_df['Month_of_Year'] / 12)
 
   ####################### SEASONAL FEATURES  #######################
   # 0 = Spring, 1 = Summer, 2 = Autumn, 3 = Winter
@@ -566,10 +564,10 @@ def objective(args, trial):
       model = MultiOutputRegressor(GradientBoostingRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], min_samples_leaf=_params['min_samples_leaf'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "DPAD":
         _params = {
-          'enc_hidden': trial.suggest_int('enc_hidden', 1, 400),
-          'dec_hidden': trial.suggest_int('dec_hidden', 1, 400),
-          'num_levels': trial.suggest_int('num_levels', 1, 2),
-          'dropout': trial.suggest_float('dropout', 0.0, 1),
+          'enc_hidden': trial.suggest_int('enc_hidden', 108, 336, step=24),
+          'dec_hidden': trial.suggest_int('dec_hidden', 108, 336, step=24),
+          'num_levels': trial.suggest_int('num_levels', 1, 3),
+          'dropout': 0.5,
           'K_IMP': trial.suggest_int('K_IMP', 1, 10),
           'RIN': trial.suggest_int('RIN', 0, 1)
         }
