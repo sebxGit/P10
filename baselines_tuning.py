@@ -568,7 +568,7 @@ def objective(args, trial):
         _params = {
           'enc_hidden': trial.suggest_int('enc_hidden', 1, 400),
           'dec_hidden': trial.suggest_int('dec_hidden', 1, 400),
-          'num_levels': trial.suggest_int('num_levels', 1, 10),
+          'num_levels': trial.suggest_int('num_levels', 1, 2),
           'dropout': trial.suggest_float('dropout', 0.0, 1),
           'K_IMP': trial.suggest_int('K_IMP', 1, 10),
           'RIN': trial.suggest_int('RIN', 0, 1)
