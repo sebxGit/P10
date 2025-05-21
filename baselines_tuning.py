@@ -561,16 +561,14 @@ def objective(args, trial):
 
       # Trainer for fitting using DDP - Multi GPU
       #trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
-      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, devices=1)
+      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
 
       trainer.fit(tuned_model, colmod)
 
       # New Trainer for inference on one GPU
-      #trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, devices=1)
+      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, devices=1)
 
       predictions = trainer.predict(tuned_model, colmod, return_predictions=True)
-
-      #print("Predictions: ", predictions)
 
       pred, act = get_actuals_and_prediction_flattened(colmod, predictions)
       train_loss = mean_absolute_error(act, pred)
@@ -641,4 +639,4 @@ if __name__ == '__main__':
   parser.add_argument("--mixed", type=str, default='True')
   args = parser.parse_args()
 
-  best_params = tune_model_with_optuna(args, n_trials=3)
+  best_params = tune_model_with_optuna(args, n_trials=150)
