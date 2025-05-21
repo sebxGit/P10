@@ -251,6 +251,13 @@ class BootstrapSampler:
         return self.dataset_size
 
 
+def process_window(i, X, y, seq_len, pred_len):
+  X_win = X[i:i + seq_len]
+  y_tar = y[i + seq_len:i + seq_len + pred_len]
+  arr_x = np.asanyarray(X_win).reshape(-1)
+  arr_y = np.asanyarray(y_tar).reshape(-1)
+  return arr_x, arr_y
+
 class ColoradoDataModule(L.LightningDataModule):
   def __init__(self, data_dir: str, scaler: int, seq_len: int, pred_len: int, stride: int, batch_size: int, num_workers: int, is_persistent: bool):
     super().__init__()
@@ -318,8 +325,30 @@ class ColoradoDataModule(L.LightningDataModule):
     val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return val_loader
   
+  def sklearn_setup(self, set_name: str = "train"):
+    if set_name == "train":
+        X, y = resample(self.X_train, self.y_train, replace=True,
+                        n_samples=len(self.X_train), random_state=SEED)
+    elif set_name == "val":
+        X, y = self.X_val, self.y_val
+    elif set_name == "test":
+        X, y = self.X_test, self.y_test
+    else:
+        raise ValueError(
+            "Invalid set name. Choose from 'train', 'val', or 'test'.")
 
-  
+    seq_len, pred_len, stride = self.seq_len, self.pred_len, self.stride
+    max_start = len(X) - (seq_len + pred_len) + 1
+
+    # Parallelize the loop
+    results = Parallel(n_jobs=-1)(
+        delayed(process_window)(i, X, y, seq_len, pred_len) for i in range(0, max_start, stride)
+    )
+
+    # Unpack results
+    X_window, y_target = zip(*results)
+    return np.array(X_window), np.array(y_target)
+    
   
 class SDUDataModule(L.LightningDataModule):
   def __init__(self, data_dir: str, scaler: int, seq_len: int, pred_len: int, stride: int, batch_size: int, num_workers: int, is_persistent: bool):
@@ -390,6 +419,30 @@ class SDUDataModule(L.LightningDataModule):
     val_dataset = TimeSeriesDataset(self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
     val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return val_loader
+  
+  def sklearn_setup(self, set_name: str = "train"):
+    if set_name == "train":
+        X, y = resample(self.X_train, self.y_train, replace=True,
+                        n_samples=len(self.X_train), random_state=SEED)
+    elif set_name == "val":
+        X, y = self.X_val, self.y_val
+    elif set_name == "test":
+        X, y = self.X_test, self.y_test
+    else:
+        raise ValueError(
+            "Invalid set name. Choose from 'train', 'val', or 'test'.")
+
+    seq_len, pred_len, stride = self.seq_len, self.pred_len, self.stride
+    max_start = len(X) - (seq_len + pred_len) + 1
+
+    # Parallelize the loop
+    results = Parallel(n_jobs=-1)(
+        delayed(process_window)(i, X, y, seq_len, pred_len) for i in range(0, max_start, stride)
+    )
+
+    # Unpack results
+    X_window, y_target = zip(*results)
+    return np.array(X_window), np.array(y_target)
 
  
 class CustomWriter(BasePredictionWriter):
@@ -497,7 +550,7 @@ def objective(args, trial):
         'n_estimators': trial.suggest_int('n_estimators', 50, 200),
         'learning_rate_model': trial.suggest_float('learning_rate_model', 0.01, 1.0),
       }
-      model = AdaBoostRegressor(n_estimators=_params['n_estimators'], learning_rate=_params['learning_rate_model'], random_state=params['seed'])
+      model = MultiOutputRegressor(AdaBoostRegressor(n_estimators=_params['n_estimators'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "RandomForest":
       _params = {
         'n_estimators': trial.suggest_int('n_estimators', 50, 200),
@@ -526,17 +579,15 @@ def objective(args, trial):
           'K_IMP': trial.suggest_int('K_IMP', 1, 10),
           'RIN': trial.suggest_int('RIN', 0, 1)
         }
-        #model = DPAD_GCN(input_len=params['seq_len'], output_len=params['pred_len'], input_dim=params['input_size'], enc_hidden=_params['enc_hidden'], dec_hidden=_params['dec_hidden'], dropout=_params['dropout'], num_levels=_params['num_levels'], K_IMP=_params['K_IMP'], RIN=_params['RIN'])
-        model = DPAD_GCN(input_len=params['seq_len'], output_len=params['pred_len'], input_dim=params['input_size'], enc_hidden=168, dec_hidden=168, dropout=0.5, num_levels=2, K_IMP=6, RIN=1)
+        model = DPAD_GCN(input_len=params['seq_len'], output_len=params['pred_len'], input_dim=params['input_size'], enc_hidden=_params['enc_hidden'], dec_hidden=_params['dec_hidden'], dropout=_params['dropout'], num_levels=_params['num_levels'], K_IMP=_params['K_IMP'], RIN=_params['RIN'])
     elif args.model == "xPatch":
-      stride_patch = trial.suggest_int('stride_patch', 12, 48, step=12)
       params_xpatch = Configs(
         dict(
         seq_len = params['seq_len'],
         pred_len = params['pred_len'],
         enc_in = params['input_size'],
-        patch_len = stride_patch,
-        stride = stride_patch,
+        patch_len = trial.suggest_int('patch_len', 12, 48, step=6),
+        stride=trial.suggest_int('stride', 12, 48, step=6),
         padding_patch = trial.suggest_categorical('padding_patch', ['end', 'None']),
         revin = trial.suggest_int('revin', 0, 1),
         ma_type = trial.suggest_categorical('ma_type', ['reg', 'ema']),
@@ -584,8 +635,8 @@ def objective(args, trial):
     elif isinstance(model, BaseEstimator):
       name = model.__class__.__name__
       print(f"-----Training {type(model.estimator).__name__ if name == 'MultiOutputRegressor' else name} model-----")
-      X_train, y_train = resample(colmod.X_train, colmod.y_train, replace=True, n_samples=len(colmod.X_train), random_state=SEED)
-      X_val, y_val = colmod.X_val, colmod.y_val
+      X_train, y_train = colmod.sklearn_setup("train")
+      X_val, y_val = colmod.sklearn_setup("val")
       
       model.fit(X_train, y_train)
       train_loss = mean_absolute_error(y_val, model.predict(X_val))
@@ -642,7 +693,7 @@ if __name__ == '__main__':
   parser = ArgumentParser()
   parser.add_argument("--dataset", type=str, default="Colorado")
   parser.add_argument("--pred_len", type=int, default=24)
-  parser.add_argument("--model", type=str, default="xPatch")
+  parser.add_argument("--model", type=str, default="AdaBoost")
   parser.add_argument("--load", type=str, default='True')
   parser.add_argument("--mixed", type=str, default='True')
   args = parser.parse_args()
