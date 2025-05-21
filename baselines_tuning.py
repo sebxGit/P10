@@ -292,17 +292,19 @@ class ColoradoDataModule(L.LightningDataModule):
     preprocessing = self.scaler
     preprocessing.fit(self.X_train)  # should only fit to training data
     
-
     if stage == "fit" or stage is None:
       self.X_train = preprocessing.transform(self.X_train)
       self.y_train = np.array(self.y_train)
 
+      # self.X_val = preprocessing.transform(self.X_val)
+      # self.y_val = np.array(self.y_val)
+
+    if stage == "test" or "predict" or stage is None:
       self.X_val = preprocessing.transform(self.X_val)
       self.y_val = np.array(self.y_val)
 
-    if stage == "test" or "predict" or stage is None:
-      self.X_test = preprocessing.transform(self.X_test)
-      self.y_test = np.array(self.y_test)
+      # self.X_test = preprocessing.transform(self.X_test)
+      # self.y_test = np.array(self.y_test)
 
   def train_dataloader(self):
     train_dataset = TimeSeriesDataset(self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
@@ -315,6 +317,8 @@ class ColoradoDataModule(L.LightningDataModule):
     val_dataset = TimeSeriesDataset(self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
     val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return val_loader
+  
+
   
   
 class SDUDataModule(L.LightningDataModule):
@@ -365,12 +369,15 @@ class SDUDataModule(L.LightningDataModule):
       self.X_train = preprocessing.transform(self.X_train)
       self.y_train = np.array(self.y_train)
 
+      # self.X_val = preprocessing.transform(self.X_val)
+      # self.y_val = np.array(self.y_val)
+
+    if stage == "test" or "predict" or stage is None:
       self.X_val = preprocessing.transform(self.X_val)
       self.y_val = np.array(self.y_val)
 
-    if stage == "test" or "predict" or stage is None:
-      self.X_test = preprocessing.transform(self.X_test)
-      self.y_test = np.array(self.y_test)
+      # self.X_test = preprocessing.transform(self.X_test)
+      # self.y_test = np.array(self.y_test)
 
   def train_dataloader(self):
     train_dataset = TimeSeriesDataset(self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
@@ -441,6 +448,7 @@ def get_actuals_and_prediction_flattened(colmod, prediction):
   return predictions_flattened, actuals_flattened
 
 def objective(args, trial):
+    
     params = {
         'input_size': 22 if args.dataset == "Colorado" else 26,
         'pred_len': args.pred_len,
@@ -452,9 +460,9 @@ def objective(args, trial):
         'scaler': MinMaxScaler(),
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
-        'max_epochs': trial.suggest_int('max_epochs', 100, 1000, step=100),
+        'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100),
         'num_workers': trial.suggest_int('num_workers', 5, 12) if args.model != "DPAD" else 2,
-        'is_persistent': True if args.model != "DPAD" else True,
+        'is_persistent': True
     }
 
     if args.dataset == "Colorado":
@@ -561,7 +569,7 @@ def objective(args, trial):
 
       # Trainer for fitting using DDP - Multi GPU
       #trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
-      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
+      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False,  strategy='ddp_find_unused_parameters_true')
 
       trainer.fit(tuned_model, colmod)
 
@@ -634,7 +642,7 @@ if __name__ == '__main__':
   parser = ArgumentParser()
   parser.add_argument("--dataset", type=str, default="Colorado")
   parser.add_argument("--pred_len", type=int, default=24)
-  parser.add_argument("--model", type=str, default="DPAD")
+  parser.add_argument("--model", type=str, default="xPatch")
   parser.add_argument("--load", type=str, default='True')
   parser.add_argument("--mixed", type=str, default='True')
   args = parser.parse_args()
