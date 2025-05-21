@@ -13,7 +13,6 @@ from models.GRU import GRU
 from models.MLP import MLP
 from models.D_PAD_adpGCN import DPAD_GCN
 from models.xPatch import xPatch
-from models.Fredformer import Fredformer
 from models.PatchMixer import PatchMixer
 
 from sklearn.model_selection import train_test_split
@@ -251,12 +250,6 @@ class BootstrapSampler:
     def __len__(self):
         return self.dataset_size
 
-def process_window(i, X, y, seq_len, pred_len):
-  X_win = X[i:i + seq_len]
-  y_tar = y[i + seq_len:i + seq_len + pred_len]
-  arr_x = np.asanyarray(X_win).reshape(-1)
-  arr_y = np.asanyarray(y_tar).reshape(-1)
-  return arr_x, arr_y
 
 class ColoradoDataModule(L.LightningDataModule):
   def __init__(self, data_dir: str, scaler: int, seq_len: int, pred_len: int, stride: int, batch_size: int, num_workers: int, is_persistent: bool):
@@ -323,29 +316,7 @@ class ColoradoDataModule(L.LightningDataModule):
     val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return val_loader
   
-  def sklearn_setup(self, set_name: str = "train"):
-    if set_name == "train":
-        X, y = resample(self.X_train, self.y_train, replace=True, n_samples=len(self.X_train), random_state=SEED)
-    elif set_name == "val":
-        X, y = self.X_val, self.y_val
-    elif set_name == "test":
-        X, y = self.X_test, self.y_test
-    else:
-        raise ValueError(
-            "Invalid set name. Choose from 'train', 'val', or 'test'.")
-
-    seq_len, pred_len, stride = self.seq_len, self.pred_len, self.stride
-    max_start = len(X) - (seq_len + pred_len) + 1
-
-    # Parallelize the loop
-    results = Parallel(n_jobs=-1)(
-        delayed(process_window)(i, X, y, seq_len, pred_len) for i in range(0, max_start, stride)
-    )
-
-    # Unpack results
-    X_window, y_target = zip(*results)
-    return np.array(X_window), np.array(y_target)
-
+  
 class SDUDataModule(L.LightningDataModule):
   def __init__(self, data_dir: str, scaler: int, seq_len: int, pred_len: int, stride: int, batch_size: int, num_workers: int, is_persistent: bool):
     super().__init__()
@@ -414,30 +385,7 @@ class SDUDataModule(L.LightningDataModule):
     val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return val_loader
 
-  def sklearn_setup(self, set_name: str = "train"):
-    if set_name == "train":
-        X, y = resample(self.X_train, self.y_train, replace=True,
-                        n_samples=len(self.X_train), random_state=SEED)
-    elif set_name == "val":
-        X, y = self.X_val, self.y_val
-    elif set_name == "test":
-        X, y = self.X_test, self.y_test
-    else:
-        raise ValueError(
-            "Invalid set name. Choose from 'train', 'val', or 'test'.")
-
-    seq_len, pred_len, stride = self.seq_len, self.pred_len, self.stride
-    max_start = len(X) - (seq_len + pred_len) + 1
-
-    # Parallelize the loop
-    results = Parallel(n_jobs=-1)(
-        delayed(process_window)(i, X, y, seq_len, pred_len) for i in range(0, max_start, stride)
-    )
-
-    # Unpack results
-    X_window, y_target = zip(*results)
-    return np.array(X_window), np.array(y_target)
-
+ 
 class CustomWriter(BasePredictionWriter):
   def __init__(self, output_dir, write_interval, combined_name, model_name):
     super().__init__(write_interval)
@@ -564,8 +512,8 @@ def objective(args, trial):
       model = MultiOutputRegressor(GradientBoostingRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], min_samples_leaf=_params['min_samples_leaf'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "DPAD":
         _params = {
-          'enc_hidden': trial.suggest_int('enc_hidden', 108, 336, step=24),
-          'dec_hidden': trial.suggest_int('dec_hidden', 108, 336, step=24),
+          'enc_hidden': trial.suggest_int('enc_hidden', 108, 324, step=24),
+          'dec_hidden': trial.suggest_int('dec_hidden', 108, 324, step=24),
           'num_levels': trial.suggest_int('num_levels', 1, 3),
           'dropout': 0.5,
           'K_IMP': trial.suggest_int('K_IMP', 1, 10),
@@ -590,52 +538,6 @@ def objective(args, trial):
         )
       )
       model = xPatch(params_xpatch)
-    elif args.model == "Fredformer":
-      _params = Configs(
-        dict(
-          enc_in=params['input_size'],                # Number of input channels
-          seq_len=params['seq_len'],               # Context window (lookback length)
-          pred_len=params['pred_len'],              # Target window (forecasting length)
-          output=0,                 # Output dimension (default 0)
-
-          # Model architecture
-          e_layers = trial.suggest_int("e_layers", 1, 4),  # Number of layers
-          n_heads = trial.suggest_int("n_heads", 1, 16),  # Number of attention heads
-          d_model = trial.suggest_int("d_model", 128, 1024, step=64),  # Dimension of the model
-          d_ff = trial.suggest_int("d_ff", 512, 4096, step=128),  # Dimension of feed-forward network
-          dropout = trial.suggest_float("dropout", 0.0, 1, step=0.05),  # Dropout rate
-          fc_dropout = trial.suggest_float("fc_dropout", 0.0, 1, step=0.05),  # Fully connected dropout
-          head_dropout = trial.suggest_float("head_dropout", 0.0, 1, step=0.05),  # Dropout rate for the head layers
-          individual = trial.suggest_categorical("individual", [0, 1]),  # Whether to use individual heads
-
-          # Patching
-          patch_len = trial.suggest_int("patch_len", 4, 16, step=1),  # Patch size
-          stride = trial.suggest_int("stride", 1, 16, step=1),  # Stride for patching
-          padding_patch = trial.suggest_categorical("padding_patch", ["end", "start", "none"]),  # Padding type for patches
-
-          # RevIN
-          revin = trial.suggest_categorical("revin", [0, 1]),  # Whether to use RevIN
-          affine = trial.suggest_categorical("affine", [0, 1]),  # Affine transformation in RevIN
-          subtract_last = trial.suggest_categorical("subtract_last", [0, 1]),  # Subtract last value in RevIN
-
-          # Ablation and Nystrom
-          use_nys = trial.suggest_categorical("use_nys", [0, 1]),  # Whether to use Nystrom approximation
-          ablation = trial.suggest_categorical("ablation", [0, 1]),  # Ablation study configuration
-
-          # Crossformer-specific parameters
-          cf_dim = trial.suggest_int("cf_dim", 16, 128, step=8),  # Crossformer dimension
-          cf_depth = trial.suggest_int("cf_depth", 1, 4),  # Crossformer depth
-          cf_heads = trial.suggest_int("cf_heads", 1, 8),  # Crossformer number of heads
-          cf_mlp = trial.suggest_int("cf_mlp", 64, 256, step=16),  # Crossformer MLP dimension
-          cf_head_dim = trial.suggest_int("cf_head_dim", 16, 64, step=8),  # Crossformer head dimension
-          cf_drop = trial.suggest_float("cf_drop", 0.0, 0.5, step=0.05),  # Crossformer dropout rate
-
-          # MLP-specific parameters
-          mlp_hidden = trial.suggest_int("mlp_hidden", 32, 128, step=16),  # Hidden layer size for MLP
-          mlp_drop = trial.suggest_float("mlp_drop", 0.0, 0.5, step=0.05),  # Dropout rate for MLP
-        )
-      )
-      model = Fredformer(_params)
     elif args.model == "PatchMixer":
       _params = Configs({
         "enc_in": params['input_size'],                # Number of input channels
@@ -677,9 +579,6 @@ def objective(args, trial):
     elif isinstance(model, BaseEstimator):
       name = model.__class__.__name__
       print(f"-----Training {type(model.estimator).__name__ if name == 'MultiOutputRegressor' else name} model-----")
-      # X_train, y_train = colmod.sklearn_setup("train")
-      # X_val, y_val = colmod.sklearn_setup("val")
-
       X_train, y_train = resample(colmod.X_train, colmod.y_train, replace=True, n_samples=len(colmod.X_train), random_state=SEED)
       X_val, y_val = colmod.X_val, colmod.y_val
       
