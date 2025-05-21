@@ -501,15 +501,15 @@ def objective(args, trial):
         'pred_len': args.pred_len,
         'seq_len': 24*7,
         'stride': args.pred_len,
-        'batch_size': trial.suggest_int('batch_size', 32, 128, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 32, step=16),
+        'batch_size': trial.suggest_int('batch_size', 32, 128, step=16),
         'criterion': torch.nn.L1Loss(),
         'optimizer': torch.optim.Adam,
         'scaler': MinMaxScaler(),
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
         'max_epochs': trial.suggest_int('max_epochs', 100, 1000, step=100),
-        'num_workers': trial.suggest_int('num_workers', 5, 12),
-        'is_persistent': True,
+        'num_workers': trial.suggest_int('num_workers', 5, 12) if args.model != "DPAD" else 0,
+        'is_persistent': True if args.model != "DPAD" else False,
     }
 
     if args.dataset == "Colorado":
@@ -739,7 +739,7 @@ if __name__ == '__main__':
   parser = ArgumentParser()
   parser.add_argument("--dataset", type=str, default="Colorado")
   parser.add_argument("--pred_len", type=int, default=24)
-  parser.add_argument("--model", type=str, default="AdaBoost")
+  parser.add_argument("--model", type=str, default="DPAD")
   parser.add_argument("--load", type=str, default='True')
   parser.add_argument("--mixed", type=str, default='True')
   args = parser.parse_args()
