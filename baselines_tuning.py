@@ -344,8 +344,7 @@ class SDUDataModule(L.LightningDataModule):
     df = pd.read_csv(self.data_dir, skipinitialspace=True)
     df.columns = df.columns.str.strip()
     df['Timestamp'] = df['Timestamp'].str.strip()  # <-- Add this line
-    df['Timestamp'] = pd.to_datetime(
-    df['Timestamp'], format="%b %d, %Y, %I:%M:%S %p")
+    df['Timestamp'] = pd.to_datetime(df['Timestamp'], format="%b %d, %Y, %I:%M:%S %p")
     df = convert_SDU_to_hourly(df)
     feature_df = add_features(hourly_df=df, dataset_name='SDU', historical_feature='Aggregated charging load')
     df = filter_data(start_date, end_date, feature_df)
@@ -454,8 +453,8 @@ def objective(args, trial):
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
         'max_epochs': trial.suggest_int('max_epochs', 100, 1000, step=100),
-        'num_workers': trial.suggest_int('num_workers', 5, 12) if args.model != "DPAD" else 0,
-        'is_persistent': True if args.model != "DPAD" else False,
+        'num_workers': trial.suggest_int('num_workers', 5, 12) if args.model != "DPAD" else 2,
+        'is_persistent': True if args.model != "DPAD" else True,
     }
 
     if args.dataset == "Colorado":
@@ -642,4 +641,4 @@ if __name__ == '__main__':
   parser.add_argument("--mixed", type=str, default='True')
   args = parser.parse_args()
 
-  best_params = tune_model_with_optuna(args, n_trials=150)
+  best_params = tune_model_with_optuna(args, n_trials=3)
