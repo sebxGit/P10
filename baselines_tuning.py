@@ -662,19 +662,17 @@ def objective(args, trial):
       #trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
       trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
 
-         
       trainer.fit(tuned_model, colmod)
 
       # New Trainer for inference on one GPU
       trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, devices=1)
-    
 
       predictions = trainer.predict(tuned_model, colmod, return_predictions=True)
 
       #print("Predictions: ", predictions)
 
       pred, act = get_actuals_and_prediction_flattened(colmod, predictions)
-      val_loss = mean_absolute_error(act, pred)
+      train_loss = mean_absolute_error(act, pred)
 
     elif isinstance(model, BaseEstimator):
       name = model.__class__.__name__
@@ -682,8 +680,8 @@ def objective(args, trial):
       X_train, y_train = colmod.sklearn_setup("train")
       X_val, y_val = colmod.sklearn_setup("val")
       model.fit(X_train, y_train)
-      val_loss = mean_absolute_error(y_val, model.predict(X_val))
-    return val_loss
+      train_loss = mean_absolute_error(y_val, model.predict(X_val))
+    return train_loss
 
 def safe_objective(args, trial):
   try:

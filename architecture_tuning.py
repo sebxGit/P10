@@ -459,14 +459,11 @@ class CustomWriter(BasePredictionWriter):
     filename = os.path.join(self.output_dir, f"{self.combined_name}/predictions_{self.model_name}.pt")
     os.makedirs(os.path.join(self.output_dir, self.combined_name), exist_ok=True)
     torch.save(predictions, filename)
-    print(f"From Train endPredictions saved to {filename}")
 
   def write_on_epoch_end(self, trainer, pl_module, predictions, batch_indices):
     filename = os.path.join(self.output_dir, f"{self.combined_name}/predictions_{self.model_name}.pt")
     os.makedirs(os.path.join(self.output_dir, self.combined_name), exist_ok=True)
     torch.save(predictions, filename)
-    print(f"Predictions saved to {filename}")
-    
 
 class LightningModel(L.LightningModule):
   def __init__(self, model, criterion, optimizer, learning_rate):
@@ -528,8 +525,6 @@ def create_and_save_ensemble(combined_name):
     lengths.append(len(predictions))
     all_predictions.append(predictions)
 
-  print("lengths: ", lengths)
-
   shortest_len = min(lengths)
   for i, pred in enumerate(all_predictions):
     if len(pred) > shortest_len:
@@ -540,9 +535,9 @@ def create_and_save_ensemble(combined_name):
   torch.save(ensemble_predictions, filename)
 
 def objective(args, trial, all_subsets):
-  # all_subsets_as_strings = [str(subset) for subset in all_subsets]
-  # selected_subset_as_string = trial.suggest_categorical("model_subsets", all_subsets_as_strings)
-  # selected_subset = ast.literal_eval(selected_subset_as_string)
+  all_subsets_as_strings = [str(subset) for subset in all_subsets]
+  selected_subset_as_string = trial.suggest_categorical("model_subsets", all_subsets_as_strings)
+  selected_subset = ast.literal_eval(selected_subset_as_string)
 
   selected_subset = ['LSTM', 'GRU']
   bagging_models = [model_initializers[model]() for model in selected_subset if model in model_initializers]
@@ -568,9 +563,7 @@ def objective(args, trial, all_subsets):
 
       trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, callbacks=[pred_writer], devices=1)
       wd = trainer.predict(model, colmod, return_predictions=True)
-      print("wd batch shapes:", [w.shape for w in wd])
       wd_cat = torch.cat(wd, dim=0)
-      print("wd_cat shape:", wd_cat.shape)
 
     elif isinstance(model, BaseEstimator):
       X_train, y_train = colmod.sklearn_setup("train") 
@@ -586,12 +579,9 @@ def objective(args, trial, all_subsets):
   y_pred = torch.load(f"Tunings/{combined_name}/predictions_{combined_name}.pt", weights_only=False)
   y_pred = y_pred.flatten()
 
-  # Ensure colmod.y_val and y_pred are tensors
   y_val_tensor = torch.tensor(colmod.y_val.values if isinstance(colmod.y_val, pd.Series) else colmod.y_val, dtype=torch.float32)
   y_pred_tensor = torch.tensor(y_pred, dtype=torch.float32)
 
-  print(f"mae({y_val_tensor.shape}, {y_pred_tensor.shape})")
-  
   mae = nn.L1Loss()(y_val_tensor[-len(y_pred_tensor):], y_pred_tensor)
   return mae
 
