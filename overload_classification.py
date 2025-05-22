@@ -437,6 +437,55 @@ class Configs:
       setattr(self, key, value)
 
 
+def plot_and_save_with_metrics(combined_name, colmod):
+  actuals = []
+  for batch in colmod.predict_dataloader():
+    x, y = batch
+    actuals.extend(y.numpy())
+
+  actuals_flat = [item for sublist in actuals for item in sublist]
+
+  folder_path = f'Predictions/{combined_name}'
+  pt_files = [f for f in os.listdir(folder_path) if f.endswith('.pt')]
+
+  metrics = []
+  plt.figure(figsize=(20, 5))
+  plt.plot(actuals_flat, label='Actuals')
+  for pt_file in pt_files:
+    file_path = os.path.join(folder_path, pt_file)
+    predictions = torch.load(file_path, weights_only=False)
+    model_name = pt_file.split('_')[1].split('.')[0]
+    # model_name = pt_file.split('.')[0].split('_')[-1] #use this with loss function names
+
+    if type(predictions[0]) == torch.Tensor: 
+      predictions = [elem.item() for tensor in predictions for elem in tensor.flatten()]
+    elif type(predictions[0]) == np.float64:
+      predictions = predictions.tolist()
+
+    predictions = predictions[-len(actuals_flat):] # reduce length of predictions to match actuals
+
+    metrics.append({
+      'model': model_name,
+      'mse': mean_squared_error(predictions, actuals_flat),
+      'mae': mean_absolute_error(predictions, actuals_flat),
+      'mape': mean_absolute_percentage_error(predictions, actuals_flat)})
+    plt.plot(predictions, label=model_name)
+
+  if metrics:
+    loss_func_df = pd.concat([pd.DataFrame([m]) for m in metrics], ignore_index=True)
+  else:
+    loss_func_df = pd.DataFrame(columns=['model', 'mse', 'mae', 'mape'])
+  loss_func_df.set_index('model', inplace=True)
+  loss_func_df.to_csv(f'{folder_path}/loss_func_metrics.csv')
+
+  plt.xlabel('Samples')
+  plt.ylabel('Energy Consumption')
+  plt.title(f'Predictions vs Actuals ({combined_name})')
+  plt.legend()
+
+  plt.savefig(f'{folder_path}/predictions_vs_actuals_{combined_name}.png')
+  plt.show()
+
 parser = ArgumentParser()
 parser.add_argument("--models", type=str, default="['xPatch', 'LSTM', 'GRU', 'PatchMixer']") 
 parser.add_argument("--pred_len", type=int, default=24)
@@ -457,4 +506,15 @@ if __name__ == "__main__":
 
   selected_models = ast.literal_eval(args.models)
   combined_name = "-".join([m for m in selected_models])
-  print(combined_name)
+
+  if args.dataset == "Colorado":
+    colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=MinMaxScaler(), seq_len=168, batch_size=24, pred_len=args.pred_len, stride=24, num_workers=0, is_persistent=False)
+  else: 
+    colmod = SDUDataModule(data_dir='SDU Dataset/DumbCharging_2020_to_2032/Measurements.csv', scaler=MinMaxScaler(), seq_len=168, batch_size=24, pred_len=args.pred_len, stride=24, num_workers=0, is_persistent=False)
+  
+  actuals = []
+  for batch in colmod.predict_dataloader():
+    x, y = batch
+    actuals.extend(y.numpy())
+
+  actuals_flat = [item for sublist in actuals for item in sublist]

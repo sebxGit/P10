@@ -583,6 +583,9 @@ model_initializers = {
   "GRU": lambda: GRU(input_size=args.input_size, pred_len=args.pred_len, hidden_size=gru_params['hidden_size'], num_layers=gru_params['num_layers'], dropout=gru_params['dropout']),
   "xPatch": lambda: xPatch(xpatch_params),
   "PatchMixer": lambda: PatchMixer(patchmixer_params),
+  "RandomForest": lambda: MultiOutputRegressor(RandomForestRegressor(n_estimators=rf_params['n_estimators'], max_depth=rf_params['max_depth'], min_samples_split=rf_params['min_samples_split'], min_samples_leaf=rf_params['min_samples_leaf'], max_features=rf_params['max_features'], random_state=SEED), n_jobs=-1),
+  "GradientBoosting": lambda: MultiOutputRegressor(GradientBoostingRegressor(n_estimators=gb_params['n_estimators'], max_depth=gb_params['max_depth'], min_samples_split=gb_params['min_samples_split'], min_samples_leaf=gb_params['min_samples_leaf'], learning_rate=gb_params['learning_rate_model'], random_state=SEED), n_jobs=-1),
+  "AdaBoost": lambda: MultiOutputRegressor(AdaBoostRegressor(n_estimators=ada_params['n_estimators'], learning_rate=ada_params['learning_rate'], random_state=SEED), n_jobs=-1),
   # "DPAD": lambda: DPAD_GCN(input_len=args.seq_len, output_len=args.pred_len, input_dim=args.input_size, enc_hidden=dpad_params['enc_hidden'], dec_hidden=dpad_params['dec_hidden'],
   #                               dropout=dpad_params['dropout'], num_levels=dpad_params['num_levels'], K_IMP=dpad_params['K_IMP'], RIN=dpad_params['RIN'])
 }
