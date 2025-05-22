@@ -622,7 +622,7 @@ if __name__ == "__main__":
   for r in range(1, len(selected_models) + 1):
     all_subsets.extend(combinations(selected_models, r))
 
-  all_subsets = [list(subset) for subset in all_subsets] #  if len(subset) >= 3
+  all_subsets = [list(subset) for subset in all_subsets if len(subset) >= 3]
 
   if args.load:
     try:

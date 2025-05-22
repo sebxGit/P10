@@ -486,8 +486,19 @@ def plot_and_save_with_metrics(combined_name, colmod):
   plt.savefig(f'{folder_path}/predictions_vs_actuals_{combined_name}.png')
   plt.show()
 
+def accuracy_score(TP, TN, FP, FN):
+  return (TP + TN) / (TP + TN + FP + FN)
+
+def precision_score(TP, FP):
+  return TP / (TP + FP)
+
+def recall_score(TP, TN):
+  return TP / (TP + TN)
+
 parser = ArgumentParser()
-parser.add_argument("--models", type=str, default="['xPatch', 'LSTM', 'GRU', 'PatchMixer']") 
+parser.add_argument("--models", type=str, default="[LSTM]")  #['xPatch', 'LSTM', 'GRU', 'PatchMixer']
+parser.add_argument("--input_size", type=int, default=22)
+parser.add_argument("--seq_len", type=int, default=24*7)
 parser.add_argument("--pred_len", type=int, default=24)
 parser.add_argument("--dataset", type=str, default="Colorado")
 
@@ -500,18 +511,22 @@ if __name__ == "__main__":
   xpatch_params = Configs({**ast.literal_eval(hparams[hparams['model'] == 'xPatch']['parameters'].values[0]), "enc_in": args.input_size, "pred_len": args.pred_len, 'seq_len': args.seq_len })
   patchmixer_params = Configs({**ast.literal_eval(hparams[hparams['model'] == 'PatchMixer']['parameters'].values[0]), "enc_in": args.input_size, "pred_len": args.pred_len, "seq_len": args.seq_len })
   # dpad_params = ast.literal_eval(hparams[hparams['model'] == 'DPAD']['parameters'].values[0])
-  rf_params = ast.literal_eval(hparams[hparams['model'] == 'RandomForest']['parameters'].values[0])
-  ada_params = ast.literal_eval(hparams[hparams['model'] == 'AdaBoost']['parameters'].values[0])
-  gb_params = ast.literal_eval(hparams[hparams['model'] == 'GradientBoosting']['parameters'].values[0])
+  rf_params = ast.literal_eval(hparams[hparams['model'] == 'RandomForestRegressor']['parameters'].values[0])
+  ada_params = ast.literal_eval(hparams[hparams['model'] == 'AdaBoostRegressor']['parameters'].values[0])
+  gb_params = ast.literal_eval(hparams[hparams['model'] == 'GradientBoostingRegressor']['parameters'].values[0])
 
-  selected_models = ast.literal_eval(args.models)
-  combined_name = "-".join([m for m in selected_models])
+  # support individual model or ensemble
+  selected_models = ast.literal_eval(args.models) if '[' in args.models else args.models
+  combined_name = "-".join([m for m in selected_models]) if isinstance(selected_models, list) else selected_models
 
-  if args.dataset == "Colorado":
-    colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=MinMaxScaler(), seq_len=168, batch_size=24, pred_len=args.pred_len, stride=24, num_workers=0, is_persistent=False)
-  else: 
-    colmod = SDUDataModule(data_dir='SDU Dataset/DumbCharging_2020_to_2032/Measurements.csv', scaler=MinMaxScaler(), seq_len=168, batch_size=24, pred_len=args.pred_len, stride=24, num_workers=0, is_persistent=False)
-  
+  # predict for individual model
+
+
+  # model creates prediction
+
+  # model gets assigned mae, mse, acc, pre, rec
+
+  # plot overload visual (red on overload), and save to folder
   actuals = []
   for batch in colmod.predict_dataloader():
     x, y = batch
