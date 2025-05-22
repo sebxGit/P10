@@ -513,9 +513,9 @@ def objective(args, trial):
         'scaler': MinMaxScaler(),
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
-        'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100),
-        'num_workers': trial.suggest_int('num_workers', 5, 12) if args.model != "DPAD" else 2,
-        'is_persistent': True
+        'max_epochs': 1,
+        'num_workers': 0,
+        'is_persistent': False
     }
 
     if args.dataset == "Colorado":
@@ -666,7 +666,6 @@ def tune_model_with_optuna(args, n_trials):
 
   study.optimize(lambda trial: objective(args, trial), n_trials=n_trials, gc_after_trial=True, timeout=37800)
 
-  joblib.dump(study, f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_tuning.pkl')
 
   print("Len trials:", len(study.trials))
   print("Best params:", study.best_params)
@@ -686,16 +685,16 @@ def tune_model_with_optuna(args, n_trials):
     if not os.path.exists(f'Tunings'):
       os.makedirs(f'Tunings', exist_ok=True)
     df_tuning.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_tuning.csv', index=False)
-
+    joblib.dump(study, f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_tuning.pkl')
     return study.best_params
 
 if __name__ == '__main__':
   parser = ArgumentParser()
   parser.add_argument("--dataset", type=str, default="Colorado")
   parser.add_argument("--pred_len", type=int, default=24)
-  parser.add_argument("--model", type=str, default="AdaBoost")
+  parser.add_argument("--model", type=str, default="MLP")
   parser.add_argument("--load", type=str, default='True')
   parser.add_argument("--mixed", type=str, default='True')
   args = parser.parse_args()
 
-  best_params = tune_model_with_optuna(args, n_trials=150)
+  best_params = tune_model_with_optuna(args, n_trials=1)
