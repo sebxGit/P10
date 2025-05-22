@@ -527,10 +527,10 @@ def objective(args, trial, all_subsets):
 
       model = LightningModel(model=model, criterion=criterion_map.get(args.criterion)(), optimizer=optimizer_map.get(args.optimizer), learning_rate=_hparams['learning_rate'])
       pred_writer = CustomWriter(output_dir="Tunings", write_interval="epoch", combined_name=combined_name, model_name=model_name)
-      trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=0, precision='16-mixed', callbacks=[pred_writer], enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
+      trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=100, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
       trainer.fit(model, colmod)
 
-      trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, callbacks=[pred_writer], devices=1)
+      trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=100, precision='16-mixed', enable_checkpointing=False, devices=1)
       trainer.predict(model, colmod)
 
     elif isinstance(model, BaseEstimator):
@@ -559,7 +559,7 @@ def objective(args, trial, all_subsets):
 
 parser = ArgumentParser()
 parser.add_argument("--criterion", type=str, default="MAELoss")
-parser.add_argument("--models", type=str, default="['xPatch', 'LSTM', 'PatchMixer']") #'RandomForest', 'GradientBoosting', 'AdaBoost', 
+parser.add_argument("--models", type=str, default="['GRU', 'xPatch', 'LSTM', 'PatchMixer']") #'RandomForest', 'GradientBoosting', 'AdaBoost', 
 parser.add_argument("--dataset", type=str, default="Colorado")
 parser.add_argument("--input_size", type=int, default=22)
 parser.add_argument("--pred_len", type=int, default=24)
