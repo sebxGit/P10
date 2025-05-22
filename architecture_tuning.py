@@ -508,7 +508,9 @@ def objective(args, trial, all_subsets):
     print(f"-----Training {model_name} model-----")
     if model_name in model_initializers:
       model = model_initializers[model_name]()  # Initialize one model
-    model_name = model.name if isinstance(model, torch.nn.Module) else model.__class__.__name__
+    
+    name = model.__class__.__name__
+    model_name = model.name if isinstance(model, torch.nn.Module) else type(model.estimator).__name__ if name == 'MultiOutputRegressor' else name
     _hparams = ast.literal_eval(hparams[hparams['model'] == model_name]['parameters'].values[0])
 
     print("Hyperparameters: ", _hparams)
