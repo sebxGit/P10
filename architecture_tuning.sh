@@ -5,7 +5,7 @@
 #SBATCH --time=12:00:00 # 
 #SBATCH --ntasks=1
 #SBATCH --gres=gpu:8
-#SBATCH --cpus-per-task=20
+#SBATCH --cpus-per-task=128
 #SBATCH --mem=192G
 
 singularity exec --nv energycontainerblackbox.sif python3 architecture_tuning.py
