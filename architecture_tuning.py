@@ -17,6 +17,7 @@ from models.PatchMixer import PatchMixer
 from models.Fredformer import Fredformer
 import argparse
 from itertools import combinations
+import shutil
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
@@ -543,10 +544,6 @@ def objective(args, trial, all_subsets):
         os.makedirs(f"Tunings/{combined_name}")
       torch.save(y_pred, f"Tunings/{combined_name}/predictions_{model_name}.pt")
 
-    del model  # Delete the model to free memory
-    gc.collect()
-    torch.cuda.empty_cache()
-
   create_and_save_ensemble(combined_name)
   y_pred = torch.load(f"Tunings/{combined_name}/predictions_{combined_name}.pt", weights_only=False)
   y_pred = y_pred.flatten()
@@ -555,6 +552,12 @@ def objective(args, trial, all_subsets):
   y_pred_tensor = torch.tensor(y_pred, dtype=torch.float32)
 
   mae = nn.L1Loss()(y_val_tensor[-len(y_pred_tensor):], y_pred_tensor)
+  mse = nn.MSELoss()(y_val_tensor[-len(y_pred_tensor):], y_pred_tensor)
+
+  trial.set_user_attr("mse", mse)
+
+  if os.path.exists(f"Tunings/{combined_name}"):
+    shutil.rmtree(f"Tunings/{combined_name}")
   return mae
 
 parser = ArgumentParser()
@@ -591,6 +594,16 @@ model_initializers = {
   #                               dropout=dpad_params['dropout'], num_levels=dpad_params['num_levels'], K_IMP=dpad_params['K_IMP'], RIN=dpad_params['RIN'])
 }
 
+def safe_objective(args, trial, all_subsets):
+  try:
+    return objective(args, trial, all_subsets)
+  except Exception as e:
+    print(f"Failed trial: {e}. Skipped this trial.")
+    return float('inf')
+  finally:
+    gc.collect()
+    torch.cuda.empty_cache()
+
 if __name__ == "__main__":
   hparams = pd.read_csv(f'./Tunings/{args.dataset}_{args.pred_len}h_tuning.csv')
   lstm_params = ast.literal_eval(hparams[hparams['model'] == 'LSTM']['parameters'].values[0])
@@ -613,7 +626,7 @@ if __name__ == "__main__":
 
   if args.load:
     try:
-      study = joblib.load(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_tuning.pkl')
+      study = joblib.load(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_architecture_tuning.pkl')
       print("Loaded an old study:")
     except Exception as e:
       print("No previous tuning found. Starting a new tuning.", e)
@@ -622,6 +635,20 @@ if __name__ == "__main__":
     print("Starting a new tuning.")
     study = optuna.create_study(direction="minimize", study_name=f"Bagging-{combined_name}")
 
-  study.optimize(lambda trial: objective(args, trial, all_subsets), n_trials=150, gc_after_trial=True, timeout=37800)
+  study.optimize(lambda trial: safe_objective(args, trial, all_subsets), n_trials=150, gc_after_trial=True, timeout=37800)
 
-  joblib.dump(study, f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_tuning.pkl')
+  if study.best_value != float('inf'):
+    try:
+      df_tuning = pd.read_csv(f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning.csv', delimiter=',')
+    except Exception:
+      df_tuning = pd.DataFrame(columns=['model', 'trials', 'mae', 'mse', 'parameters'])
+
+    new_row = {'model': args.model, 'trials': len(study.trials), 'mae': study.best_value, 'mse': study.user_attrs['mse'], 'parameters': study.best_params}
+    new_row_df = pd.DataFrame([new_row]).dropna(axis=1, how='all')
+    df_tuning = pd.concat([df_tuning, new_row_df], ignore_index=True)
+    df_tuning = df_tuning.sort_values(by=['model', 'mae'], ascending=True).reset_index(drop=True)
+
+    if not os.path.exists(f'Tunings'):
+      os.makedirs(f'Tunings', exist_ok=True)
+    df_tuning.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning.csv', index=False)
+    joblib.dump(study, f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_architecture_tuning.pkl')

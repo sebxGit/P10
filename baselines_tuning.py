@@ -666,7 +666,6 @@ def tune_model_with_optuna(args, n_trials):
 
   study.optimize(lambda trial: safe_objective(args, trial), n_trials=n_trials, gc_after_trial=True, timeout=37800)
 
-
   print("Len trials:", len(study.trials))
   print("Best params:", study.best_params)
   print("Best validation loss:", study.best_value)
@@ -697,4 +696,4 @@ if __name__ == '__main__':
   parser.add_argument("--mixed", type=str, default='True')
   args = parser.parse_args()
 
-  best_params = tune_model_with_optuna(args, n_trials=150)
+  best_params = tune_model_with_optuna(args, n_trials=5)
