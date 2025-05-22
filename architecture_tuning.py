@@ -321,11 +321,9 @@ class ColoradoDataModule(L.LightningDataModule):
     return train_loader
 
   def predict_dataloader(self):
-    val_dataset = TimeSeriesDataset(
-        self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-    val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False,
-                            num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
-    return val_loader
+    test_dataset = TimeSeriesDataset(self.X_test, self.y_test, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+    test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    return test_loader
 
   def sklearn_setup(self, set_name: str = "train"):
     if set_name == "train":
@@ -483,20 +481,6 @@ class LightningModel(L.LightningModule):
     self.log("train_loss", train_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
     return train_loss
 
-  # def validation_step(self, batch, batch_idx):
-  #   x, y = batch
-  #   y_hat = self(x)
-  #   val_loss = self.criterion(y_hat, y)
-  #   self.log("val_loss", val_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
-  #   return val_loss
-
-  # def test_step(self, batch, batch_idx):
-  #   x, y = batch
-  #   y_hat = self(x)
-  #   test_loss = self.criterion(y_hat, y)
-  #   self.log("test_loss", test_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
-  #   return test_loss
-
   def predict_step(self, batch, batch_idx):
     x, y = batch
     y_hat = self(x)
@@ -557,9 +541,9 @@ def objective(args, trial, all_subsets):
     if isinstance(model, torch.nn.Module):
       model = LightningModel(model=model, criterion=criterion_map.get(args.criterion)(), optimizer=optimizer_map.get(args.optimizer), learning_rate=_hparams['learning_rate'])
       pred_writer = CustomWriter(output_dir="Tunings", write_interval="epoch", combined_name=combined_name, model_name=model_name)
-      trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=50, precision='16-mixed', enable_checkpointing=False, callbacks=[pred_writer], strategy='ddp_find_unused_parameters_true' if model_name == "DPAD" else 'auto')
+      trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, callbacks=[pred_writer], enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
       trainer.fit(model, colmod)
-
+      
       trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, callbacks=[pred_writer], devices=1)
       trainer.predict(model, colmod)
 
@@ -620,13 +604,12 @@ if __name__ == "__main__":
   hparams = pd.read_csv(f'./Tunings/{args.dataset}_{args.pred_len}h_tuning.csv')
   lstm_params = ast.literal_eval(hparams[hparams['model'] == 'LSTM']['parameters'].values[0])
   gru_params = ast.literal_eval(hparams[hparams['model'] == 'GRU']['parameters'].values[0])
-  # mlp_params = ast.literal_eval(hparams[hparams['model'] == 'MLP']['parameters'].values[0])
-  # xpatch_params = Configs(ast.literal_eval(hparams[hparams['model'] == 'xPatch']['parameters'].values[0]))
-  # patchmixer_params = Configs(ast.literal_eval(hparams[hparams['model'] == 'PatchMixer']['parameters'].values[0]))
+  xpatch_params = Configs(ast.literal_eval(hparams[hparams['model'] == 'xPatch']['parameters'].values[0]))
+  patchmixer_params = Configs(ast.literal_eval(hparams[hparams['model'] == 'PatchMixer']['parameters'].values[0]))
   # dpad_params = ast.literal_eval(hparams[hparams['model'] == 'DPAD']['parameters'].values[0])
-  # rf_params = ast.literal_eval(hparams[hparams['model'] == 'RandomForest']['parameters'].values[0])
-  # ada_params = ast.literal_eval(hparams[hparams['model'] == 'AdaBoost']['parameters'].values[0])
-  # gb_params = ast.literal_eval(hparams[hparams['model'] == 'GradientBoosting']['parameters'].values[0])
+  rf_params = ast.literal_eval(hparams[hparams['model'] == 'RandomForest']['parameters'].values[0])
+  ada_params = ast.literal_eval(hparams[hparams['model'] == 'AdaBoost']['parameters'].values[0])
+  gb_params = ast.literal_eval(hparams[hparams['model'] == 'GradientBoosting']['parameters'].values[0])
 
   selected_models = ast.literal_eval(args.models)
   combined_name = "-".join([m for m in selected_models])
