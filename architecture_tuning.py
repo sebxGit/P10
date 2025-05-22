@@ -501,9 +501,11 @@ def objective(args, trial, all_subsets):
   selected_subset_as_string = trial.suggest_categorical("model_subsets", all_subsets_as_strings)
   selected_subset = ast.literal_eval(selected_subset_as_string)
 
-  bagging_models = [model_initializers[model]() for model in selected_subset if model in model_initializers]
+  # bagging_models = [model_initializers[model]() for model in selected_subset if model in model_initializers]
 
-  for model in bagging_models:
+  for model_name in selected_subset:
+    if model_name in model_initializers:
+      model = model_initializers[model_name]()  # Initialize one model
     model_name = model.name if isinstance(model, torch.nn.Module) else model.__class__.__name__
     _hparams = ast.literal_eval(hparams[hparams['model'] == model_name]['parameters'].values[0])
 
@@ -534,6 +536,9 @@ def objective(args, trial, all_subsets):
       if not os.path.exists(f"Tunings/{combined_name}"):
         os.makedirs(f"Tunings/{combined_name}")
       torch.save(y_pred, f"Tunings/{combined_name}/predictions_{model_name}.pt")
+
+    del model  # Delete the model to free memory
+    torch.cuda.empty_cache()
 
   create_and_save_ensemble(combined_name)
   y_pred = torch.load(f"Tunings/{combined_name}/predictions_{combined_name}.pt", weights_only=False)
