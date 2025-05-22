@@ -316,8 +316,14 @@ class ColoradoDataModule(L.LightningDataModule):
   def train_dataloader(self):
     train_dataset = TimeSeriesDataset(self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
     sampler = BootstrapSampler(len(train_dataset), random_state=SEED)
-    train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
-    #train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    if args.individual == 'False':
+      train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
+      print("USED SAMPLER!")
+      exit()
+    else:
+      train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+      print("DIDNT USE SAMPLER!")
+      exit()
     return train_loader
   
   def predict_dataloader(self):
@@ -327,8 +333,10 @@ class ColoradoDataModule(L.LightningDataModule):
   
   def sklearn_setup(self, set_name: str = "train"):
     if set_name == "train":
-        X, y = resample(self.X_train, self.y_train, replace=True,
-                        n_samples=len(self.X_train), random_state=SEED)
+      if args.individual == 'False':
+        X, y = resample(self.X_train, self.y_train, replace=True, n_samples=len(self.X_train), random_state=SEED)
+      else:
+        X, y = self.X_train, self.y_train
     elif set_name == "val":
         X, y = self.X_val, self.y_val
     elif set_name == "test":
@@ -348,7 +356,6 @@ class ColoradoDataModule(L.LightningDataModule):
     # Unpack results
     X_window, y_target = zip(*results)
     return np.array(X_window), np.array(y_target)
-    
   
 class SDUDataModule(L.LightningDataModule):
   def __init__(self, data_dir: str, scaler: int, seq_len: int, pred_len: int, stride: int, batch_size: int, num_workers: int, is_persistent: bool):
@@ -411,8 +418,10 @@ class SDUDataModule(L.LightningDataModule):
   def train_dataloader(self):
     train_dataset = TimeSeriesDataset(self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
     sampler = BootstrapSampler(len(train_dataset), random_state=SEED)
-    train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
-    # train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    if args.individual == 'False':
+      train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
+    else:
+      train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return train_loader
 
   def predict_dataloader(self):
@@ -422,8 +431,10 @@ class SDUDataModule(L.LightningDataModule):
   
   def sklearn_setup(self, set_name: str = "train"):
     if set_name == "train":
-        X, y = resample(self.X_train, self.y_train, replace=True,
-                        n_samples=len(self.X_train), random_state=SEED)
+      if args.individual == 'False':
+        X, y = resample(self.X_train, self.y_train, replace=True, n_samples=len(self.X_train), random_state=SEED)
+      else:
+        X, y = self.X_train, self.y_train
     elif set_name == "val":
         X, y = self.X_val, self.y_val
     elif set_name == "test":
@@ -444,7 +455,6 @@ class SDUDataModule(L.LightningDataModule):
     X_window, y_target = zip(*results)
     return np.array(X_window), np.array(y_target)
 
- 
 class CustomWriter(BasePredictionWriter):
   def __init__(self, output_dir, write_interval, combined_name, model_name):
     super().__init__(write_interval)
@@ -689,11 +699,12 @@ def tune_model_with_optuna(args, n_trials):
 
 if __name__ == '__main__':
   parser = ArgumentParser()
-  parser.add_argument("--dataset", type=str, default="SDU")
+  parser.add_argument("--dataset", type=str, default="Colorado")
   parser.add_argument("--pred_len", type=int, default=24)
   parser.add_argument("--model", type=str, default="PatchMixer")
-  parser.add_argument("--load", type=str, default='True')
+  parser.add_argument("--load", type=str, default='False')
   parser.add_argument("--mixed", type=str, default='True')
+  parser.add_argument("--individual", type=str, default="True")
   args = parser.parse_args()
 
   best_params = tune_model_with_optuna(args, n_trials=150)

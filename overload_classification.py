@@ -431,11 +431,36 @@ class SDUDataModule(L.LightningDataModule):
     X_window, y_target = zip(*results)
     return np.array(X_window), np.array(y_target)
 
+class LightningModel(L.LightningModule):
+  def __init__(self, model, criterion, optimizer, learning_rate):
+    super().__init__()
+    self.criterion = criterion
+    self.learning_rate = learning_rate
+    self.optimizer = optimizer
+    self.model = model
+
+  def forward(self, x):
+    return self.model(x)
+
+  def training_step(self, batch, batch_idx):
+    x, y = batch
+    y_hat = self(x)
+    train_loss = self.criterion(y_hat, y) 
+    self.log("train_loss", train_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+    return train_loss
+
+  def predict_step(self, batch, batch_idx):
+    x, y = batch
+    y_hat = self(x)
+    return y_hat
+
+  def configure_optimizers(self):
+    return self.optimizer(self.parameters(), lr=self.learning_rate)
+
 class Configs:
   def __init__(self, config_dict):
     for key, value in config_dict.items():
       setattr(self, key, value)
-
 
 def plot_and_save_with_metrics(combined_name, colmod):
   actuals = []
@@ -495,8 +520,23 @@ def precision_score(TP, FP):
 def recall_score(TP, TN):
   return TP / (TP + TN)
 
+def initialize_model(model_name, hyperparameters):
+  model_dict = {
+  "LSTM": lambda: LSTM(input_size=args.input_size, pred_len=args.pred_len, hidden_size=hyperparameters['hidden_size'], num_layers=hyperparameters['num_layers'], dropout=hyperparameters['dropout'] ),
+  "GRU": lambda: GRU(input_size=args.input_size, pred_len=args.pred_len, hidden_size=hyperparameters['hidden_size'], num_layers=hyperparameters['num_layers'], dropout=hyperparameters['dropout']),
+  "xPatch": lambda: xPatch(Configs({**hyperparameters, "enc_in": args.input_size, "pred_len": args.pred_len, 'seq_len': args.seq_len})),
+  "PatchMixer": lambda: PatchMixer(Configs({**hyperparameters, "enc_in": args.input_size, "pred_len": args.pred_len, "seq_len": args.seq_len})),
+  "RandomForestRegressor": lambda: MultiOutputRegressor(RandomForestRegressor(n_estimators=hyperparameters['n_estimators'], max_depth=hyperparameters['max_depth'], min_samples_split=hyperparameters['min_samples_split'], min_samples_leaf=hyperparameters['min_samples_leaf'], max_features=hyperparameters['max_features'], random_state=SEED), n_jobs=-1),
+  "GradientBoostingRegressor": lambda: MultiOutputRegressor(GradientBoostingRegressor(n_estimators=hyperparameters['n_estimators'], max_depth=hyperparameters['max_depth'], min_samples_split=hyperparameters['min_samples_split'], min_samples_leaf=hyperparameters['min_samples_leaf'], learning_rate=hyperparameters['learning_rate_model'], random_state=SEED), n_jobs=-1),
+  "AdaBoostRegressor": lambda: MultiOutputRegressor(AdaBoostRegressor(n_estimators=hyperparameters['n_estimators'], learning_rate=hyperparameters['learning_rate'], random_state=SEED), n_jobs=-1),
+  # "DPAD": lambda: DPAD_GCN(input_len=args.seq_len, output_len=args.pred_len, input_dim=args.input_size, enc_hidden=dpad_params['enc_hidden'], dec_hidden=dpad_params['dec_hidden'],
+  #                               dropout=dpad_params['dropout'], num_levels=dpad_params['num_levels'], K_IMP=dpad_params['K_IMP'], RIN=dpad_params['RIN'])
+  }
+
+  return model_dict[model_name]()
+
 parser = ArgumentParser()
-parser.add_argument("--models", type=str, default="[LSTM]")  #['xPatch', 'LSTM', 'GRU', 'PatchMixer']
+parser.add_argument("--models", type=str, default="['xPatch', 'LSTM', 'GRU', 'PatchMixer']")  #['xPatch', 'LSTM', 'GRU', 'PatchMixer']
 parser.add_argument("--input_size", type=int, default=22)
 parser.add_argument("--seq_len", type=int, default=24*7)
 parser.add_argument("--pred_len", type=int, default=24)
@@ -505,24 +545,54 @@ parser.add_argument("--dataset", type=str, default="Colorado")
 args = parser.parse_args()
 
 if __name__ == "__main__":
-  hparams = pd.read_csv(f'./Tunings/{args.dataset}_{args.pred_len}h_tuning.csv')
-  lstm_params = ast.literal_eval(hparams[hparams['model'] == 'LSTM']['parameters'].values[0])
-  gru_params = ast.literal_eval(hparams[hparams['model'] == 'GRU']['parameters'].values[0])
-  xpatch_params = Configs({**ast.literal_eval(hparams[hparams['model'] == 'xPatch']['parameters'].values[0]), "enc_in": args.input_size, "pred_len": args.pred_len, 'seq_len': args.seq_len })
-  patchmixer_params = Configs({**ast.literal_eval(hparams[hparams['model'] == 'PatchMixer']['parameters'].values[0]), "enc_in": args.input_size, "pred_len": args.pred_len, "seq_len": args.seq_len })
-  # dpad_params = ast.literal_eval(hparams[hparams['model'] == 'DPAD']['parameters'].values[0])
-  rf_params = ast.literal_eval(hparams[hparams['model'] == 'RandomForestRegressor']['parameters'].values[0])
-  ada_params = ast.literal_eval(hparams[hparams['model'] == 'AdaBoostRegressor']['parameters'].values[0])
-  gb_params = ast.literal_eval(hparams[hparams['model'] == 'GradientBoostingRegressor']['parameters'].values[0])
 
   # support individual model or ensemble
-  selected_models = ast.literal_eval(args.models) if '[' in args.models else args.models
-  combined_name = "-".join([m for m in selected_models]) if isinstance(selected_models, list) else selected_models
+  mode = "ensemble" if '[' in args.models else "individual"
+  if mode == "ensemble":
+    selected_models = ast.literal_eval(args.models)
+    combined_name = "-".join([m for m in selected_models])
+  else:
+    selected_models = [args.models]
+    combined_name = args.models
 
-  # predict for individual model
+  for model in selected_models:
+    print(f"-----Training {model} model-----")
 
+    if mode == "ensemble":
+      hparams = pd.read_csv(f'./Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning.csv')
+    else:
+      hparams = pd.read_csv(f'./Tunings/{args.dataset}_{args.pred_len}h_tuning.csv')
+
+    hyperparameters = ast.literal_eval(hparams[hparams['model'] == model].iloc[0].values[3])
+    model = initialize_model(model, hyperparameters)
+
+  # prepare colmod
+  if args.dataset == "Colorado":
+    colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=MinMaxScaler(), seq_len=args.seq_len, batch_size=hyperparameters['batch_size'], pred_len=args.pred_len, stride=args.stride, num_workers=hyperparameters['num_workers'], is_persistent=True if hyperparameters['num_workers'] > 0 else False)
+  else: 
+    colmod = SDUDataModule(data_dir='SDU Dataset/DumbCharging_2020_to_2032/Measurements.csv', scaler=MinMaxScaler(), seq_len=args.seq_len, batch_size=hyperparameters['batch_size'], pred_len=args.pred_len, stride=args.stride, num_workers=hyperparameters['num_workers'], is_persistent=True if hyperparameters['num_workers'] > 0 else False)
+
+  colmod.prepare_data()
+  colmod.setup(stage=None)
 
   # model creates prediction
+  if isinstance(model, torch.nn.Module):
+    model = LightningModel(model=model, criterion=nn.L1Loss(), optimizer=torch.optim.Adam, learning_rate=hyperparameters['learning_rate'])
+    trainer = L.Trainer(max_epochs=hyperparameters['max_epochs'], log_every_n_steps=100, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
+    trainer.fit(model, colmod)
+
+    trainer = L.Trainer(max_epochs=hyperparameters['max_epochs'], log_every_n_steps=100, precision='16-mixed', enable_checkpointing=False, devices=1)
+    y_pred = trainer.predict(model, colmod, return_predictions=True)
+
+  elif isinstance(model, BaseEstimator):
+    X_train, y_train = colmod.sklearn_setup("train") 
+    X_test, y_test = colmod.sklearn_setup("test")
+
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test).reshape(-1)
+
+  
+  exit()
 
   # model gets assigned mae, mse, acc, pre, rec
 
