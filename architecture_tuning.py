@@ -547,7 +547,7 @@ def objective(args, trial, all_subsets):
 
 parser = ArgumentParser()
 parser.add_argument("--criterion", type=str, default="MAELoss")
-parser.add_argument("--models", type=str, default="['LSTM']")
+parser.add_argument("--models", type=str, default="['xPatch', 'LSTM', 'GRU', PatchMixer]") #'RandomForest', 'GradientBoosting', 'AdaBoost', 
 parser.add_argument("--dataset", type=str, default="Colorado")
 parser.add_argument("--input_size", type=int, default=22)
 parser.add_argument("--pred_len", type=int, default=24)
@@ -567,13 +567,11 @@ scaler_map = { "MinMaxScaler": MinMaxScaler }
 
 args = parser.parse_args()
 
-
 model_initializers = {
   "LSTM": lambda: LSTM(input_size=args.input_size, pred_len=args.pred_len, hidden_size=lstm_params['hidden_size'], num_layers=lstm_params['num_layers'], dropout=lstm_params['dropout'] ),
   "GRU": lambda: GRU(input_size=args.input_size, pred_len=args.pred_len, hidden_size=gru_params['hidden_size'], num_layers=gru_params['num_layers'], dropout=gru_params['dropout']),
-  # "MLP": lambda: MLP(num_features=args.seq_len*args.input_size, pred_len=args.pred_len, seq_len=mlp_params['batch_size'], hidden_size=mlp_params['hidden_size']),
-  # "xPatch": lambda: xPatch(xpatch_params),
-  # "PatchMixer": lambda: PatchMixer(patchmixer_params),
+  "xPatch": lambda: xPatch(xpatch_params),
+  "PatchMixer": lambda: PatchMixer(patchmixer_params),
   # "DPAD": lambda: DPAD_GCN(input_len=args.seq_len, output_len=args.pred_len, input_dim=args.input_size, enc_hidden=dpad_params['enc_hidden'], dec_hidden=dpad_params['dec_hidden'],
   #                               dropout=dpad_params['dropout'], num_levels=dpad_params['num_levels'], K_IMP=dpad_params['K_IMP'], RIN=dpad_params['RIN'])
 }
