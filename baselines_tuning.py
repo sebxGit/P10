@@ -673,7 +673,7 @@ def tune_model_with_optuna(args, n_trials):
 
   if study.best_value != float('inf'):
     try:
-      df_tuning = pd.read_csv(f'Tunings/{args.dataset}_{args.pred_len}h_tuning.csv')
+      df_tuning = pd.read_csv(f'Tunings/{args.dataset}_{args.pred_len}h_tuning.csv', delimiter=',')
     except Exception:
       df_tuning = pd.DataFrame(columns=['model', 'trials', 'val_loss', 'parameters'])
 
