@@ -1,3 +1,4 @@
+import gc
 import sys
 import os
 import joblib
@@ -543,6 +544,7 @@ def objective(args, trial, all_subsets):
       torch.save(y_pred, f"Tunings/{combined_name}/predictions_{model_name}.pt")
 
     del model  # Delete the model to free memory
+    gc.collect()
     torch.cuda.empty_cache()
 
   create_and_save_ensemble(combined_name)
