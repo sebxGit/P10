@@ -635,7 +635,7 @@ if __name__ == "__main__":
     print("Starting a new tuning.")
     study = optuna.create_study(direction="minimize", study_name=f"Bagging-{combined_name}")
 
-  study.optimize(lambda trial: safe_objective(args, trial, all_subsets), n_trials=5, gc_after_trial=True, timeout=37800)
+  study.optimize(lambda trial: safe_objective(args, trial, all_subsets), n_trials=20, gc_after_trial=True, timeout=37800)
 
   if study.best_value != float('inf'):
     try:
