@@ -504,10 +504,14 @@ def objective(args, trial, all_subsets):
   # bagging_models = [model_initializers[model]() for model in selected_subset if model in model_initializers]
 
   for model_name in selected_subset:
+    print(f"-----Training {model_name} model-----")
     if model_name in model_initializers:
       model = model_initializers[model_name]()  # Initialize one model
+      print("Model initialized")
     model_name = model.name if isinstance(model, torch.nn.Module) else model.__class__.__name__
     _hparams = ast.literal_eval(hparams[hparams['model'] == model_name]['parameters'].values[0])
+
+    print("Hyperparameters: ", _hparams)
 
     if args.dataset == "Colorado":
       colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=scaler_map.get(args.scaler)(), seq_len=args.seq_len, batch_size=_hparams['batch_size'], pred_len=args.pred_len, stride=args.stride, num_workers=_hparams['num_workers'], is_persistent=True if _hparams['num_workers'] > 0 else False)
@@ -519,6 +523,7 @@ def objective(args, trial, all_subsets):
 
     print(f"-----Training {model_name} model-----")
     if isinstance(model, torch.nn.Module):
+
       model = LightningModel(model=model, criterion=criterion_map.get(args.criterion)(), optimizer=optimizer_map.get(args.optimizer), learning_rate=_hparams['learning_rate'])
       pred_writer = CustomWriter(output_dir="Tunings", write_interval="epoch", combined_name=combined_name, model_name=model_name)
       trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=0, precision='16-mixed', callbacks=[pred_writer], enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
