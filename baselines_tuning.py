@@ -514,8 +514,8 @@ def objective(args, trial):
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
         'max_epochs': 1,
-        'num_workers': 0,
-        'is_persistent': False
+        'num_workers': trial.suggest_int('num_workers', 5, 12) if args.model != "DPAD" else 2,
+        'is_persistent': True
     }
 
     if args.dataset == "Colorado":
@@ -692,9 +692,9 @@ if __name__ == '__main__':
   parser = ArgumentParser()
   parser.add_argument("--dataset", type=str, default="Colorado")
   parser.add_argument("--pred_len", type=int, default=24)
-  parser.add_argument("--model", type=str, default="MLP")
+  parser.add_argument("--model", type=str, default="AdaBoost")
   parser.add_argument("--load", type=str, default='True')
   parser.add_argument("--mixed", type=str, default='True')
   args = parser.parse_args()
 
-  best_params = tune_model_with_optuna(args, n_trials=1)
+  best_params = tune_model_with_optuna(args, n_trials=150)
