@@ -507,10 +507,9 @@ def objective(args, trial, all_subsets):
   for model_name in selected_subset:
     print(f"-----Training {model_name} model-----")
     if model_name in model_initializers:
-      model = model_initializers[model_name]()  # Initialize one model
+      model = model_initializers[model_name]()
     
-    name = model.__class__.__name__
-    model_name = model.name if isinstance(model, torch.nn.Module) else type(model.estimator).__name__ if name == 'MultiOutputRegressor' else name
+    model_name = model.name if isinstance(model, torch.nn.Module) else type(model.estimator).__name__ if model.__class__.__name__ == 'MultiOutputRegressor' else model.__class__.__name__
     _hparams = ast.literal_eval(hparams[hparams['model'] == model_name]['parameters'].values[0])
 
     print("Hyperparameters: ", _hparams)
@@ -560,7 +559,7 @@ def objective(args, trial, all_subsets):
 
 parser = ArgumentParser()
 parser.add_argument("--criterion", type=str, default="MAELoss")
-parser.add_argument("--models", type=str, default="['RandomForest', 'GradientBoosting', 'AdaBoost']") #'LSTM', 'GRU', 'PatchMixer', 'xPatch'
+parser.add_argument("--models", type=str, default="['RandomForestRegressor', 'GradientBoostingRegressor', 'AdaBoostRegressor']") #'LSTM', 'GRU', 'PatchMixer', 'xPatch'
 parser.add_argument("--dataset", type=str, default="Colorado")
 parser.add_argument("--input_size", type=int, default=22)
 parser.add_argument("--pred_len", type=int, default=24)
@@ -585,9 +584,9 @@ model_initializers = {
   "GRU": lambda: GRU(input_size=args.input_size, pred_len=args.pred_len, hidden_size=gru_params['hidden_size'], num_layers=gru_params['num_layers'], dropout=gru_params['dropout']),
   "xPatch": lambda: xPatch(xpatch_params),
   "PatchMixer": lambda: PatchMixer(patchmixer_params),
-  "RandomForest": lambda: MultiOutputRegressor(RandomForestRegressor(n_estimators=rf_params['n_estimators'], max_depth=rf_params['max_depth'], min_samples_split=rf_params['min_samples_split'], min_samples_leaf=rf_params['min_samples_leaf'], max_features=rf_params['max_features'], random_state=SEED), n_jobs=-1),
-  "GradientBoosting": lambda: MultiOutputRegressor(GradientBoostingRegressor(n_estimators=gb_params['n_estimators'], max_depth=gb_params['max_depth'], min_samples_split=gb_params['min_samples_split'], min_samples_leaf=gb_params['min_samples_leaf'], learning_rate=gb_params['learning_rate_model'], random_state=SEED), n_jobs=-1),
-  "AdaBoost": lambda: MultiOutputRegressor(AdaBoostRegressor(n_estimators=ada_params['n_estimators'], learning_rate=ada_params['learning_rate'], random_state=SEED), n_jobs=-1),
+  "RandomForestRegressor": lambda: MultiOutputRegressor(RandomForestRegressor(n_estimators=rf_params['n_estimators'], max_depth=rf_params['max_depth'], min_samples_split=rf_params['min_samples_split'], min_samples_leaf=rf_params['min_samples_leaf'], max_features=rf_params['max_features'], random_state=SEED), n_jobs=-1),
+  "GradientBoostingRegressor": lambda: MultiOutputRegressor(GradientBoostingRegressor(n_estimators=gb_params['n_estimators'], max_depth=gb_params['max_depth'], min_samples_split=gb_params['min_samples_split'], min_samples_leaf=gb_params['min_samples_leaf'], learning_rate=gb_params['learning_rate_model'], random_state=SEED), n_jobs=-1),
+  "AdaBoostRegressor": lambda: MultiOutputRegressor(AdaBoostRegressor(n_estimators=ada_params['n_estimators'], learning_rate=ada_params['learning_rate'], random_state=SEED), n_jobs=-1),
   # "DPAD": lambda: DPAD_GCN(input_len=args.seq_len, output_len=args.pred_len, input_dim=args.input_size, enc_hidden=dpad_params['enc_hidden'], dec_hidden=dpad_params['dec_hidden'],
   #                               dropout=dpad_params['dropout'], num_levels=dpad_params['num_levels'], K_IMP=dpad_params['K_IMP'], RIN=dpad_params['RIN'])
 }
@@ -599,9 +598,9 @@ if __name__ == "__main__":
   xpatch_params = Configs({**ast.literal_eval(hparams[hparams['model'] == 'xPatch']['parameters'].values[0]), "enc_in": args.input_size, "pred_len": args.pred_len, 'seq_len': args.seq_len })
   patchmixer_params = Configs({**ast.literal_eval(hparams[hparams['model'] == 'PatchMixer']['parameters'].values[0]), "enc_in": args.input_size, "pred_len": args.pred_len, "seq_len": args.seq_len })
   # dpad_params = ast.literal_eval(hparams[hparams['model'] == 'DPAD']['parameters'].values[0])
-  rf_params = ast.literal_eval(hparams[hparams['model'] == 'RandomForest']['parameters'].values[0])
-  ada_params = ast.literal_eval(hparams[hparams['model'] == 'AdaBoost']['parameters'].values[0])
-  gb_params = ast.literal_eval(hparams[hparams['model'] == 'GradientBoosting']['parameters'].values[0])
+  rf_params = ast.literal_eval(hparams[hparams['model'] == 'RandomForestRegressor']['parameters'].values[0])
+  ada_params = ast.literal_eval(hparams[hparams['model'] == 'AdaBoostRegressor']['parameters'].values[0])
+  gb_params = ast.literal_eval(hparams[hparams['model'] == 'GradientBoostingRegressor']['parameters'].values[0])
 
   selected_models = ast.literal_eval(args.models)
   combined_name = "-".join([m for m in selected_models])
