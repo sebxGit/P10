@@ -513,7 +513,7 @@ def objective(args, trial):
         'scaler': MinMaxScaler(),
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
-        'max_epochs': 1,
+        'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100),
         'num_workers': trial.suggest_int('num_workers', 5, 12) if args.model != "DPAD" else 2,
         'is_persistent': True
     }
@@ -620,7 +620,7 @@ def objective(args, trial):
 
       # Trainer for fitting using DDP - Multi GPU
       #trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
-      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False,  strategy='ddp_find_unused_parameters_true')
+      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
 
       trainer.fit(tuned_model, colmod)
 
@@ -690,11 +690,11 @@ def tune_model_with_optuna(args, n_trials):
 
 if __name__ == '__main__':
   parser = ArgumentParser()
-  parser.add_argument("--dataset", type=str, default="Colorado")
+  parser.add_argument("--dataset", type=str, default="SDU")
   parser.add_argument("--pred_len", type=int, default=24)
-  parser.add_argument("--model", type=str, default="AdaBoost")
+  parser.add_argument("--model", type=str, default="PatchMixer")
   parser.add_argument("--load", type=str, default='True')
   parser.add_argument("--mixed", type=str, default='True')
   args = parser.parse_args()
 
-  best_params = tune_model_with_optuna(args, n_trials=150)
+  best_params = tune_model_with_optuna(args, n_trials=4)
