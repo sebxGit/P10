@@ -318,12 +318,8 @@ class ColoradoDataModule(L.LightningDataModule):
     sampler = BootstrapSampler(len(train_dataset), random_state=SEED)
     if args.individual == 'False':
       train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
-      print("USED SAMPLER!")
-      exit()
     else:
       train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
-      print("DIDNT USE SAMPLER!")
-      exit()
     return train_loader
   
   def predict_dataloader(self):
