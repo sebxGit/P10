@@ -536,16 +536,18 @@ def initialize_model(model_name, hyperparameters):
   return model_dict[model_name]()
 
 parser = ArgumentParser()
-parser.add_argument("--models", type=str, default="['xPatch', 'LSTM', 'GRU', 'PatchMixer']")  #['xPatch', 'LSTM', 'GRU', 'PatchMixer']
+parser.add_argument("--models", type=str, default="LSTM")  #['xPatch', 'LSTM', 'GRU', 'PatchMixer']
 parser.add_argument("--input_size", type=int, default=22)
 parser.add_argument("--pred_len", type=int, default=24)
 parser.add_argument("--seq_len", type=int, default=24*7)
 parser.add_argument("--stride", type=int, default=24)
 parser.add_argument("--dataset", type=str, default="Colorado")
+parser.add_argument("--threshold", type=int, default=60)
 
 args = parser.parse_args()
 
 if __name__ == "__main__":
+
 
   # support individual model or ensemble
   mode = "ensemble" if '[' in args.models else "individual"
@@ -557,15 +559,16 @@ if __name__ == "__main__":
     combined_name = args.models
 
   predictions = []
-  for model in selected_models:
-    print(f"-----Training {model} model-----")
+  metrics = []
+  for model_name in selected_models:
+    print(f"-----Training {model_name} model-----")
 
     if mode == "ensemble":
       hparams = pd.read_csv(f'./Tunings/{args.dataset}_{args.pred_len}h_tuning.csv')
     else:
       hparams = pd.read_csv(f'./Tunings/{args.dataset}_{args.pred_len}h_individual_tuning.csv')
 
-    hyperparameters = ast.literal_eval(hparams[hparams['model'] == model].iloc[0].values[3])
+    hyperparameters = ast.literal_eval(hparams[hparams['model'] == model_name].iloc[0].values[3])
     model = initialize_model(model, hyperparameters)
 
     # prepare colmod
@@ -584,24 +587,55 @@ if __name__ == "__main__":
       trainer.fit(model, colmod)
 
       trainer = L.Trainer(max_epochs=hyperparameters['max_epochs'], log_every_n_steps=100, precision='16-mixed', enable_checkpointing=False, devices=1)
-      predictions.append(trainer.predict(model, colmod, return_predictions=True))
+      y_pred = trainer.predict(model, colmod, return_predictions=True)
 
     elif isinstance(model, BaseEstimator):
       X_train, y_train = colmod.sklearn_setup("train") 
       X_test, y_test = colmod.sklearn_setup("test")
 
       model.fit(X_train, y_train)
-      predictions.append(model.predict(X_test).reshape(-1))
-  
-  print(predictions)
+      y_pred = model.predict(X_test).reshape(-1)
+
+    if type(predictions[0]) == torch.Tensor: 
+      predictions = [elem.item() for tensor in predictions for elem in tensor.flatten()]
+
+    actuals = []
+    for batch in colmod.predict_dataloader():
+      x, y = batch
+      actuals.extend(y.numpy())
+
+    actuals_flat = [item for sublist in actuals for item in sublist]
+
+    print(len(predictions), len(actuals_flat))
+
+    # calculate overload
+    threshold = args.threshold
+    baseload = np.mean(actuals_flat)
+    actual_class = np.where(np.array(actuals_flat) + baseload > threshold, 1, 0)
+    pred_class = np.where(np.array(predictions) + baseload > threshold, 1, 0)
+
+    #TP: when pred is 1 and actual is 1
+    TP = np.sum((pred_class == 1) & (actual_class == 1))
+
+    #TN: when pred is 0 and actual is 0
+    TN = np.sum((pred_class == 0) & (actual_class == 0))
+
+    #FP: when pred is 1 and actual is 0
+    FP = np.sum((pred_class == 1) & (actual_class == 0))
+
+    #FN: when pred is 0 and actual is 1
+    FN = np.sum((pred_class == 0) & (actual_class == 1))
+    
+    metrics.append({
+      'model': model_name,
+      'mae': mean_absolute_error(predictions, y_test),
+      'mse': mean_squared_error(predictions, y_test),
+      'acc': accuracy_score(TP, TN, FP, FN),
+      'pre': precision_score(TP, FP),
+      'rec': recall_score(TP, TN),
+    })
+    print(metrics)
+
   exit()
 
-  # model gets assigned mae, mse, acc, pre, rec
-
   # plot overload visual (red on overload), and save to folder
-  actuals = []
-  for batch in colmod.predict_dataloader():
-    x, y = batch
-    actuals.extend(y.numpy())
-
-  actuals_flat = [item for sublist in actuals for item in sublist]
