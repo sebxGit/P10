@@ -540,6 +540,7 @@ parser.add_argument("--models", type=str, default="['xPatch', 'LSTM', 'GRU', 'Pa
 parser.add_argument("--input_size", type=int, default=22)
 parser.add_argument("--pred_len", type=int, default=24)
 parser.add_argument("--seq_len", type=int, default=24*7)
+parser.add_argument("--stride", type=int, default=24)
 parser.add_argument("--dataset", type=str, default="Colorado")
 
 args = parser.parse_args()
@@ -560,9 +561,9 @@ if __name__ == "__main__":
     print(f"-----Training {model} model-----")
 
     if mode == "ensemble":
-      hparams = pd.read_csv(f'./Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning.csv')
-    else:
       hparams = pd.read_csv(f'./Tunings/{args.dataset}_{args.pred_len}h_tuning.csv')
+    else:
+      hparams = pd.read_csv(f'./Tunings/{args.dataset}_{args.pred_len}h_individual_tuning.csv')
 
     hyperparameters = ast.literal_eval(hparams[hparams['model'] == model].iloc[0].values[3])
     model = initialize_model(model, hyperparameters)
