@@ -596,8 +596,8 @@ if __name__ == "__main__":
       model.fit(X_train, y_train)
       y_pred = model.predict(X_test).reshape(-1)
 
-    if type(predictions[0]) == torch.Tensor: 
-      predictions = [elem.item() for tensor in predictions for elem in tensor.flatten()]
+    if type(y_pred[0]) == torch.Tensor: 
+      y_pred = [elem.item() for tensor in y_pred for elem in tensor.flatten()]
 
     actuals = []
     for batch in colmod.predict_dataloader():
