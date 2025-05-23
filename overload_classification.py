@@ -555,6 +555,7 @@ if __name__ == "__main__":
     selected_models = [args.models]
     combined_name = args.models
 
+  predictions = []
   for model in selected_models:
     print(f"-----Training {model} model-----")
 
@@ -566,32 +567,32 @@ if __name__ == "__main__":
     hyperparameters = ast.literal_eval(hparams[hparams['model'] == model].iloc[0].values[3])
     model = initialize_model(model, hyperparameters)
 
-  # prepare colmod
-  if args.dataset == "Colorado":
-    colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=MinMaxScaler(), seq_len=args.seq_len, batch_size=hyperparameters['batch_size'], pred_len=args.pred_len, stride=args.stride, num_workers=hyperparameters['num_workers'], is_persistent=True if hyperparameters['num_workers'] > 0 else False)
-  else: 
-    colmod = SDUDataModule(data_dir='SDU Dataset/DumbCharging_2020_to_2032/Measurements.csv', scaler=MinMaxScaler(), seq_len=args.seq_len, batch_size=hyperparameters['batch_size'], pred_len=args.pred_len, stride=args.stride, num_workers=hyperparameters['num_workers'], is_persistent=True if hyperparameters['num_workers'] > 0 else False)
+    # prepare colmod
+    if args.dataset == "Colorado":
+      colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=MinMaxScaler(), seq_len=args.seq_len, batch_size=hyperparameters['batch_size'], pred_len=args.pred_len, stride=args.stride, num_workers=hyperparameters['num_workers'], is_persistent=True if hyperparameters['num_workers'] > 0 else False)
+    else: 
+      colmod = SDUDataModule(data_dir='SDU Dataset/DumbCharging_2020_to_2032/Measurements.csv', scaler=MinMaxScaler(), seq_len=args.seq_len, batch_size=hyperparameters['batch_size'], pred_len=args.pred_len, stride=args.stride, num_workers=hyperparameters['num_workers'], is_persistent=True if hyperparameters['num_workers'] > 0 else False)
 
-  colmod.prepare_data()
-  colmod.setup(stage=None)
+    colmod.prepare_data()
+    colmod.setup(stage=None)
 
-  # model creates prediction
-  if isinstance(model, torch.nn.Module):
-    model = LightningModel(model=model, criterion=nn.L1Loss(), optimizer=torch.optim.Adam, learning_rate=hyperparameters['learning_rate'])
-    trainer = L.Trainer(max_epochs=hyperparameters['max_epochs'], log_every_n_steps=100, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
-    trainer.fit(model, colmod)
+    # model creates prediction
+    if isinstance(model, torch.nn.Module):
+      model = LightningModel(model=model, criterion=nn.L1Loss(), optimizer=torch.optim.Adam, learning_rate=hyperparameters['learning_rate'])
+      trainer = L.Trainer(max_epochs=hyperparameters['max_epochs'], log_every_n_steps=100, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
+      trainer.fit(model, colmod)
 
-    trainer = L.Trainer(max_epochs=hyperparameters['max_epochs'], log_every_n_steps=100, precision='16-mixed', enable_checkpointing=False, devices=1)
-    y_pred = trainer.predict(model, colmod, return_predictions=True)
+      trainer = L.Trainer(max_epochs=hyperparameters['max_epochs'], log_every_n_steps=100, precision='16-mixed', enable_checkpointing=False, devices=1)
+      predictions.append(trainer.predict(model, colmod, return_predictions=True))
 
-  elif isinstance(model, BaseEstimator):
-    X_train, y_train = colmod.sklearn_setup("train") 
-    X_test, y_test = colmod.sklearn_setup("test")
+    elif isinstance(model, BaseEstimator):
+      X_train, y_train = colmod.sklearn_setup("train") 
+      X_test, y_test = colmod.sklearn_setup("test")
 
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_test).reshape(-1)
-
+      model.fit(X_train, y_train)
+      predictions.append(model.predict(X_test).reshape(-1))
   
+  print(predictions)
   exit()
 
   # model gets assigned mae, mse, acc, pre, rec
