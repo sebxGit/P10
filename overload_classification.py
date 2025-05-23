@@ -536,7 +536,7 @@ def initialize_model(model_name, hyperparameters):
   return model_dict[model_name]()
 
 parser = ArgumentParser()
-parser.add_argument("--models", type=str, default="LSTM")  #['xPatch', 'LSTM', 'GRU', 'PatchMixer']
+parser.add_argument("--models", type=str, default="xPatch")  #['xPatch', 'LSTM', 'GRU', 'PatchMixer']
 parser.add_argument("--input_size", type=int, default=22)
 parser.add_argument("--pred_len", type=int, default=24)
 parser.add_argument("--seq_len", type=int, default=24*7)
@@ -569,7 +569,7 @@ if __name__ == "__main__":
       hparams = pd.read_csv(f'./Tunings/{args.dataset}_{args.pred_len}h_individual_tuning.csv')
 
     hyperparameters = ast.literal_eval(hparams[hparams['model'] == model_name].iloc[0].values[3])
-    model = initialize_model(model, hyperparameters)
+    model = initialize_model(model_name, hyperparameters)
 
     # prepare colmod
     if args.dataset == "Colorado":
