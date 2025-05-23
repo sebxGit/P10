@@ -8,4 +8,4 @@
 #SBATCH --cpus-per-task=20
 #SBATCH --mem=192G
 
-singularity exec --nv energycontainerblackbox.sif python3 baselines_tuning.py --dataset Colorado --pred_len 24  --model xPatch --mixed True --individual True
+singularity exec --nv energycontainerblackbox.sif python3 baselines_tuning.py --dataset SDU --pred_len 24  --model xPatch --mixed True --individual False

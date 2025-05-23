@@ -35,7 +35,6 @@ from lightning.pytorch import seed_everything
 from joblib import Parallel, delayed
 
 # tensorboard --logdir=Predictions/MLP-GRU-LSTM
-
 SEED = 42
 seed_everything(SEED, workers=True)
 
@@ -106,21 +105,6 @@ def convert_Colorado_to_hourly(data):
 
     # Return the hourly data
     return hourly_df
-
-def convert_SDU_to_hourly(df):
-  df = df.set_index('Timestamp')
-
-  hourly = df.resample('h').agg({
-      'Total number of EVs':      'sum',
-      'Number of charging EVs':   'sum',
-      'Number of driving EVs':    'sum',
-      'Total grid load':          'sum',
-      'Aggregated base load':     'sum',
-      'Aggregated charging load': 'sum',
-      'Overload duration [min]':  'sum',
-  })
-
-  return hourly
 
 def add_features(hourly_df, dataset_name, historical_feature, weather_df=None):
   ####################### TIMED BASED FEATURES  #######################
@@ -202,6 +186,51 @@ def add_features(hourly_df, dataset_name, historical_feature, weather_df=None):
   hourly_df['Energy_Consumption_rolling'] = hourly_df[historical_feature].rolling(window=24).mean()
 
   return hourly_df
+
+def add_featuresSDU(df):
+    # Ensure Timestamp is datetime
+    df['Timestamp'] = pd.to_datetime(df['Timestamp'])
+
+    # Use the Timestamp column instead of index
+    df['Day_of_Week'] = df['Timestamp'].dt.dayofweek
+    df['Hour_of_Day'] = df['Timestamp'].dt.hour
+    df['Month_of_Year'] = df['Timestamp'].dt.month
+    df['Year'] = df['Timestamp'].dt.year
+    df['Day/Night'] = (df['Hour_of_Day'] >= 6) & (df['Hour_of_Day'] <= 18)
+
+    # Add holiday
+    dk_hols = holidays.DK(years=range(
+        df['Timestamp'].dt.year.min(), df['Timestamp'].dt.year.max() + 1))
+    df['IsHoliday'] = df['Timestamp'].dt.date.isin(dk_hols).astype(int)
+
+    # Add weekend
+    df['Weekend'] = (df['Day_of_Week'] >= 5).astype(int)
+
+    ####################### CYCLIC FEATURES  #######################
+    df['HourSin'] = np.sin(2 * np.pi * df['Hour_of_Day'] / 24)
+    df['HourCos'] = np.cos(2 * np.pi * df['Hour_of_Day'] / 24)
+    df['DayOfWeekSin'] = np.sin(2 * np.pi * df['Day_of_Week'] / 7)
+    df['DayOfWeekCos'] = np.cos(2 * np.pi * df['Day_of_Week'] / 7)
+    df['MonthOfYearSin'] = np.sin(2 * np.pi * df['Month_of_Year'] / 12)
+    df['MonthOfYearCos'] = np.cos(2 * np.pi * df['Month_of_Year'] / 12)
+
+    ####################### SEASONAL FEATURES  #######################
+    month_to_season = {1: 0, 2: 0, 3: 1, 4: 1, 5: 1, 6: 2,
+                       7: 2, 8: 2, 9: 3, 10: 3, 11: 3, 12: 0}
+    df['Season'] = df['Month_of_Year'].map(month_to_season)
+
+    ####################### HISTORICAL CONSUMPTION FEATURES  #######################
+    df['Aggregated_charging_load_1h'] = df['Aggregated charging load'].shift(1)
+    df['Aggregated_charging_load_6h'] = df['Aggregated charging load'].shift(6)
+    df['Aggregated_charging_load_12h'] = df['Aggregated charging load'].shift(
+        12)
+    df['Aggregated_charging_load_24h'] = df['Aggregated charging load'].shift(
+        24)
+    df['Aggregated_charging_load_1w'] = df['Aggregated charging load'].shift(24*7)
+    df['Aggregated_charging_rolling'] = df['Aggregated charging load'].rolling(window=24).mean()
+
+    return df
+
 
 def filter_data(start_date, end_date, data):
     ####################### FILTER DATASET  #######################
@@ -353,6 +382,7 @@ class ColoradoDataModule(L.LightningDataModule):
     X_window, y_target = zip(*results)
     return np.array(X_window), np.array(y_target)
   
+
 class SDUDataModule(L.LightningDataModule):
   def __init__(self, data_dir: str, scaler: int, seq_len: int, pred_len: int, stride: int, batch_size: int, num_workers: int, is_persistent: bool):
     super().__init__()
@@ -370,29 +400,59 @@ class SDUDataModule(L.LightningDataModule):
     self.y_val = None
     self.X_test = None
     self.y_test = None
+    self.X_train_val = None
+    self.y_train_val = None
 
   def setup(self, stage: str):
+    # Define the start and end dates
     start_date = pd.to_datetime('2024-12-31')
     end_date = pd.to_datetime('2032-12-31')
 
-    # Load the data
-    # df = pd.read_csv(self.data_dir, parse_dates=['Timestamp'])
+    # Load the CSV
     df = pd.read_csv(self.data_dir, skipinitialspace=True)
-    df.columns = df.columns.str.strip()
-    df['Timestamp'] = df['Timestamp'].str.strip()  # <-- Add this line
-    df['Timestamp'] = pd.to_datetime(df['Timestamp'], format="%b %d, %Y, %I:%M:%S %p")
-    df = convert_SDU_to_hourly(df)
-    feature_df = add_features(hourly_df=df, dataset_name='SDU', historical_feature='Aggregated charging load')
-    df = filter_data(start_date, end_date, feature_df)
+
+    # Convert 'Timestamp' to datetime with exact format
+    df['Timestamp'] = pd.to_datetime(
+        df['Timestamp'], format="%b %d, %Y, %I:%M:%S %p")
+
+    # Keep only relevant columns
+    df = df[['Timestamp', 'Aggregated charging load',
+            'Total number of EVs', 'Number of charging EVs',
+             'Number of driving EVs', 'Overload duration [min]']]
+
+    # Ensure numeric columns are correctly parsed
+    numeric_cols = [
+        'Aggregated charging load',
+        'Total number of EVs',
+        'Number of driving EVs',
+        'Number of charging EVs',
+        'Overload duration [min]'
+    ]
+    df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric, errors='coerce')
+
+    # Use lowercase 'h' to avoid deprecation warning
+    df['Timestamp'] = df['Timestamp'].dt.floor('h')
+
+    # Optional: Aggregate if multiple entries exist for the same hour
+    df = df.groupby('Timestamp')[numeric_cols].sum().reset_index()
+
+    df = add_featuresSDU(df)
+
+    df = df.set_index('Timestamp')
+
+    df = filter_data(start_date, end_date, df)
 
     df = df.dropna()
+
     X = df.copy()
 
     y = X.pop('Aggregated charging load')
 
     # 60/20/20 split
-    X_tv, self.X_test, y_tv, self.y_test = train_test_split( X, y, test_size=0.2, shuffle=False)
-    self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(X_tv, y_tv, test_size=0.25, shuffle=False)
+    self.X_train_val, self.X_test, self.y_train_val, self.y_test = train_test_split(
+        X, y, test_size=0.2, shuffle=False)
+    self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(
+        self.X_train_val, self.y_train_val, test_size=0.25, shuffle=False)
 
     preprocessing = self.scaler
     preprocessing.fit(self.X_train)  # should only fit to training data
@@ -412,44 +472,55 @@ class SDUDataModule(L.LightningDataModule):
       # self.y_test = np.array(self.y_test)
 
   def train_dataloader(self):
-    train_dataset = TimeSeriesDataset(self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+    train_dataset = TimeSeriesDataset(
+        self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
     sampler = BootstrapSampler(len(train_dataset), random_state=SEED)
-    if args.individual == 'False':
-      train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
-    else:
-      train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler,
+                              shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
+    # train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return train_loader
 
+  # def predict_dataloader(self):
+  #   test_dataset = TimeSeriesDataset(self.X_test, self.y_test, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+  #   test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+  #   return test_loader
+
   def predict_dataloader(self):
-    val_dataset = TimeSeriesDataset(self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-    val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    val_dataset = TimeSeriesDataset(
+        self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+    val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False,
+                            num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return val_loader
-  
+
   def sklearn_setup(self, set_name: str = "train"):
     if set_name == "train":
-      if args.individual == 'False':
-        X, y = resample(self.X_train, self.y_train, replace=True, n_samples=len(self.X_train), random_state=SEED)
-      else:
-        X, y = self.X_train, self.y_train
+      X, y = resample(self.X_train, self.y_train, replace=True,
+                      n_samples=len(self.X_train), random_state=SEED)
     elif set_name == "val":
-        X, y = self.X_val, self.y_val
+      X, y = self.X_val, self.y_val
     elif set_name == "test":
-        X, y = self.X_test, self.y_test
+      X, y = self.X_test, self.y_test
     else:
-        raise ValueError(
-            "Invalid set name. Choose from 'train', 'val', or 'test'.")
+      raise ValueError(
+          "Invalid set name. Choose from 'train', 'val', or 'test'.")
 
     seq_len, pred_len, stride = self.seq_len, self.pred_len, self.stride
-    max_start = len(X) - (seq_len + pred_len) + 1
+    X_window, y_target = [], []
 
-    # Parallelize the loop
-    results = Parallel(n_jobs=-1)(
-        delayed(process_window)(i, X, y, seq_len, pred_len) for i in range(0, max_start, stride)
-    )
+    max_start = len(X) - (seq_len + pred_len)+1
 
-    # Unpack results
-    X_window, y_target = zip(*results)
-    return np.array(X_window), np.array(y_target)
+    for i in range(0, max_start, stride):
+      X_win = X[i:i + seq_len]
+      y_tar = y[i + seq_len:i + seq_len + pred_len]
+
+      arr_x = np.asanyarray(X_win).reshape(-1)
+      arr_y = np.asanyarray(y_tar).reshape(-1)
+
+      X_window.append(arr_x)
+      y_target.append(arr_y)
+
+    return np.stack(X_window), np.stack(y_target)
+
 
 class CustomWriter(BasePredictionWriter):
   def __init__(self, output_dir, write_interval, combined_name, model_name):
@@ -509,7 +580,7 @@ def get_actuals_and_prediction_flattened(colmod, prediction):
 def objective(args, trial):
     
     params = {
-        'input_size': 22 if args.dataset == "Colorado" else 26,
+        'input_size': 22 if args.dataset == "Colorado" else 24,
         'pred_len': args.pred_len,
         'seq_len': 24*7,
         'stride': args.pred_len,
@@ -626,7 +697,7 @@ def objective(args, trial):
 
       # Trainer for fitting using DDP - Multi GPU
       #trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
-      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
+      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False)
 
       trainer.fit(tuned_model, colmod)
 
@@ -636,6 +707,7 @@ def objective(args, trial):
       predictions = trainer.predict(tuned_model, colmod, return_predictions=True)
 
       pred, act = get_actuals_and_prediction_flattened(colmod, predictions)
+
       train_loss = mean_absolute_error(act, pred)
 
     elif isinstance(model, BaseEstimator):
@@ -646,6 +718,7 @@ def objective(args, trial):
       
       model.fit(X_train, y_train)
       train_loss = mean_absolute_error(y_val, model.predict(X_val))
+
     return train_loss
 
 def safe_objective(args, trial):
@@ -699,9 +772,9 @@ def tune_model_with_optuna(args, n_trials):
 
 if __name__ == '__main__':
   parser = ArgumentParser()
-  parser.add_argument("--dataset", type=str, default="Colorado")
+  parser.add_argument("--dataset", type=str, default="SDU")
   parser.add_argument("--pred_len", type=int, default=24)
-  parser.add_argument("--model", type=str, default="PatchMixer")
+  parser.add_argument("--model", type=str, default="LSTM")
   parser.add_argument("--load", type=str, default='False')
   parser.add_argument("--mixed", type=str, default='True')
   parser.add_argument("--individual", type=str, default="True")
