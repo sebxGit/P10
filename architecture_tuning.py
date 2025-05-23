@@ -626,7 +626,7 @@ if __name__ == "__main__":
 
   if args.load:
     try:
-      study = joblib.load(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_architecture_tuning.pkl')
+      study = joblib.load(f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_architecture_tuning.pkl')
       print("Loaded an old study:")
     except Exception as e:
       print("No previous tuning found. Starting a new tuning.", e)
@@ -635,7 +635,7 @@ if __name__ == "__main__":
     print("Starting a new tuning.")
     study = optuna.create_study(direction="minimize", study_name=f"Bagging-{combined_name}")
 
-  study.optimize(lambda trial: safe_objective(args, trial, all_subsets), n_trials=20, gc_after_trial=True, timeout=37800)
+  study.optimize(lambda trial: safe_objective(args, trial, all_subsets), n_trials=100, gc_after_trial=True, timeout=37800)
 
   if study.best_value != float('inf'):
     try:
@@ -643,7 +643,7 @@ if __name__ == "__main__":
     except Exception:
       df_tuning = pd.DataFrame(columns=['model', 'trials', 'mae', 'mse', 'parameters'])
 
-    new_row = {'model': args.model, 'trials': len(study.trials), 'mae': study.best_value, 'mse': study.user_attrs['mse'], 'parameters': study.best_params}
+    new_row = {'model': args.models, 'trials': len(study.trials), 'mae': study.best_value, 'mse': study.user_attrs['mse'], 'parameters': study.best_params.replace('"', '')}
     new_row_df = pd.DataFrame([new_row]).dropna(axis=1, how='all')
     df_tuning = pd.concat([df_tuning, new_row_df], ignore_index=True)
     df_tuning = df_tuning.sort_values(by=['model', 'mae'], ascending=True).reset_index(drop=True)
@@ -651,4 +651,4 @@ if __name__ == "__main__":
     if not os.path.exists(f'Tunings'):
       os.makedirs(f'Tunings', exist_ok=True)
     df_tuning.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning.csv', index=False)
-    joblib.dump(study, f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_architecture_tuning.pkl')
+    joblib.dump(study, f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_architecture_tuning.pkl')
