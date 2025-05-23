@@ -313,9 +313,11 @@ class ColoradoDataModule(L.LightningDataModule):
 
   def train_dataloader(self):
     train_dataset = TimeSeriesDataset(self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-    sampler = BootstrapSampler(len(train_dataset), random_state=SEED)
-    train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
-    #train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    if args.individual == "True":
+      train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    else:
+      sampler = BootstrapSampler(len(train_dataset), random_state=SEED)
+      train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
     return train_loader
   
   def predict_dataloader(self):
@@ -325,7 +327,10 @@ class ColoradoDataModule(L.LightningDataModule):
   
   def sklearn_setup(self, set_name: str = "train"):
     if set_name == "train":
-        X, y = resample(self.X_train, self.y_train, replace=True, n_samples=len(self.X_train), random_state=SEED)
+        if args.individual == "True":
+          X, y = self.X_train, self.y_train
+        else:
+          X, y = resample(self.X_train, self.y_train, replace=True, n_samples=len(self.X_train), random_state=SEED)
     elif set_name == "val":
         X, y = self.X_val, self.y_val
     elif set_name == "test":
@@ -399,9 +404,11 @@ class SDUDataModule(L.LightningDataModule):
 
   def train_dataloader(self):
     train_dataset = TimeSeriesDataset(self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-    sampler = BootstrapSampler(len(train_dataset), random_state=SEED)
-    train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
-    # train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    if args.individual == "True":
+      train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    else:   
+      sampler = BootstrapSampler(len(train_dataset), random_state=SEED)
+      train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
     return train_loader
 
   def predict_dataloader(self):
@@ -411,7 +418,10 @@ class SDUDataModule(L.LightningDataModule):
   
   def sklearn_setup(self, set_name: str = "train"):
     if set_name == "train":
-        X, y = resample(self.X_train, self.y_train, replace=True, n_samples=len(self.X_train), random_state=SEED)
+        if args.individual == "True":
+          X, y = self.X_train, self.y_train
+        else:
+          X, y = resample(self.X_train, self.y_train, replace=True, n_samples=len(self.X_train), random_state=SEED)
     elif set_name == "val":
         X, y = self.X_val, self.y_val
     elif set_name == "test":
@@ -537,6 +547,7 @@ def initialize_model(model_name, hyperparameters):
 
 parser = ArgumentParser()
 parser.add_argument("--models", type=str, default="xPatch")  #['xPatch', 'LSTM', 'GRU', 'PatchMixer']
+parser.add_argument("--individual", type=str, default="True")
 parser.add_argument("--input_size", type=int, default=22)
 parser.add_argument("--pred_len", type=int, default=24)
 parser.add_argument("--seq_len", type=int, default=24*7)
@@ -547,8 +558,6 @@ parser.add_argument("--threshold", type=int, default=60)
 args = parser.parse_args()
 
 if __name__ == "__main__":
-
-
   # support individual model or ensemble
   mode = "ensemble" if '[' in args.models else "individual"
   if mode == "ensemble":
@@ -583,7 +592,8 @@ if __name__ == "__main__":
     # model creates prediction
     if isinstance(model, torch.nn.Module):
       model = LightningModel(model=model, criterion=nn.L1Loss(), optimizer=torch.optim.Adam, learning_rate=hyperparameters['learning_rate'])
-      trainer = L.Trainer(max_epochs=hyperparameters['max_epochs'], log_every_n_steps=100, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
+      trainer = L.Trainer(max_epochs=hyperparameters['max_epochs'], log_every_n_steps=100, precision='16-mixed', enable_checkpointing=False)
+      # trainer = L.Trainer(max_epochs=hyperparameters['max_epochs'], log_every_n_steps=100, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
       trainer.fit(model, colmod)
 
       trainer = L.Trainer(max_epochs=hyperparameters['max_epochs'], log_every_n_steps=100, precision='16-mixed', enable_checkpointing=False, devices=1)
@@ -596,9 +606,7 @@ if __name__ == "__main__":
       model.fit(X_train, y_train)
       y_pred = model.predict(X_test).reshape(-1)
 
-    print(y_pred.shape)
-
-    if type(y_pred[0]) == torch.Tensor: 
+    if torch.is_tensor(y_pred[0]): 
       y_pred = [elem.item() for tensor in y_pred for elem in tensor.flatten()]
 
     actuals = []
@@ -608,13 +616,29 @@ if __name__ == "__main__":
 
     actuals_flat = [item for sublist in actuals for item in sublist]
 
-    print(len(predictions), len(actuals_flat))
-
     # calculate overload
     threshold = args.threshold
     baseload = np.mean(actuals_flat)
     actual_class = np.where(np.array(actuals_flat) + baseload > threshold, 1, 0)
-    pred_class = np.where(np.array(predictions) + baseload > threshold, 1, 0)
+    pred_class = np.where(np.array(y_pred) + baseload > threshold, 1, 0)
+
+    from collections import Counter
+    print(threshold)
+    print(baseload)
+    counts = Counter(actual_class)
+    total = len(actual_class)
+    percent_0 = (counts[0] / total) * 100
+    percent_1 = (counts[1] / total) * 100
+
+    print(f"Percentage of 0: {percent_0:.2f}%")
+    print(f"Percentage of 1: {percent_1:.2f}%")
+    counts = Counter(pred_class)
+    total = len(pred_class)
+    percent_0 = (counts[0] / total) * 100
+    percent_1 = (counts[1] / total) * 100
+
+    print(f"Percentage of 0: {percent_0:.2f}%")
+    print(f"Percentage of 1: {percent_1:.2f}%")
 
     #TP: when pred is 1 and actual is 1
     TP = np.sum((pred_class == 1) & (actual_class == 1))
@@ -627,11 +651,13 @@ if __name__ == "__main__":
 
     #FN: when pred is 0 and actual is 1
     FN = np.sum((pred_class == 0) & (actual_class == 1))
+
+    print(TP, TN, FP, FN)
     
     metrics.append({
       'model': model_name,
-      'mae': mean_absolute_error(predictions, y_test),
-      'mse': mean_squared_error(predictions, y_test),
+      'mae': mean_absolute_error(y_pred, actuals_flat),
+      'mse': mean_squared_error(y_pred, actuals_flat),
       'acc': accuracy_score(TP, TN, FP, FN),
       'pre': precision_score(TP, FP),
       'rec': recall_score(TP, TN),

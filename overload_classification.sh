@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=p10
-#SBATCH --output=result_baselines_run_%j.out
-#SBATCH --error=error_baselines_run_%j.err
+#SBATCH --output=result_overload_classification_%j.out
+#SBATCH --error=error_overload_classification_%j.err
 #SBATCH --time=12:00:00 # 
 #SBATCH --ntasks=1
 #SBATCH --gres=gpu:8
