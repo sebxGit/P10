@@ -8,4 +8,4 @@
 #SBATCH --cpus-per-task=80
 #SBATCH --mem=175G
 
-srun --gres=gpu:8 --mem=175G --cpus-per-task=80 --pty singularity exec --nv energycontainerblackbox.sif python3 baselines_run.py --input_size 22 --pred_len 24 --seq_len 168 --dataset Colorado
+singularity exec --nv energycontainerblackbox.sif python3 overload_classification.py --input_size 22 --pred_len 24 --seq_len 168 --dataset Colorado
