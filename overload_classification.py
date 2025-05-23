@@ -538,8 +538,8 @@ def initialize_model(model_name, hyperparameters):
 parser = ArgumentParser()
 parser.add_argument("--models", type=str, default="['xPatch', 'LSTM', 'GRU', 'PatchMixer']")  #['xPatch', 'LSTM', 'GRU', 'PatchMixer']
 parser.add_argument("--input_size", type=int, default=22)
-parser.add_argument("--seq_len", type=int, default=24*7)
 parser.add_argument("--pred_len", type=int, default=24)
+parser.add_argument("--seq_len", type=int, default=24*7)
 parser.add_argument("--dataset", type=str, default="Colorado")
 
 args = parser.parse_args()
