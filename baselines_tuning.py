@@ -449,10 +449,8 @@ class SDUDataModule(L.LightningDataModule):
     y = X.pop('Aggregated charging load')
 
     # 60/20/20 split
-    self.X_train_val, self.X_test, self.y_train_val, self.y_test = train_test_split(
-        X, y, test_size=0.2, shuffle=False)
-    self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(
-        self.X_train_val, self.y_train_val, test_size=0.25, shuffle=False)
+    self.X_train_val, self.X_test, self.y_train_val, self.y_test = train_test_split( X, y, test_size=0.2, shuffle=False)
+    self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(self.X_train_val, self.y_train_val, test_size=0.25, shuffle=False)
 
     preprocessing = self.scaler
     preprocessing.fit(self.X_train)  # should only fit to training data
@@ -494,32 +492,30 @@ class SDUDataModule(L.LightningDataModule):
 
   def sklearn_setup(self, set_name: str = "train"):
     if set_name == "train":
-      X, y = resample(self.X_train, self.y_train, replace=True,
-                      n_samples=len(self.X_train), random_state=SEED)
+      if args.individual == 'False':
+        X, y = resample(self.X_train, self.y_train, replace=True,
+                        n_samples=len(self.X_train), random_state=SEED)
+      else:
+        X, y = self.X_train, self.y_train
     elif set_name == "val":
-      X, y = self.X_val, self.y_val
+        X, y = self.X_val, self.y_val
     elif set_name == "test":
-      X, y = self.X_test, self.y_test
+        X, y = self.X_test, self.y_test
     else:
-      raise ValueError(
-          "Invalid set name. Choose from 'train', 'val', or 'test'.")
+        raise ValueError(
+            "Invalid set name. Choose from 'train', 'val', or 'test'.")
 
     seq_len, pred_len, stride = self.seq_len, self.pred_len, self.stride
-    X_window, y_target = [], []
+    max_start = len(X) - (seq_len + pred_len) + 1
 
-    max_start = len(X) - (seq_len + pred_len)+1
+    # Parallelize the loop
+    results = Parallel(n_jobs=-1)(
+        delayed(process_window)(i, X, y, seq_len, pred_len) for i in range(0, max_start, stride)
+    )
 
-    for i in range(0, max_start, stride):
-      X_win = X[i:i + seq_len]
-      y_tar = y[i + seq_len:i + seq_len + pred_len]
-
-      arr_x = np.asanyarray(X_win).reshape(-1)
-      arr_y = np.asanyarray(y_tar).reshape(-1)
-
-      X_window.append(arr_x)
-      y_target.append(arr_y)
-
-    return np.stack(X_window), np.stack(y_target)
+    # Unpack results
+    X_window, y_target = zip(*results)
+    return np.array(X_window), np.array(y_target)
 
 
 class CustomWriter(BasePredictionWriter):
