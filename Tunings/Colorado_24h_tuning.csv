@@ -6,4 +6,4 @@ AdaBoostRegressor,150,14.113466506648685,"{'batch_size': 32, 'learning_rate': 0.
 GRU,150,6.754800261060844,"{'batch_size': 128, 'learning_rate': 0.002183521345460817, 'max_epochs': 1600, 'num_workers': 9, 'hidden_size': 143, 'num_layers': 1, 'dropout': 0.23265791159785204}"
 LSTM,150,8.859358654241356,"{'batch_size': 48, 'learning_rate': 0.005177372559029542, 'max_epochs': 1400, 'num_workers': 7, 'hidden_size': 124, 'num_layers': 8, 'dropout': 0.709007457107967}"
 PatchMixer,150,6.580917918940725,"{'batch_size': 32, 'learning_rate': 0.0001120549333127051, 'max_epochs': 1700, 'num_workers': 5, 'patch_len': 32, 'stride': 11, 'mixer_kernel_size': 8, 'd_model': 256, 'dropout': 0.45, 'head_dropout': 0.15000000000000002, 'e_layers': 3}"
-DPAD, 150, 7.040571050702793, "{'batch_size': 16, 'learning_rate': 0.0008651189154461191, 'max_epochs': 1700, 'enc_hidden': 300, 'dec_hidden': 228, 'num_levels': 2, 'K_IMP': 6, 'RIN': 1}"
+DPAD,150,7.040571050702793,"{'batch_size': 16, 'learning_rate': 0.0008651189154461191, 'max_epochs': 1700, 'enc_hidden': 300, 'dec_hidden': 228, 'num_levels': 2, 'K_IMP': 6, 'RIN': 1}"
