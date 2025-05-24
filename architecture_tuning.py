@@ -590,8 +590,7 @@ model_initializers = {
   "RandomForestRegressor": lambda: MultiOutputRegressor(RandomForestRegressor(n_estimators=rf_params['n_estimators'], max_depth=rf_params['max_depth'], min_samples_split=rf_params['min_samples_split'], min_samples_leaf=rf_params['min_samples_leaf'], max_features=rf_params['max_features'], random_state=SEED), n_jobs=-1),
   "GradientBoostingRegressor": lambda: MultiOutputRegressor(GradientBoostingRegressor(n_estimators=gb_params['n_estimators'], max_depth=gb_params['max_depth'], min_samples_split=gb_params['min_samples_split'], min_samples_leaf=gb_params['min_samples_leaf'], learning_rate=gb_params['learning_rate_model'], random_state=SEED), n_jobs=-1),
   "AdaBoostRegressor": lambda: MultiOutputRegressor(AdaBoostRegressor(n_estimators=ada_params['n_estimators'], learning_rate=ada_params['learning_rate'], random_state=SEED), n_jobs=-1),
-  # "DPAD": lambda: DPAD_GCN(input_len=args.seq_len, output_len=args.pred_len, input_dim=args.input_size, enc_hidden=dpad_params['enc_hidden'], dec_hidden=dpad_params['dec_hidden'],
-  #                               dropout=dpad_params['dropout'], num_levels=dpad_params['num_levels'], K_IMP=dpad_params['K_IMP'], RIN=dpad_params['RIN'])
+  "DPAD": lambda: DPAD_GCN(input_len=args.seq_len, output_len=args.pred_len, input_dim=args.input_size, enc_hidden=dpad_params['enc_hidden'], dec_hidden=dpad_params['dec_hidden'], dropout=dpad_params['dropout'], num_levels=dpad_params['num_levels'], K_IMP=dpad_params['K_IMP'], RIN=dpad_params['RIN'])
 }
 
 def safe_objective(args, trial, all_subsets):
@@ -610,7 +609,7 @@ if __name__ == "__main__":
   gru_params = ast.literal_eval(hparams[hparams['model'] == 'GRU']['parameters'].values[0])
   xpatch_params = Configs({**ast.literal_eval(hparams[hparams['model'] == 'xPatch']['parameters'].values[0]), "enc_in": args.input_size, "pred_len": args.pred_len, 'seq_len': args.seq_len })
   patchmixer_params = Configs({**ast.literal_eval(hparams[hparams['model'] == 'PatchMixer']['parameters'].values[0]), "enc_in": args.input_size, "pred_len": args.pred_len, "seq_len": args.seq_len })
-  # dpad_params = ast.literal_eval(hparams[hparams['model'] == 'DPAD']['parameters'].values[0])
+  dpad_params = ast.literal_eval(hparams[hparams['model'] == 'DPAD']['parameters'].values[0])
   rf_params = ast.literal_eval(hparams[hparams['model'] == 'RandomForestRegressor']['parameters'].values[0])
   ada_params = ast.literal_eval(hparams[hparams['model'] == 'AdaBoostRegressor']['parameters'].values[0])
   gb_params = ast.literal_eval(hparams[hparams['model'] == 'GradientBoostingRegressor']['parameters'].values[0])
