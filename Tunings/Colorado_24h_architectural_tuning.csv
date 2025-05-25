@@ -1,0 +1,2 @@
+model,trials,mae,mse,parameters
+"['LSTM', 'GRU', 'PatchMixer', 'xPatch']",150,7.216711044311523,,"{'model_subsets': "['LSTM', 'GRU', 'PatchMixer', 'xPatch']"}"
