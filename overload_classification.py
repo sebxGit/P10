@@ -38,6 +38,7 @@ import lightning as L
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from lightning.pytorch.callbacks import BasePredictionWriter
 from lightning.pytorch import seed_everything
+from collections import Counter
 
 # Seed 
 SEED = 42
@@ -214,7 +215,6 @@ def filter_data(start_date, end_date, data):
 
     return data
 
-
 class TimeSeriesDataset(Dataset):
   def __init__(self, X: np.ndarray, y: np.ndarray, seq_len: int = 1, pred_len: int = 24, stride: int = 24):
     self.seq_len = seq_len
@@ -279,6 +279,7 @@ class ColoradoDataModule(L.LightningDataModule):
     self.y_val = None
     self.X_test = None
     self.y_test = None
+    self.test_dates = []
 
   def setup(self, stage: str):
     start_date = pd.to_datetime('2021-05-30')
@@ -295,10 +296,13 @@ class ColoradoDataModule(L.LightningDataModule):
     X = df.copy()
 
     y = X.pop('Energy_Consumption')
+    
 
     # 60/20/20 split
     X_tv, self.X_test, y_tv, self.y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
     self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(X_tv, y_tv, test_size=0.25, shuffle=False)
+
+    self.test_dates = self.X_test.index.tolist()
 
     preprocessing = self.scaler
     preprocessing.fit(self.X_train)  # should only fit to training data
@@ -527,8 +531,8 @@ def accuracy_score(TP, TN, FP, FN):
 def precision_score(TP, FP):
   return TP / (TP + FP)
 
-def recall_score(TP, TN):
-  return TP / (TP + TN)
+def recall_score(TP, FN):
+  return TP / (TP + FN)
 
 def initialize_model(model_name, hyperparameters):
   model_dict = {
@@ -554,6 +558,7 @@ parser.add_argument("--seq_len", type=int, default=24*7)
 parser.add_argument("--stride", type=int, default=24)
 parser.add_argument("--dataset", type=str, default="Colorado")
 parser.add_argument("--threshold", type=int, default=60)
+parser.add_argument("--multiplier", type=int, default=2)
 
 args = parser.parse_args()
 
@@ -605,65 +610,92 @@ if __name__ == "__main__":
 
       model.fit(X_train, y_train)
       y_pred = model.predict(X_test).reshape(-1)
-
-    if torch.is_tensor(y_pred[0]): 
-      y_pred = [elem.item() for tensor in y_pred for elem in tensor.flatten()]
+    
+    y_pred = [pred * args.multiplier for pred in y_pred]
 
     actuals = []
     for batch in colmod.predict_dataloader():
       x, y = batch
       actuals.extend(y.numpy())
 
-    actuals_flat = [item for sublist in actuals for item in sublist]
+    actuals_flat = [item*args.multiplier for sublist in actuals for item in sublist]
 
-    # calculate overload
-    threshold = args.threshold
-    baseload = np.mean(actuals_flat)
-    actual_class = np.where(np.array(actuals_flat) + baseload > threshold, 1, 0)
-    pred_class = np.where(np.array(y_pred) + baseload > threshold, 1, 0)
+    # plot overload visual (red on overload), and save to folder
+    baseload1 = pd.read_csv('Colorado/ElectricityDemandColorado/ColoradoDemand_Part1.csv')
+    baseload2 = pd.read_csv('Colorado/ElectricityDemandColorado/ColoradoDemand_Part2.csv')
+    baseload3 = pd.read_csv('Colorado/ElectricityDemandColorado/ColoradoDemand_Part3.csv')
 
-    from collections import Counter
-    print(threshold)
-    print(baseload)
-    counts = Counter(actual_class)
-    total = len(actual_class)
-    percent_0 = (counts[0] / total) * 100
-    percent_1 = (counts[1] / total) * 100
+    baseloads = [baseload1, baseload2, baseload3]
 
-    print(f"Percentage of 0: {percent_0:.2f}%")
-    print(f"Percentage of 1: {percent_1:.2f}%")
-    counts = Counter(pred_class)
-    total = len(pred_class)
-    percent_0 = (counts[0] / total) * 100
-    percent_1 = (counts[1] / total) * 100
+    # create a dataframe for y_pred and actuals_flat with time stamps
+    df_pred_act = pd.DataFrame({'y_pred': y_pred, 'actuals_flat': actuals_flat})
+    df_pred_act.index = colmod.test_dates[:len(actuals_flat)]
 
-    print(f"Percentage of 0: {percent_0:.2f}%")
-    print(f"Percentage of 1: {percent_1:.2f}%")
+    # print(df_pred_act)
 
-    #TP: when pred is 1 and actual is 1
-    TP = np.sum((pred_class == 1) & (actual_class == 1))
+    range1_start = pd.Timestamp('2023-02-04 00:00')
+    range1_end = pd.Timestamp('2023-02-05 01:00')
+    range2_start = pd.Timestamp('2023-02-28 00:00')
+    range2_end = pd.Timestamp('2023-03-06 01:00')
 
-    #TN: when pred is 0 and actual is 0
-    TN = np.sum((pred_class == 0) & (actual_class == 0))
+    df_part1 = df_pred_act[df_pred_act.index < range1_start]
+    df_part2 = df_pred_act[(df_pred_act.index >= range1_end) & (df_pred_act.index <= range2_start)]
+    df_part3 = df_pred_act[df_pred_act.index >= range2_end]
+    df_part3 = df_part3.drop(pd.Timestamp('2023-03-12 02:00'))
 
-    #FP: when pred is 1 and actual is 0
-    FP = np.sum((pred_class == 1) & (actual_class == 0))
+    # print(df_part1.index[0], df_part1.index[-1])
+    # print(df_part2.index[0], df_part2.index[-1])
+    # print(df_part3.index[0], df_part3.index[-1])
 
-    #FN: when pred is 0 and actual is 1
-    FN = np.sum((pred_class == 0) & (actual_class == 1))
+    dfs = [df_part1, df_part2, df_part3]
 
-    print(TP, TN, FP, FN)
-    
-    metrics.append({
-      'model': model_name,
-      'mae': mean_absolute_error(y_pred, actuals_flat),
-      'mse': mean_squared_error(y_pred, actuals_flat),
-      'acc': accuracy_score(TP, TN, FP, FN),
-      'pre': precision_score(TP, FP),
-      'rec': recall_score(TP, TN),
-    })
-    print(metrics)
+    for baseload, df in zip(baseloads, dfs):
+      y_pred = df['y_pred'].values
+      actuals_flat = df['actuals_flat'].values
+      baseload = baseload['Demand (MWh)'].values
+      
+      actual_class = np.where(np.array(actuals_flat) + baseload > args.threshold, 1, 0)
+      pred_class = np.where(np.array(y_pred) + baseload > args.threshold, 1, 0)
+      counts = Counter(actual_class)
+      total = len(actual_class)
+      percent_0 = (counts[0] / total) * 100
+      percent_1 = (counts[1] / total) * 100
 
-  exit()
+      print(f"0s act: {percent_0:.2f}%")
+      print(f"1s act: {percent_1:.2f}%")
+      counts = Counter(pred_class)
+      total = len(pred_class)
+      percent_0 = (counts[0] / total) * 100
+      percent_1 = (counts[1] / total) * 100
 
-  # plot overload visual (red on overload), and save to folder
+      print(f"0s pred: {percent_0:.2f}%")
+      print(f"1s pred: {percent_1:.2f}%")
+      
+      #TP: when pred is 1 and actual is 1
+      #TN: when pred is 0 and actual is 0
+      #FP: when pred is 1 and actual is 0
+      #FN: when pred is 0 and actual is 1
+      TP = np.sum((pred_class == 1) & (actual_class == 1))
+      TN = np.sum((pred_class == 0) & (actual_class == 0))
+      FP = np.sum((pred_class == 1) & (actual_class == 0))
+      FN = np.sum((pred_class == 0) & (actual_class == 1))
+
+      print(TP, TN)
+      print(FP, FN)
+
+      metrics = []
+
+      metrics.append({
+        'model': model_name,
+        'mae': mean_absolute_error(y_pred, actuals_flat),
+        'mse': mean_squared_error(y_pred, actuals_flat),
+        'acc': accuracy_score(TP, TN, FP, FN),
+        'pre': precision_score(TP, FP),
+        'rec': recall_score(TP, FN),
+      })
+      print(metrics)
+
+      plt.plot(actuals_flat, label='Actuals')
+      plt.plot(y_pred, label=model_name, color='orange')
+      plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
+      plt.show()

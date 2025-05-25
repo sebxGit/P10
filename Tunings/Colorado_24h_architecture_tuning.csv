@@ -1,2 +1,0 @@
-model,trials,mae,mse,parameters
-"['RandomForestRegressor', 'GradientBoostingRegressor', 'AdaBoostRegressor', 'LSTM', 'GRU', 'PatchMixer', 'xPatch']", 20, 7.213119983673096,, "{'model_subsets': ['LSTM', 'GRU', 'xPatch']}"
