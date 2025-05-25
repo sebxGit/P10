@@ -1,0 +1,2 @@
+model,trials,val_loss,parameters
+AdaBoost,150,35.156246696199204,"{'batch_size': 80, 'learning_rate': 0.00038447146958356235, 'max_epochs': 1700, 'num_workers': 7, 'n_estimators': 192, 'learning_rate_model': 0.9086937394259514}"
