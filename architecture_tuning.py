@@ -637,6 +637,7 @@ if __name__ == "__main__":
   study.optimize(lambda trial: safe_objective(args, trial, all_subsets), n_trials=100, gc_after_trial=True, timeout=37800)
 
   if study.best_value != float('inf'):
+    joblib.dump(study, f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_architecture_tuning.pkl')
     try:
       df_tuning = pd.read_csv(f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning.csv', delimiter=',')
     except Exception:
@@ -650,4 +651,3 @@ if __name__ == "__main__":
     if not os.path.exists(f'Tunings'):
       os.makedirs(f'Tunings', exist_ok=True)
     df_tuning.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning.csv', index=False)
-    joblib.dump(study, f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_architecture_tuning.pkl')
