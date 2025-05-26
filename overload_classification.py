@@ -658,6 +658,7 @@ if __name__ == "__main__":
     if isinstance(model, torch.nn.Module):
       model = LightningModel(model=model, criterion=nn.L1Loss(), optimizer=torch.optim.Adam, learning_rate=hyperparameters['learning_rate'])
       trainer = L.Trainer(max_epochs=hyperparameters['max_epochs'], log_every_n_steps=100, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
+      trainer = L.Trainer(max_epochs=hyperparameters['max_epochs'], log_every_n_steps=100, precision='16-mixed', enable_checkpointing=False)
       trainer.fit(model, colmod)
 
       trainer = L.Trainer(max_epochs=hyperparameters['max_epochs'], log_every_n_steps=100, precision='16-mixed', enable_checkpointing=False, devices=1)
@@ -769,13 +770,14 @@ if __name__ == "__main__":
       # plt.savefig(f'{file_path}_part{i}_overload_visual.png')
       # plt.show()
       # plt.clf()
+      
   if os.path.exists(file_path):
     metrics_df = pd.read_csv(file_path)
   else:
     metrics_df = pd.DataFrame(columns=['model', 'mae', 'acc', 'pre', 'rec'])
 
-  new_metrics_df = metrics_df.select_dtypes(include=['number']).columns
-  new_metrics_df = metrics_df.mean().to_frame().T
+  new_metrics_df = metrics_df.drop(columns=['model'])
+  new_metrics_df = new_metrics_df.mean().to_frame().T
   new_metrics_df['model'] = f"{combined_name}_avg"
   new_metrics_df = new_metrics_df[['model'] + list(new_metrics_df.columns.difference(['model'], sort=False))]
 
