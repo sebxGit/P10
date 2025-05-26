@@ -707,6 +707,8 @@ if __name__ == "__main__":
     for i, (baseload, df) in enumerate(zip(baseloads, dfs)):
       y_pred = df['y_pred'].values
       actuals_flat = df['actuals_flat'].values
+      print("MAX!!!", actuals_flat.max())
+
       baseload = baseload['Demand (MWh)'].values / args.downscaling
 
       actuals = np.array(actuals_flat) + baseload
@@ -757,6 +759,7 @@ if __name__ == "__main__":
         loss_func_df = pd.DataFrame(columns=['model', 'mae', 'mse', 'acc', 'pre', 'rec'])
       loss_func_df.set_index('model', inplace=True)
       loss_func_df.to_csv(f'Classifications/{combined_name}/{args.dataset}_part{i}_loss_func_metrics.csv')
+
       
       plt.figure(figsize=(15, 4))
       plt.plot(baseload, label='Baseload', alpha=0.5)
