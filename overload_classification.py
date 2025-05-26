@@ -605,7 +605,7 @@ def initialize_model(model_name, hyperparameters):
   return model_dict[model_name]()
 
 parser = ArgumentParser()
-parser.add_argument("--models", type=str, default="AdaBoostRegressor")
+parser.add_argument("--models", type=str, default="GradientBoostingRegressor")
 parser.add_argument("--individual", type=str, default="True")
 parser.add_argument("--input_size", type=int, default=22)
 parser.add_argument("--pred_len", type=int, default=24)
@@ -770,7 +770,7 @@ if __name__ == "__main__":
       # plt.savefig(f'{file_path}_part{i}_overload_visual.png')
       # plt.show()
       # plt.clf()
-      
+
   if os.path.exists(file_path):
     metrics_df = pd.read_csv(file_path)
   else:
