@@ -774,8 +774,9 @@ if __name__ == "__main__":
   else:
     metrics_df = pd.DataFrame(columns=['model', 'mae', 'acc', 'pre', 'rec'])
 
-  new_metrics_df = metrics_df.sum()
+  new_metrics_df = metrics_df.mean().to_frame().T
   new_metrics_df['model'] = f"{combined_name}_avg"
+
   metrics_df = pd.concat([metrics_df, new_metrics_df], ignore_index=True)
 
   if 'model' in metrics_df.columns:
