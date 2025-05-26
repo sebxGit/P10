@@ -707,7 +707,7 @@ if __name__ == "__main__":
     for i, (baseload, df) in enumerate(zip(baseloads, dfs)):
       y_pred = df['y_pred'].values
       actuals_flat = df['actuals_flat'].values
-      print("MAX!!!", baseload['Demand (MWh)'].values.max())
+      print("MAX!!!", actuals_flat.max())
 
       baseload = baseload['Demand (MWh)'].values / args.downscaling
 
@@ -770,7 +770,7 @@ if __name__ == "__main__":
 
       
       plt.figure(figsize=(15, 4))
-      plt.plot(baseload, label='Baseload', alpha=0.5)
+      # plt.plot(baseload, label='Baseload', alpha=0.5)
       plt.plot(actuals, label='Actuals+baseload')
       plt.plot(predictions, label=f'{combined_name}+baseload')
       plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
