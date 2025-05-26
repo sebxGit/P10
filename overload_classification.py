@@ -628,8 +628,8 @@ if __name__ == "__main__":
     selected_models = [args.models]
     combined_name = args.models
 
-  output_dir = f'Classifications/{combined_name}' 
-  os.makedirs(output_dir, exist_ok=True)
+  # output_dir = f'Classifications/{combined_name}' 
+  # os.makedirs(output_dir, exist_ok=True)
 
   predictions = []
   metrics = []
