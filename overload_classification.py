@@ -752,7 +752,7 @@ if __name__ == "__main__":
       else:
         loss_func_df = pd.DataFrame(columns=['model', 'mae', 'mse', 'acc', 'pre', 'rec'])
       loss_func_df.set_index('model', inplace=True)
-      loss_func_df.to_csv(f'Classifications/{combined_name}/{args.dataset}_loss_func_metrics.csv')
+      loss_func_df.to_csv(f'Classifications/{combined_name}/{args.dataset}_part{i}_loss_func_metrics.csv')
 
       plt.plot(actuals_flat, label='Actuals')
       plt.plot(y_pred, label=combined_name, color='orange')
