@@ -744,7 +744,7 @@ if __name__ == "__main__":
         'rec': recall_score(TP, FN),
       })
       print(metrics)
-      
+
       output_dir = f'Classifications/{combined_name}'
       os.makedirs(output_dir, exist_ok=True)
       if metrics:
@@ -757,5 +757,6 @@ if __name__ == "__main__":
       plt.plot(actuals_flat, label='Actuals')
       plt.plot(y_pred, label=combined_name, color='orange')
       plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
+      plt.legend()
       plt.savefig(f'Classifications/{combined_name}/{args.dataset}_overload_visual.png')
       plt.show()
