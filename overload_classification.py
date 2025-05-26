@@ -662,6 +662,7 @@ if __name__ == "__main__":
 
       trainer = L.Trainer(max_epochs=hyperparameters['max_epochs'], log_every_n_steps=100, precision='16-mixed', enable_checkpointing=False, devices=1)
       y_pred = trainer.predict(model, colmod, return_predictions=True)
+      y_pred = [value.item() for tensor in y_pred for value in tensor.flatten()]
 
     elif isinstance(model, BaseEstimator):
       X_train, y_train = colmod.sklearn_setup("train") 
@@ -687,6 +688,7 @@ if __name__ == "__main__":
     baseloads = [baseload1, baseload2, baseload3]
 
     # create a dataframe for y_pred and actuals_flat with time stamps
+    print(y_pred)
     print(len(y_pred), len(actuals_flat), len(colmod.test_dates))
     df_pred_act = pd.DataFrame({'y_pred': y_pred, 'actuals_flat': actuals_flat})
     df_pred_act.index = colmod.test_dates[:len(actuals_flat)]
