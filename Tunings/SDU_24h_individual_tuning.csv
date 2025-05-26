@@ -6,4 +6,4 @@ RandomForestRegressor,150,34.39778714794212,"{'batch_size': 80, 'learning_rate':
 xPatch,150,15.510318176516352,"{'batch_size': 112, 'learning_rate': 0.002083822895529472, 'max_epochs': 1600, 'num_workers': 8, 'patch_len': 36, 'stride': 12, 'padding_patch': 'end', 'revin': 0, 'ma_type': 'reg', 'alpha': 0.392669408769825, 'beta': 0.8843580689769104}"
 PatchMixer,150,32.906039211266325,"{'batch_size': 96, 'learning_rate': 0.0032017222885988177, 'max_epochs': 1400, 'num_workers': 5, 'patch_len': 4, 'stride': 12, 'mixer_kernel_size': 4, 'd_model': 1024, 'dropout': 0.1, 'head_dropout': 0.0, 'e_layers': 3}"
 LSTM,150,17.354301462050017,"{'batch_size': 32, 'learning_rate': 0.003182056084282108, 'max_epochs': 2000, 'num_workers': 12, 'hidden_size': 84, 'num_layers': 1, 'dropout': 0.026034044349608355}"
-DPAD, 150, 16.730587347834046, "{'batch_size': 48, 'learning_rate': 0.0011778208000740617, 'max_epochs': 1600, 'enc_hidden': 108, 'dec_hidden': 204, 'num_levels': 2, 'K_IMP': 4, 'RIN': 0}"
+DPAD,150,16.730587347834046,"{'batch_size': 48, 'learning_rate': 0.0011778208000740617, 'max_epochs': 1600, 'enc_hidden': 108, 'dec_hidden': 204, 'num_levels': 2, 'K_IMP': 4, 'RIN': 0}"
