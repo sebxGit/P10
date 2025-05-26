@@ -688,8 +688,6 @@ if __name__ == "__main__":
     baseloads = [baseload1, baseload2, baseload3]
 
     # create a dataframe for y_pred and actuals_flat with time stamps
-    print(y_pred)
-    print(len(y_pred), len(actuals_flat), len(colmod.test_dates))
     df_pred_act = pd.DataFrame({'y_pred': y_pred, 'actuals_flat': actuals_flat})
     df_pred_act.index = colmod.test_dates[:len(actuals_flat)]
 
@@ -749,25 +747,38 @@ if __name__ == "__main__":
 
       metrics_df.to_csv(file_path)
 
-      #baseload plot
-      plt.figure(figsize=(15, 4))
-      plt.plot(baseload, label='Baseload')
-      plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
-      plt.xlabel('Samples')
-      plt.ylabel('Electricity Consumption (kW)')
-      plt.legend()
-      plt.savefig(f'{file_path}_part{i}_baseload.png')
-      plt.show()
-      plt.clf()
+      # #baseload plot
+      # plt.figure(figsize=(15, 4))
+      # plt.plot(baseload, label='Baseload')
+      # plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
+      # plt.xlabel('Samples')
+      # plt.ylabel('Electricity Consumption (kW)')
+      # plt.legend()
+      # plt.savefig(f'{file_path}_part{i}_baseload.png')
+      # plt.show()
+      # plt.clf()
 
-      # pred and act plot
-      plt.figure(figsize=(15, 4))
-      plt.plot(actuals, label='Actuals+baseload')
-      plt.plot(predictions, label=f'{combined_name}+baseload')
-      plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
-      plt.xlabel('Samples')
-      plt.ylabel('Electricity Consumption (kW)')
-      plt.legend()
-      plt.savefig(f'{file_path}_part{i}_overload_visual.png')
-      plt.show()
-      plt.clf()
+      # # pred and act plot
+      # plt.figure(figsize=(15, 4))
+      # plt.plot(actuals, label='Actuals+baseload')
+      # plt.plot(predictions, label=f'{combined_name}+baseload')
+      # plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
+      # plt.xlabel('Samples')
+      # plt.ylabel('Electricity Consumption (kW)')
+      # plt.legend()
+      # plt.savefig(f'{file_path}_part{i}_overload_visual.png')
+      # plt.show()
+      # plt.clf()
+  if os.path.exists(file_path):
+    metrics_df = pd.read_csv(file_path)
+  else:
+    metrics_df = pd.DataFrame(columns=['model', 'mae', 'acc', 'pre', 'rec'])
+
+  new_metrics_df = metrics_df.sum()
+  new_metrics_df['model'] = f"{combined_name}_avg"
+  metrics_df = pd.concat([metrics_df, new_metrics_df], ignore_index=True)
+
+  if 'model' in metrics_df.columns:
+    metrics_df.set_index('model', inplace=True)
+
+  metrics_df.to_csv(file_path)
