@@ -628,8 +628,12 @@ if __name__ == "__main__":
     selected_models = [args.models]
     combined_name = args.models
 
+  output_dir = f'Classifications/{combined_name}' 
+  os.makedirs(output_dir, exist_ok=True)
+
   predictions = []
   metrics = []
+
   for model_name in selected_models:
     print(f"-----Training {model_name} model-----")
 
@@ -686,8 +690,6 @@ if __name__ == "__main__":
     df_pred_act = pd.DataFrame({'y_pred': y_pred, 'actuals_flat': actuals_flat})
     df_pred_act.index = colmod.test_dates[:len(actuals_flat)]
 
-    # print(df_pred_act)
-
     range1_start = pd.Timestamp('2023-02-04 00:00')
     range1_end = pd.Timestamp('2023-02-05 01:00')
     range2_start = pd.Timestamp('2023-02-28 00:00')
@@ -698,19 +700,49 @@ if __name__ == "__main__":
     df_part3 = df_pred_act[df_pred_act.index >= range2_end]
     df_part3 = df_part3.drop(pd.Timestamp('2023-03-12 02:00'))
 
-    # print(df_part1.index[0], df_part1.index[-1])
-    # print(df_part2.index[0], df_part2.index[-1])
-    # print(df_part3.index[0], df_part3.index[-1])
-
     dfs = [df_part1, df_part2, df_part3]
 
     for i, (baseload, df) in enumerate(zip(baseloads, dfs)):
       y_pred = df['y_pred'].values
       actuals_flat = df['actuals_flat'].values
-      print("MAX!!!", (actuals_flat/2).max())
-
       baseload = baseload['Demand (MWh)'].values / args.downscaling
 
+      actuals = np.array(actuals_flat) + baseload
+      predictions = np.array(y_pred) + baseload
+      
+      actual_class = np.where(actuals > args.threshold, 1, 0)
+      pred_class = np.where(predictions > args.threshold, 1, 0)
+
+      TP = np.sum((pred_class == 1) & (actual_class == 1))
+      TN = np.sum((pred_class == 0) & (actual_class == 0))
+      FP = np.sum((pred_class == 1) & (actual_class == 0))
+      FN = np.sum((pred_class == 0) & (actual_class == 1))
+
+      print("--Confusion Matrix--")
+      print(TP, FP)
+      print(FN, TN)
+
+      _metrics = {
+        'model': f"{combined_name}_part{i}",
+        'mae': mean_absolute_error(predictions, actuals),
+        'mse': mean_squared_error(predictions, actuals),
+        'acc': accuracy_score(TP, TN, FP, FN),
+        'pre': precision_score(TP, FP),
+        'rec': recall_score(TP, FN),
+      }
+
+      metrics.append(_metrics)
+      print(_metrics)
+
+      file_path = f'Classifications/{combined_name}/{args.dataset}_metrics.csv'
+      if os.path.exists(file_path):
+        metrics_df = pd.concat([pd.DataFrame([m]) for m in _metrics], ignore_index=True)
+      else:
+        metrics_df = pd.DataFrame(columns=['model', 'mae', 'acc', 'pre', 'rec'])
+      metrics_df.set_index('model', inplace=True)
+      metrics_df.to_csv(f'Classifications/{combined_name}/{args.dataset}_metrics.csv')
+
+      #baseload plot
       plt.figure(figsize=(15, 4))
       plt.plot(baseload, label='Baseload')
       plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
@@ -721,58 +753,8 @@ if __name__ == "__main__":
       plt.show()
       plt.clf()
 
-      actuals = np.array(actuals_flat) + baseload
-      predictions = np.array(y_pred) + baseload
-      
-      actual_class = np.where(actuals > args.threshold, 1, 0)
-      pred_class = np.where(predictions > args.threshold, 1, 0)
-      counts = Counter(actual_class)
-      total = len(actual_class)
-      percent_0 = (counts[0] / total) * 100
-      percent_1 = (counts[1] / total) * 100
-
-      print(f"0s act: {percent_0:.2f}%")
-      print(f"1s act: {percent_1:.2f}%")
-      counts = Counter(pred_class)
-      total = len(pred_class)
-      percent_0 = (counts[0] / total) * 100
-      percent_1 = (counts[1] / total) * 100
-
-      print(f"0s pred: {percent_0:.2f}%")
-      print(f"1s pred: {percent_1:.2f}%")
-      
-      TP = np.sum((pred_class == 1) & (actual_class == 1))
-      TN = np.sum((pred_class == 0) & (actual_class == 0))
-      FP = np.sum((pred_class == 1) & (actual_class == 0))
-      FN = np.sum((pred_class == 0) & (actual_class == 1))
-
-      print(TP, TN)
-      print(FP, FN)
-
-      metrics = []
-
-      metrics.append({
-        'model': combined_name,
-        'mae': mean_absolute_error(predictions, actuals),
-        'mse': mean_squared_error(predictions, actuals),
-        'acc': accuracy_score(TP, TN, FP, FN),
-        'pre': precision_score(TP, FP),
-        'rec': recall_score(TP, FN),
-      })
-      print(metrics)
-
-      output_dir = f'Classifications/{combined_name}'
-      os.makedirs(output_dir, exist_ok=True)
-      if metrics:
-        loss_func_df = pd.concat([pd.DataFrame([m]) for m in metrics], ignore_index=True)
-      else:
-        loss_func_df = pd.DataFrame(columns=['model', 'mae', 'mse', 'acc', 'pre', 'rec'])
-      loss_func_df.set_index('model', inplace=True)
-      loss_func_df.to_csv(f'Classifications/{combined_name}/{args.dataset}_part{i}_loss_func_metrics.csv')
-
-      
+      # pred and act plot
       plt.figure(figsize=(15, 4))
-      # plt.plot(baseload, label='Baseload', alpha=0.5)
       plt.plot(actuals, label='Actuals+baseload')
       plt.plot(predictions, label=f'{combined_name}+baseload')
       plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
@@ -782,3 +764,14 @@ if __name__ == "__main__":
       plt.savefig(f'Classifications/{combined_name}/{args.dataset}_part{i}_overload_visual.png')
       plt.show()
       plt.clf()
+  
+  # get avg metrics of the three models
+  file_path = f'Classifications/{combined_name}/{args.dataset}_metrics.csv'
+  if os.path.exists(file_path):
+    metrics_df = pd.concat([pd.DataFrame([m]) for m in metrics], ignore_index=True)
+    avg_metrics = metrics_df[['mae', 'acc', 'pre', 'rec']].mean()
+  else:
+    metrics_df = pd.DataFrame(columns=['model', 'mae', 'acc', 'pre', 'rec'])
+  metrics_df.set_index('model', inplace=True)
+  metrics_df.to_csv(f'Classifications/{combined_name}/{args.dataset}_metrics.csv')
+  
