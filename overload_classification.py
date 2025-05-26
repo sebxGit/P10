@@ -744,6 +744,9 @@ if __name__ == "__main__":
         'rec': recall_score(TP, FN),
       })
       print(metrics)
+      
+      output_dir = f'Classifications/{combined_name}'
+      os.makedirs(output_dir, exist_ok=True)
       if metrics:
         loss_func_df = pd.concat([pd.DataFrame([m]) for m in metrics], ignore_index=True)
       else:
