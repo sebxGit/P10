@@ -703,7 +703,7 @@ if __name__ == "__main__":
 
     dfs = [df_part1, df_part2, df_part3]
 
-    for baseload, df in zip(baseloads, dfs):
+    for i, (baseload, df) in enumerate(zip(baseloads, dfs)):
       y_pred = df['y_pred'].values
       actuals_flat = df['actuals_flat'].values
       baseload = baseload['Demand (MWh)'].values
@@ -758,5 +758,5 @@ if __name__ == "__main__":
       plt.plot(y_pred, label=combined_name, color='orange')
       plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
       plt.legend()
-      plt.savefig(f'Classifications/{combined_name}/{args.dataset}_overload_visual.png')
+      plt.savefig(f'Classifications/{combined_name}/{args.dataset}_part{i}_overload_visual.png')
       plt.show()
