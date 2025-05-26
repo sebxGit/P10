@@ -687,6 +687,7 @@ if __name__ == "__main__":
     baseloads = [baseload1, baseload2, baseload3]
 
     # create a dataframe for y_pred and actuals_flat with time stamps
+    print(len(y_pred), len(actuals_flat), len(colmod.test_dates))
     df_pred_act = pd.DataFrame({'y_pred': y_pred, 'actuals_flat': actuals_flat})
     df_pred_act.index = colmod.test_dates[:len(actuals_flat)]
 
