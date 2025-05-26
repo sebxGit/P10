@@ -559,14 +559,14 @@ def initialize_model(model_name, hyperparameters):
   return model_dict[model_name]()
 
 parser = ArgumentParser()
-parser.add_argument("--models", type=str, default="AdaBoostRegressor")
+parser.add_argument("--models", type=str, default="xPatch")
 parser.add_argument("--individual", type=str, default="True")
 parser.add_argument("--input_size", type=int, default=24)
 parser.add_argument("--pred_len", type=int, default=24)
 parser.add_argument("--seq_len", type=int, default=24*7)
 parser.add_argument("--stride", type=int, default=24)
 parser.add_argument("--dataset", type=str, default="SDU")
-parser.add_argument("--threshold", type=int, default=500)
+parser.add_argument("--threshold", type=int, default=400)
 parser.add_argument("--multiplier", type=int, default=2)
 parser.add_argument("--downscaling", type=int, default=13)
 
@@ -656,19 +656,34 @@ if __name__ == "__main__":
       dfs = [df_part1, df_part2, df_part3]
 
     elif args.dataset == "SDU":
+      print(len(y_pred), len(actuals))
       y_pred = [pred for pred in y_pred]
       actuals_flat = [item for sublist in actuals for item in sublist]
       start_date = pd.to_datetime('2024-12-31')
       end_date = pd.to_datetime('2032-12-31')
 
+      test_start_date = pd.to_datetime('2031-05-26 15:00:00')
+      test_end_date = pd.to_datetime('2032-12-31 00:00:00')
+
       df = pd.read_csv('SDU Dataset/DumbCharging_2020_to_2032/Measurements.csv', skipinitialspace=True)
 
       df['Timestamp'] = pd.to_datetime(df['Timestamp'], format="%b %d, %Y, %I:%M:%S %p")
+      df.set_index('Timestamp', inplace=True)
 
-      df = df[['Aggregated base load', 'Aggregated charging load']]
+      df = df[(df.index >= test_start_date) &
+              (df.index <= test_end_date)]
+      
+      df = df.iloc[:len(actuals_flat)]
+
+      df = df[['Aggregated base load']]
+
+
 
       df_pred_act = pd.DataFrame({'y_pred': y_pred, 'actuals_flat': actuals_flat})
       df_pred_act.index = colmod.test_dates[:len(actuals_flat)]
+
+      print(df_pred_act)
+
 
       baseloads = [df]
       dfs = [df_pred_act]
@@ -723,28 +738,28 @@ if __name__ == "__main__":
 
       metrics_df.to_csv(file_path)
 
-      # #baseload plot
-      # plt.figure(figsize=(15, 4))
-      # plt.plot(baseload, label='Baseload')
-      # plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
-      # plt.xlabel('Samples')
-      # plt.ylabel('Electricity Consumption (kW)')
-      # plt.legend()
-      # plt.savefig(f'{file_path}_part{i}_baseload.png')
-      # plt.show()
-      # plt.clf()
+      #baseload plot
+      plt.figure(figsize=(15, 4))
+      plt.plot(baseload, label='Baseload')
+      plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
+      plt.xlabel('Samples')
+      plt.ylabel('Electricity Consumption (kW)')
+      plt.legend()
+      plt.savefig(f'{file_path}_part{i}_baseload.png')
+      plt.show()
+      plt.clf()
 
-      # # pred and act plot
-      # plt.figure(figsize=(15, 4))
-      # plt.plot(actuals, label='Actuals+baseload')
-      # plt.plot(predictions, label=f'{combined_name}+baseload')
-      # plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
-      # plt.xlabel('Samples')
-      # plt.ylabel('Electricity Consumption (kW)')
-      # plt.legend()
-      # plt.savefig(f'{file_path}_part{i}_overload_visual.png')
-      # plt.show()
-      # plt.clf()
+      # pred and act plot
+      plt.figure(figsize=(15, 4))
+      plt.plot(actuals, label='Actuals+baseload')
+      plt.plot(predictions, label=f'{combined_name}+baseload')
+      plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
+      plt.xlabel('Samples')
+      plt.ylabel('Electricity Consumption (kW)')
+      plt.legend()
+      plt.savefig(f'{file_path}_part{i}_overload_visual.png')
+      plt.show()
+      plt.clf()
 
   if os.path.exists(file_path):
     metrics_df = pd.read_csv(file_path)
