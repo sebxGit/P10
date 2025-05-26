@@ -464,6 +464,12 @@ class SDUDataModule(L.LightningDataModule):
     self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(
         self.X_train_val, self.y_train_val, test_size=0.25, shuffle=False)
 
+    # How to get the start and end dates of the training, validation and test sets
+    print(f"Training set: {self.X_train.index.min()} to {self.X_train.index.max()}")
+    print(f"Validation set: {self.X_val.index.min()} to {self.X_val.index.max()}")
+    print(f"Test set: {self.X_test.index.min()} to {self.X_test.index.max()}")
+    
+
     preprocessing = self.scaler
     preprocessing.fit(self.X_train)  # should only fit to training data
 
