@@ -737,28 +737,28 @@ if __name__ == "__main__":
 
       metrics_df.to_csv(file_path)
 
-      #baseload plot
-      plt.figure(figsize=(15, 4))
-      plt.plot(baseload, label='Baseload')
-      plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
-      plt.xlabel('Samples')
-      plt.ylabel('Electricity Consumption (kW)')
-      plt.legend()
-      plt.savefig(f'{file_path}_part{i}_baseload.png')
-      plt.show()
-      plt.clf()
+      # #baseload plot
+      # plt.figure(figsize=(15, 4))
+      # plt.plot(baseload, label='Baseload')
+      # plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
+      # plt.xlabel('Samples')
+      # plt.ylabel('Electricity Consumption (kW)')
+      # plt.legend()
+      # plt.savefig(f'{file_path}_part{i}_baseload.png')
+      # plt.show()
+      # plt.clf()
 
-      # pred and act plot
-      plt.figure(figsize=(15, 4))
-      plt.plot(actuals, label='Actuals+baseload')
-      plt.plot(predictions, label=f'{combined_name}+baseload')
-      plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
-      plt.xlabel('Samples')
-      plt.ylabel('Electricity Consumption (kW)')
-      plt.legend()
-      plt.savefig(f'{file_path}_part{i}_overload_visual.png')
-      plt.show()
-      plt.clf()
+      # # pred and act plot
+      # plt.figure(figsize=(15, 4))
+      # plt.plot(actuals, label='Actuals+baseload')
+      # plt.plot(predictions, label=f'{combined_name}+baseload')
+      # plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
+      # plt.xlabel('Samples')
+      # plt.ylabel('Electricity Consumption (kW)')
+      # plt.legend()
+      # plt.savefig(f'{file_path}_part{i}_overload_visual.png')
+      # plt.show()
+      # plt.clf()
 
   if os.path.exists(file_path):
     metrics_df = pd.read_csv(file_path)
