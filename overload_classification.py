@@ -738,9 +738,11 @@ if __name__ == "__main__":
 
       if os.path.exists(file_path):
         metrics_df = pd.concat([pd.DataFrame([m]) for m in _metrics], ignore_index=True)
-        metrics_df.set_index('model', inplace=True)
       else:
         metrics_df = pd.DataFrame(columns=['model', 'mae', 'acc', 'pre', 'rec'])
+
+      if 'model' in metrics_df.columns:
+        metrics_df.set_index('model', inplace=True)
       metrics_df.to_csv(f'Classifications/{combined_name}/{args.dataset}_metrics.csv')
 
       #baseload plot
