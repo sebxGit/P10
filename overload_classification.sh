@@ -4,8 +4,8 @@
 #SBATCH --error=error_overload_classification_%j.err
 #SBATCH --time=12:00:00 # 
 #SBATCH --ntasks=1
-#SBATCH --gres=gpu:8
-#SBATCH --cpus-per-task=80
-#SBATCH --mem=175G
+#SBATCH --gres=gpu:3
+#SBATCH --cpus-per-task=20
+#SBATCH --mem=20G
 
 singularity exec --nv energycontainerblackbox.sif python3 overload_classification.py --dataset Colorado --threshold 500 --multiplier 2 --downscaling 13 --models AdaBoostRegressor --individual True 
