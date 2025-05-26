@@ -758,9 +758,11 @@ if __name__ == "__main__":
       loss_func_df.set_index('model', inplace=True)
       loss_func_df.to_csv(f'Classifications/{combined_name}/{args.dataset}_part{i}_loss_func_metrics.csv')
 
-      plt.plot(actuals, label='Actuals')
-      plt.plot(predictions, label=combined_name, color='orange')
+      plt.plot(baseload, label='Baseload')
+      plt.plot(actuals, label='Actuals+baseload')
+      plt.plot(predictions, label=f'{combined_name}+baseload')
       plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
       plt.legend()
       plt.savefig(f'Classifications/{combined_name}/{args.dataset}_part{i}_overload_visual.png')
       plt.show()
+      plt.clf()
