@@ -628,9 +628,9 @@ if __name__ == "__main__":
     selected_models = [args.models]
     combined_name = args.models
 
-  output_dir = f'Classifications/{combined_name}' 
+  output_dir = f'Classifications/{args.dataset}' 
   os.makedirs(output_dir, exist_ok=True)
-  file_path = f'Classifications/{combined_name}/{args.dataset}_metrics.csv'
+  file_path = f'Classifications/{args.dataset}/{combined_name}_metrics.csv'
   predictions = []
   metrics = []
 
