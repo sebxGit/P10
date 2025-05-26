@@ -552,8 +552,7 @@ def initialize_model(model_name, hyperparameters):
   "RandomForestRegressor": lambda: MultiOutputRegressor(RandomForestRegressor(n_estimators=hyperparameters['n_estimators'], max_depth=hyperparameters['max_depth'], min_samples_split=hyperparameters['min_samples_split'], min_samples_leaf=hyperparameters['min_samples_leaf'], max_features=hyperparameters['max_features'], random_state=SEED), n_jobs=-1),
   "GradientBoostingRegressor": lambda: MultiOutputRegressor(GradientBoostingRegressor(n_estimators=hyperparameters['n_estimators'], max_depth=hyperparameters['max_depth'], min_samples_split=hyperparameters['min_samples_split'], min_samples_leaf=hyperparameters['min_samples_leaf'], learning_rate=hyperparameters['learning_rate_model'], random_state=SEED), n_jobs=-1),
   "AdaBoostRegressor": lambda: MultiOutputRegressor(AdaBoostRegressor(n_estimators=hyperparameters['n_estimators'], learning_rate=hyperparameters['learning_rate'], random_state=SEED), n_jobs=-1),
-  # "DPAD": lambda: DPAD_GCN(input_len=args.seq_len, output_len=args.pred_len, input_dim=args.input_size, enc_hidden=dpad_params['enc_hidden'], dec_hidden=dpad_params['dec_hidden'],
-  #                               dropout=dpad_params['dropout'], num_levels=dpad_params['num_levels'], K_IMP=dpad_params['K_IMP'], RIN=dpad_params['RIN'])
+  "DPAD": lambda: DPAD_GCN(input_len=args.seq_len, output_len=args.pred_len, input_dim=args.input_size, enc_hidden=hyperparameters['enc_hidden'], dec_hidden=hyperparameters['dec_hidden'], dropout=hyperparameters['dropout'], num_levels=hyperparameters['num_levels'], K_IMP=hyperparameters['K_IMP'], RIN=hyperparameters['RIN'])
   }
 
   return model_dict[model_name]()
@@ -612,7 +611,6 @@ if __name__ == "__main__":
     if isinstance(model, torch.nn.Module):
       model = LightningModel(model=model, criterion=nn.L1Loss(), optimizer=torch.optim.Adam, learning_rate=hyperparameters['learning_rate'])
       trainer = L.Trainer(max_epochs=hyperparameters['max_epochs'], log_every_n_steps=100, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
-      trainer = L.Trainer(max_epochs=hyperparameters['max_epochs'], log_every_n_steps=100, precision='16-mixed', enable_checkpointing=False)
       trainer.fit(model, colmod)
 
       trainer = L.Trainer(max_epochs=hyperparameters['max_epochs'], log_every_n_steps=100, precision='16-mixed', enable_checkpointing=False, devices=1)
