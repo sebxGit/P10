@@ -774,8 +774,9 @@ if __name__ == "__main__":
   else:
     metrics_df = pd.DataFrame(columns=['model', 'mae', 'acc', 'pre', 'rec'])
 
-  new_metrics_df = metrics_df.mean().to_frame().T
+  new_metrics_df = metrics_df[1:].mean().to_frame().T
   new_metrics_df['model'] = f"{combined_name}_avg"
+  new_metrics_df = new_metrics_df[['model'] + list(new_metrics_df.columns.difference(['model'], sort=False))]
 
   metrics_df = pd.concat([metrics_df, new_metrics_df], ignore_index=True)
 
