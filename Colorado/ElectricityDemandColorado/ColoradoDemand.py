@@ -115,9 +115,9 @@ df.to_csv('ColoradoDemand_Full.csv', index=False)
 # Plot the data
 plt.figure(figsize=(10, 5))
 plt.plot(df["Timestamp (Hour Ending)"], df["Demand (MWh)"],
-         label='Demand (MWh)', color='blue')
-plt.title('Demand Over Time (Including Missing Windows)')
-plt.xlabel('Timestamp (Hour Ending)')
+         label='Demand (MWh)')
+plt.title('Demand Over Time')
+plt.xlabel('Month')
 plt.ylabel('Demand (MWh)')
 plt.xticks(rotation=45)
 
