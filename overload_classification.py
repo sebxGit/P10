@@ -769,30 +769,15 @@ if __name__ == "__main__":
       plt.show()
       plt.clf()
   
-  # # get avg metrics of the three models
-  # file_path = f'Classifications/{combined_name}/{args.dataset}_metrics.csv'
-  # if os.path.exists(file_path):
-  #   metrics_df = pd.concat([pd.DataFrame([m]) for m in metrics], ignore_index=True)
-  #   avg_metrics = metrics_df[['mae', 'acc', 'pre', 'rec']].mean()
-  # else:
-  #   metrics_df = pd.DataFrame(columns=['model', 'mae', 'acc', 'pre', 'rec'])
-  # metrics_df.set_index('model', inplace=True)
-  # metrics_df.to_csv(f'Classifications/{combined_name}/{args.dataset}_metrics.csv')
-
   if os.path.exists(file_path):
-      metrics_df = pd.read_csv(file_path)
-  else:
-      metrics_df = pd.DataFrame(columns=['model', 'mae', 'acc', 'pre', 'rec'])
-
-  new_metrics_df = pd.DataFrame([_metrics])
-  metrics_df = pd.concat([metrics_df, new_metrics_df], ignore_index=True)
-
-  if 'model' in metrics_df.columns:
-      metrics_df.set_index('model', inplace=True)
+    metrics_df = pd.read_csv(file_path)
 
   filtered_metrics_df = metrics_df[metrics_df.index.str.contains(f"{combined_name}_part", na=False)]
+  avg_metrics_df = filtered_metrics_df[['mae', 'acc', 'pre', 'rec']].mean()
+  metrics_df = pd.concat([metrics_df, avg_metrics_df], ignore_index=True)
 
-  avg_metrics = filtered_metrics_df[['mae', 'acc', 'pre', 'rec']].mean()
+  if 'model' in metrics_df.columns:
+    metrics_df.set_index('model', inplace=True)
 
   metrics_df.to_csv(file_path)
   
