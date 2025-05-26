@@ -94,3 +94,40 @@ print(df.shape)
 
 # # Save to a new CSV
 # df.to_csv('ColoradoConsumption.csv', index=False)
+
+
+# Ensure the 'Timestamp (Hour Ending)' column is in datetime format
+df['Timestamp (Hour Ending)'] = pd.to_datetime(df['Timestamp (Hour Ending)'])
+
+# Create a complete range of timestamps based on the min and max timestamps in the dataset
+full_range = pd.date_range(start=df['Timestamp (Hour Ending)'].min(),
+                           end=df['Timestamp (Hour Ending)'].max(),
+                           freq='H')  # Hourly frequency
+
+# Reindex the DataFrame to include the full range of timestamps
+df = df.set_index('Timestamp (Hour Ending)').reindex(full_range).reset_index()
+
+# Rename the index column back to 'Timestamp (Hour Ending)'
+df.rename(columns={'index': 'Timestamp (Hour Ending)'}, inplace=True)
+
+df.to_csv('ColoradoDemand_Full.csv', index=False)
+
+# Plot the data
+plt.figure(figsize=(10, 5))
+plt.plot(df["Timestamp (Hour Ending)"], df["Demand (MWh)"],
+         label='Demand (MWh)', color='blue')
+plt.title('Demand Over Time (Including Missing Windows)')
+plt.xlabel('Timestamp (Hour Ending)')
+plt.ylabel('Demand (MWh)')
+plt.xticks(rotation=45)
+
+# Add a legend
+plt.legend()
+
+# Adjust layout for better spacing
+plt.tight_layout()
+
+plt.savefig('ColoradoDemand_Full.png')
+
+# Show the plot
+plt.show()
