@@ -737,13 +737,17 @@ if __name__ == "__main__":
       file_path = f'Classifications/{combined_name}/{args.dataset}_metrics.csv'
 
       if os.path.exists(file_path):
-        metrics_df = pd.concat([pd.DataFrame([m]) for m in _metrics], ignore_index=True)
+        metrics_df = pd.read_csv(file_path)
       else:
         metrics_df = pd.DataFrame(columns=['model', 'mae', 'acc', 'pre', 'rec'])
 
+      new_metrics_df = pd.DataFrame([_metrics])
+      metrics_df = pd.concat([metrics_df, new_metrics_df], ignore_index=True)
+
       if 'model' in metrics_df.columns:
         metrics_df.set_index('model', inplace=True)
-      metrics_df.to_csv(f'Classifications/{combined_name}/{args.dataset}_metrics.csv')
+
+      metrics_df.to_csv(file_path)
 
       #baseload plot
       plt.figure(figsize=(15, 4))
