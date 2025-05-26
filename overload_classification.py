@@ -402,6 +402,7 @@ class SDUDataModule(L.LightningDataModule):
     self.y_val = None
     self.X_test = None
     self.y_test = None
+    self.test_dates = []
 
   def setup(self, stage: str):
     # Define the start and end dates
@@ -449,6 +450,8 @@ class SDUDataModule(L.LightningDataModule):
     # 60/20/20 split
     X_tv, self.X_test, y_tv, self.y_test = train_test_split( X, y, test_size=0.2, shuffle=False)
     self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(X_tv, y_tv, test_size=0.25, shuffle=False)
+
+    self.test_dates = self.X_test.index.tolist()
 
     preprocessing = self.scaler
     preprocessing.fit(self.X_train)  # should only fit to training data
@@ -531,55 +534,6 @@ class Configs:
     for key, value in config_dict.items():
       setattr(self, key, value)
 
-def plot_and_save_with_metrics(combined_name, colmod):
-  actuals = []
-  for batch in colmod.predict_dataloader():
-    x, y = batch
-    actuals.extend(y.numpy())
-
-  actuals_flat = [item for sublist in actuals for item in sublist]
-
-  folder_path = f'Predictions/{combined_name}'
-  pt_files = [f for f in os.listdir(folder_path) if f.endswith('.pt')]
-
-  metrics = []
-  plt.figure(figsize=(20, 5))
-  plt.plot(actuals_flat, label='Actuals')
-  for pt_file in pt_files:
-    file_path = os.path.join(folder_path, pt_file)
-    predictions = torch.load(file_path, weights_only=False)
-    model_name = pt_file.split('_')[1].split('.')[0]
-    # model_name = pt_file.split('.')[0].split('_')[-1] #use this with loss function names
-
-    if type(predictions[0]) == torch.Tensor: 
-      predictions = [elem.item() for tensor in predictions for elem in tensor.flatten()]
-    elif type(predictions[0]) == np.float64:
-      predictions = predictions.tolist()
-
-    predictions = predictions[-len(actuals_flat):] # reduce length of predictions to match actuals
-
-    metrics.append({
-      'model': model_name,
-      'mse': mean_squared_error(predictions, actuals_flat),
-      'mae': mean_absolute_error(predictions, actuals_flat),
-      'mape': mean_absolute_percentage_error(predictions, actuals_flat)})
-    plt.plot(predictions, label=model_name)
-
-  if metrics:
-    loss_func_df = pd.concat([pd.DataFrame([m]) for m in metrics], ignore_index=True)
-  else:
-    loss_func_df = pd.DataFrame(columns=['model', 'mse', 'mae', 'mape'])
-  loss_func_df.set_index('model', inplace=True)
-  loss_func_df.to_csv(f'{folder_path}/loss_func_metrics.csv')
-
-  plt.xlabel('Samples')
-  plt.ylabel('Energy Consumption')
-  plt.title(f'Predictions vs Actuals ({combined_name})')
-  plt.legend()
-
-  plt.savefig(f'{folder_path}/predictions_vs_actuals_{combined_name}.png')
-  plt.show()
-
 def accuracy_score(TP, TN, FP, FN):
   return (TP + TN) / (TP + TN + FP + FN)
 
@@ -605,13 +559,13 @@ def initialize_model(model_name, hyperparameters):
   return model_dict[model_name]()
 
 parser = ArgumentParser()
-parser.add_argument("--models", type=str, default="LSTM")
+parser.add_argument("--models", type=str, default="AdaBoostRegressor")
 parser.add_argument("--individual", type=str, default="True")
-parser.add_argument("--input_size", type=int, default=22)
+parser.add_argument("--input_size", type=int, default=24)
 parser.add_argument("--pred_len", type=int, default=24)
 parser.add_argument("--seq_len", type=int, default=24*7)
 parser.add_argument("--stride", type=int, default=24)
-parser.add_argument("--dataset", type=str, default="Colorado")
+parser.add_argument("--dataset", type=str, default="SDU")
 parser.add_argument("--threshold", type=int, default=500)
 parser.add_argument("--multiplier", type=int, default=2)
 parser.add_argument("--downscaling", type=int, default=13)
@@ -672,42 +626,63 @@ if __name__ == "__main__":
       model.fit(X_train, y_train)
       y_pred = model.predict(X_test).reshape(-1)
     
-    y_pred = [pred * args.multiplier for pred in y_pred]
 
     actuals = []
     for batch in colmod.predict_dataloader():
       x, y = batch
       actuals.extend(y.numpy())
 
-    actuals_flat = [item*args.multiplier for sublist in actuals for item in sublist]
+    if args.dataset == "Colorado":
+      y_pred = [pred * args.multiplier for pred in y_pred]
+      actuals_flat = [item*args.multiplier for sublist in actuals for item in sublist]
+      baseload1 = pd.read_csv('Colorado/ElectricityDemandColorado/ColoradoDemand_Part1.csv')
+      baseload2 = pd.read_csv('Colorado/ElectricityDemandColorado/ColoradoDemand_Part2.csv')
+      baseload3 = pd.read_csv('Colorado/ElectricityDemandColorado/ColoradoDemand_Part3.csv')
 
-    # plot overload visual (red on overload), and save to folder
-    baseload1 = pd.read_csv('Colorado/ElectricityDemandColorado/ColoradoDemand_Part1.csv')
-    baseload2 = pd.read_csv('Colorado/ElectricityDemandColorado/ColoradoDemand_Part2.csv')
-    baseload3 = pd.read_csv('Colorado/ElectricityDemandColorado/ColoradoDemand_Part3.csv')
+      range1_start = pd.Timestamp('2023-02-04 00:00')
+      range1_end = pd.Timestamp('2023-02-05 01:00')
+      range2_start = pd.Timestamp('2023-02-28 00:00')
+      range2_end = pd.Timestamp('2023-03-06 01:00')
 
-    baseloads = [baseload1, baseload2, baseload3]
+      df_pred_act = pd.DataFrame({'y_pred': y_pred, 'actuals_flat': actuals_flat})
+      df_pred_act.index = colmod.test_dates[:len(actuals_flat)]
 
-    # create a dataframe for y_pred and actuals_flat with time stamps
-    df_pred_act = pd.DataFrame({'y_pred': y_pred, 'actuals_flat': actuals_flat})
-    df_pred_act.index = colmod.test_dates[:len(actuals_flat)]
+      df_part1 = df_pred_act[df_pred_act.index < range1_start]
+      df_part2 = df_pred_act[(df_pred_act.index >= range1_end) & (df_pred_act.index <= range2_start)]
+      df_part3 = df_pred_act[df_pred_act.index >= range2_end]
+      df_part3 = df_part3.drop(pd.Timestamp('2023-03-12 02:00'))
 
-    range1_start = pd.Timestamp('2023-02-04 00:00')
-    range1_end = pd.Timestamp('2023-02-05 01:00')
-    range2_start = pd.Timestamp('2023-02-28 00:00')
-    range2_end = pd.Timestamp('2023-03-06 01:00')
+      baseloads = [baseload1, baseload2, baseload3]
+      dfs = [df_part1, df_part2, df_part3]
 
-    df_part1 = df_pred_act[df_pred_act.index < range1_start]
-    df_part2 = df_pred_act[(df_pred_act.index >= range1_end) & (df_pred_act.index <= range2_start)]
-    df_part3 = df_pred_act[df_pred_act.index >= range2_end]
-    df_part3 = df_part3.drop(pd.Timestamp('2023-03-12 02:00'))
+    elif args.dataset == "SDU":
+      y_pred = [pred for pred in y_pred]
+      actuals_flat = [item for sublist in actuals for item in sublist]
+      start_date = pd.to_datetime('2024-12-31')
+      end_date = pd.to_datetime('2032-12-31')
 
-    dfs = [df_part1, df_part2, df_part3]
+      df = pd.read_csv('SDU Dataset/DumbCharging_2020_to_2032/Measurements.csv', skipinitialspace=True)
+
+      df['Timestamp'] = pd.to_datetime(df['Timestamp'], format="%b %d, %Y, %I:%M:%S %p")
+
+      df = df[['Aggregated base load', 'Aggregated charging load']]
+
+      df_pred_act = pd.DataFrame({'y_pred': y_pred, 'actuals_flat': actuals_flat})
+      df_pred_act.index = colmod.test_dates[:len(actuals_flat)]
+
+      baseloads = [df]
+      dfs = [df_pred_act]
 
     for i, (baseload, df) in enumerate(zip(baseloads, dfs)):
-      y_pred = df['y_pred'].values
-      actuals_flat = df['actuals_flat'].values
-      baseload = baseload['Demand (MWh)'].values / args.downscaling
+      if args.dataset == "Colorado":
+        y_pred = df['y_pred'].values
+        actuals_flat = df['actuals_flat'].values
+        baseload = baseload['Demand (MWh)'].values / args.downscaling
+
+      elif args.dataset == "SDU":
+        y_pred = df['y_pred'].values
+        actuals_flat = df['actuals_flat'].values
+        baseload = baseload['Aggregated base load'].values
 
       actuals = np.array(actuals_flat) + baseload
       predictions = np.array(y_pred) + baseload
