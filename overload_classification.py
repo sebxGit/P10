@@ -772,13 +772,10 @@ if __name__ == "__main__":
   if os.path.exists(file_path):
     metrics_df = pd.read_csv(file_path)
 
-  filtered_metrics_df = metrics_df.loc[metrics_df.index.str.startswith(f"{combined_name}_part"), ['mae', 'acc', 'pre', 'rec']]
-  avg_metrics_df = filtered_metrics_df.mean()
+  metrics_df = metrics_df[metrics_df.index.str.contains(f"{combined_name}_part")]
+
+  avg_metrics_df = metrics_df.mean()
   avg_metrics_df['model'] = f"{combined_name}_avg"
-  metrics_df = pd.concat([metrics_df, avg_metrics_df], ignore_index=True)
-
-  if 'model' in metrics_df.columns:
-    metrics_df.set_index('model', inplace=True)
-
+  metrics_df = pd.concat([metrics_df, avg_metrics_df.to_frame().T], ignore_index=False)
   metrics_df.to_csv(file_path)
   
