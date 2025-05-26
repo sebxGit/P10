@@ -8,4 +8,4 @@
 #SBATCH --cpus-per-task=80
 #SBATCH --mem=175G
 
-singularity exec --nv energycontainerblackbox.sif python3 overload_classification.py --dataset Colorado --threshold 500 --multiplier 2 --downscaling 13 --models GradientBoostingRegressor --individual True 
+singularity exec --nv energycontainerblackbox.sif python3 overload_classification.py --dataset Colorado --threshold 500 --multiplier 2 --downscaling 13 --models AdaBoostRegressor --individual True 
