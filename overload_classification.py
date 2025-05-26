@@ -612,8 +612,9 @@ parser.add_argument("--pred_len", type=int, default=24)
 parser.add_argument("--seq_len", type=int, default=24*7)
 parser.add_argument("--stride", type=int, default=24)
 parser.add_argument("--dataset", type=str, default="Colorado")
-parser.add_argument("--threshold", type=int, default=60)
+parser.add_argument("--threshold", type=int, default=500)
 parser.add_argument("--multiplier", type=int, default=2)
+parser.add_argument("--downscaling", type=int, default=13)
 
 args = parser.parse_args()
 
@@ -706,10 +707,13 @@ if __name__ == "__main__":
     for i, (baseload, df) in enumerate(zip(baseloads, dfs)):
       y_pred = df['y_pred'].values
       actuals_flat = df['actuals_flat'].values
-      baseload = baseload['Demand (MWh)'].values
+      baseload = baseload['Demand (MWh)'].values / args.downscaling
+
+      actuals = np.array(actuals_flat) + baseload
+      predictions = np.array(y_pred) + baseload
       
-      actual_class = np.where(np.array(actuals_flat) + baseload > args.threshold, 1, 0)
-      pred_class = np.where(np.array(y_pred) + baseload > args.threshold, 1, 0)
+      actual_class = np.where(actuals > args.threshold, 1, 0)
+      pred_class = np.where(predictions > args.threshold, 1, 0)
       counts = Counter(actual_class)
       total = len(actual_class)
       percent_0 = (counts[0] / total) * 100
@@ -737,8 +741,8 @@ if __name__ == "__main__":
 
       metrics.append({
         'model': combined_name,
-        'mae': mean_absolute_error(y_pred, actuals_flat),
-        'mse': mean_squared_error(y_pred, actuals_flat),
+        'mae': mean_absolute_error(predictions, actuals),
+        'mse': mean_squared_error(predictions, actuals),
         'acc': accuracy_score(TP, TN, FP, FN),
         'pre': precision_score(TP, FP),
         'rec': recall_score(TP, FN),
@@ -754,8 +758,8 @@ if __name__ == "__main__":
       loss_func_df.set_index('model', inplace=True)
       loss_func_df.to_csv(f'Classifications/{combined_name}/{args.dataset}_part{i}_loss_func_metrics.csv')
 
-      plt.plot(actuals_flat, label='Actuals')
-      plt.plot(y_pred, label=combined_name, color='orange')
+      plt.plot(actuals, label='Actuals')
+      plt.plot(predictions, label=combined_name, color='orange')
       plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
       plt.legend()
       plt.savefig(f'Classifications/{combined_name}/{args.dataset}_part{i}_overload_visual.png')
