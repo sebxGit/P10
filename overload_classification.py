@@ -772,7 +772,9 @@ if __name__ == "__main__":
   if os.path.exists(file_path):
     metrics_df = pd.read_csv(file_path)
 
-  metrics_df = metrics_df[metrics_df.index.str.contains(f"{combined_name}_part")]
+  mask = metrics_df.index.to_series().str.contains(f"{combined_name}_part")
+
+  metrics_df = metrics_df[mask]
 
   avg_metrics_df = metrics_df.mean()
   avg_metrics_df['model'] = f"{combined_name}_avg"
