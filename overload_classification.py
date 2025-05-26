@@ -707,7 +707,7 @@ if __name__ == "__main__":
     for i, (baseload, df) in enumerate(zip(baseloads, dfs)):
       y_pred = df['y_pred'].values
       actuals_flat = df['actuals_flat'].values
-      print("MAX!!!", actuals_flat.max())
+      print("MAX!!!", (actuals_flat/2).max())
 
       baseload = baseload['Demand (MWh)'].values / args.downscaling
 
