@@ -711,6 +711,14 @@ if __name__ == "__main__":
 
       baseload = baseload['Demand (MWh)'].values / args.downscaling
 
+      plt.figure(figsize=(15, 4))
+      plt.plot(baseload, label='Baseload')
+      plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
+      plt.legend()
+      plt.savefig(f'Classifications/{combined_name}/{args.dataset}_part{i}_baseload.png')
+      plt.show()
+      plt.clf()
+
       actuals = np.array(actuals_flat) + baseload
       predictions = np.array(y_pred) + baseload
       
