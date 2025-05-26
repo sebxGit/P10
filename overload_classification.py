@@ -605,7 +605,7 @@ def initialize_model(model_name, hyperparameters):
   return model_dict[model_name]()
 
 parser = ArgumentParser()
-parser.add_argument("--models", type=str, default="AdaBoostRegressor")  #['xPatch', 'LSTM', 'GRU', 'PatchMixer']
+parser.add_argument("--models", type=str, default="AdaBoostRegressor")
 parser.add_argument("--individual", type=str, default="True")
 parser.add_argument("--input_size", type=int, default=22)
 parser.add_argument("--pred_len", type=int, default=24)
@@ -768,16 +768,3 @@ if __name__ == "__main__":
       plt.savefig(f'Classifications/{combined_name}/{args.dataset}_part{i}_overload_visual.png')
       plt.show()
       plt.clf()
-  
-  if os.path.exists(file_path):
-    metrics_df = pd.read_csv(file_path)
-
-  mask = metrics_df.index.to_series().str.contains(f"{combined_name}_part")
-
-  metrics_df = metrics_df[mask]
-
-  avg_metrics_df = metrics_df.mean()
-  avg_metrics_df['model'] = f"{combined_name}_avg"
-  metrics_df = pd.concat([metrics_df, avg_metrics_df.to_frame().T], ignore_index=False)
-  metrics_df.to_csv(file_path)
-  
