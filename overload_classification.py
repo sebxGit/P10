@@ -628,8 +628,8 @@ if __name__ == "__main__":
     selected_models = [args.models]
     combined_name = args.models
 
-  # output_dir = f'Classifications/{combined_name}' 
-  # os.makedirs(output_dir, exist_ok=True)
+  output_dir = f'Classifications/{combined_name}' 
+  os.makedirs(output_dir, exist_ok=True)
 
   predictions = []
   metrics = []
@@ -735,11 +735,12 @@ if __name__ == "__main__":
       print(_metrics)
 
       file_path = f'Classifications/{combined_name}/{args.dataset}_metrics.csv'
+
       if os.path.exists(file_path):
         metrics_df = pd.concat([pd.DataFrame([m]) for m in _metrics], ignore_index=True)
+        metrics_df.set_index('model', inplace=True)
       else:
         metrics_df = pd.DataFrame(columns=['model', 'mae', 'acc', 'pre', 'rec'])
-      metrics_df.set_index('model', inplace=True)
       metrics_df.to_csv(f'Classifications/{combined_name}/{args.dataset}_metrics.csv')
 
       #baseload plot
@@ -765,13 +766,13 @@ if __name__ == "__main__":
       plt.show()
       plt.clf()
   
-  # get avg metrics of the three models
-  file_path = f'Classifications/{combined_name}/{args.dataset}_metrics.csv'
-  if os.path.exists(file_path):
-    metrics_df = pd.concat([pd.DataFrame([m]) for m in metrics], ignore_index=True)
-    avg_metrics = metrics_df[['mae', 'acc', 'pre', 'rec']].mean()
-  else:
-    metrics_df = pd.DataFrame(columns=['model', 'mae', 'acc', 'pre', 'rec'])
-  metrics_df.set_index('model', inplace=True)
-  metrics_df.to_csv(f'Classifications/{combined_name}/{args.dataset}_metrics.csv')
+  # # get avg metrics of the three models
+  # file_path = f'Classifications/{combined_name}/{args.dataset}_metrics.csv'
+  # if os.path.exists(file_path):
+  #   metrics_df = pd.concat([pd.DataFrame([m]) for m in metrics], ignore_index=True)
+  #   avg_metrics = metrics_df[['mae', 'acc', 'pre', 'rec']].mean()
+  # else:
+  #   metrics_df = pd.DataFrame(columns=['model', 'mae', 'acc', 'pre', 'rec'])
+  # metrics_df.set_index('model', inplace=True)
+  # metrics_df.to_csv(f'Classifications/{combined_name}/{args.dataset}_metrics.csv')
   
