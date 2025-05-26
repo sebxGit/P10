@@ -112,20 +112,51 @@ def convert_Colorado_to_hourly(data):
     # Return the hourly data
     return hourly_df
 
-def convert_SDU_to_hourly(df):
-  df = df.set_index('Timestamp')
+def add_featuresSDU(df):
+    # Ensure Timestamp is datetime
+    df['Timestamp'] = pd.to_datetime(df['Timestamp'])
 
-  hourly = df.resample('h').agg({
-      'Total number of EVs':      'sum',
-      'Number of charging EVs':   'sum',
-      'Number of driving EVs':    'sum',
-      'Total grid load':          'sum',
-      'Aggregated base load':     'sum',
-      'Aggregated charging load': 'sum',
-      'Overload duration [min]':  'sum',
-  })
+    # Use the Timestamp column instead of index
+    df['Day_of_Week'] = df['Timestamp'].dt.dayofweek
+    df['Hour_of_Day'] = df['Timestamp'].dt.hour
+    df['Month_of_Year'] = df['Timestamp'].dt.month
+    df['Year'] = df['Timestamp'].dt.year
+    df['Day/Night'] = (df['Hour_of_Day'] >= 6) & (df['Hour_of_Day'] <= 18)
 
-  return hourly
+    # Add holiday
+    dk_hols = holidays.DK(years=range(
+        df['Timestamp'].dt.year.min(), df['Timestamp'].dt.year.max() + 1))
+    df['IsHoliday'] = df['Timestamp'].dt.date.isin(dk_hols).astype(int)
+
+    # Add weekend
+    df['Weekend'] = (df['Day_of_Week'] >= 5).astype(int)
+
+    ####################### CYCLIC FEATURES  #######################
+    df['HourSin'] = np.sin(2 * np.pi * df['Hour_of_Day'] / 24)
+    df['HourCos'] = np.cos(2 * np.pi * df['Hour_of_Day'] / 24)
+    df['DayOfWeekSin'] = np.sin(2 * np.pi * df['Day_of_Week'] / 7)
+    df['DayOfWeekCos'] = np.cos(2 * np.pi * df['Day_of_Week'] / 7)
+    df['MonthOfYearSin'] = np.sin(2 * np.pi * df['Month_of_Year'] / 12)
+    df['MonthOfYearCos'] = np.cos(2 * np.pi * df['Month_of_Year'] / 12)
+
+    ####################### SEASONAL FEATURES  #######################
+    month_to_season = {1: 0, 2: 0, 3: 1, 4: 1, 5: 1, 6: 2,
+                       7: 2, 8: 2, 9: 3, 10: 3, 11: 3, 12: 0}
+    df['Season'] = df['Month_of_Year'].map(month_to_season)
+
+    ####################### HISTORICAL CONSUMPTION FEATURES  #######################
+    df['Aggregated_charging_load_1h'] = df['Aggregated charging load'].shift(1)
+    df['Aggregated_charging_load_6h'] = df['Aggregated charging load'].shift(6)
+    df['Aggregated_charging_load_12h'] = df['Aggregated charging load'].shift(
+        12)
+    df['Aggregated_charging_load_24h'] = df['Aggregated charging load'].shift(
+        24)
+    df['Aggregated_charging_load_1w'] = df['Aggregated charging load'].shift(
+        24*7)
+    df['Aggregated_charging_rolling'] = df['Aggregated charging load'].rolling(
+        window=24).mean()
+
+    return df
 
 def add_features(hourly_df, dataset_name, historical_feature, weather_df=None):
   ####################### TIMED BASED FEATURES  #######################
@@ -373,19 +404,43 @@ class SDUDataModule(L.LightningDataModule):
     self.y_test = None
 
   def setup(self, stage: str):
+    # Define the start and end dates
     start_date = pd.to_datetime('2024-12-31')
     end_date = pd.to_datetime('2032-12-31')
 
-    # Load the data
-    # df = pd.read_csv(self.data_dir, parse_dates=['Timestamp'])
+    # Load the CSV
     df = pd.read_csv(self.data_dir, skipinitialspace=True)
-    df.columns = df.columns.str.strip()
-    df['Timestamp'] = df['Timestamp'].str.strip()  # <-- Add this line
-    df['Timestamp'] = pd.to_datetime(df['Timestamp'], format="%b %d, %Y, %I:%M:%S %p")
-    df = convert_SDU_to_hourly(df)
-    feature_df = add_features(hourly_df=df, dataset_name='SDU', historical_feature='Aggregated charging load')
-    df = filter_data(start_date, end_date, feature_df)
 
+    # Convert 'Timestamp' to datetime with exact format
+    df['Timestamp'] = pd.to_datetime(
+        df['Timestamp'], format="%b %d, %Y, %I:%M:%S %p")
+
+    # Keep only relevant columns
+    df = df[['Timestamp', 'Aggregated charging load',
+            'Total number of EVs', 'Number of charging EVs',
+             'Number of driving EVs', 'Overload duration [min]']]
+
+    # Ensure numeric columns are correctly parsed
+    numeric_cols = [
+        'Aggregated charging load',
+        'Total number of EVs',
+        'Number of driving EVs',
+        'Number of charging EVs',
+        'Overload duration [min]'
+    ]
+    df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric, errors='coerce')
+
+    # Use lowercase 'h' to avoid deprecation warning
+    df['Timestamp'] = df['Timestamp'].dt.floor('h')
+
+    # Optional: Aggregate if multiple entries exist for the same hour
+    df = df.groupby('Timestamp')[numeric_cols].sum().reset_index()
+
+    df = add_featuresSDU(df)
+
+    df = df.set_index('Timestamp')
+
+    df = filter_data(start_date, end_date, df)
     df = df.dropna()
     X = df.copy()
 
