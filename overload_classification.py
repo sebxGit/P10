@@ -725,10 +725,6 @@ if __name__ == "__main__":
       print(f"0s pred: {percent_0:.2f}%")
       print(f"1s pred: {percent_1:.2f}%")
       
-      #TP: when pred is 1 and actual is 1
-      #TN: when pred is 0 and actual is 0
-      #FP: when pred is 1 and actual is 0
-      #FN: when pred is 0 and actual is 1
       TP = np.sum((pred_class == 1) & (actual_class == 1))
       TN = np.sum((pred_class == 0) & (actual_class == 0))
       FP = np.sum((pred_class == 1) & (actual_class == 0))
@@ -740,7 +736,7 @@ if __name__ == "__main__":
       metrics = []
 
       metrics.append({
-        'model': model_name,
+        'model': combined_name,
         'mae': mean_absolute_error(y_pred, actuals_flat),
         'mse': mean_squared_error(y_pred, actuals_flat),
         'acc': accuracy_score(TP, TN, FP, FN),
@@ -748,8 +744,15 @@ if __name__ == "__main__":
         'rec': recall_score(TP, FN),
       })
       print(metrics)
+      if metrics:
+        loss_func_df = pd.concat([pd.DataFrame([m]) for m in metrics], ignore_index=True)
+      else:
+        loss_func_df = pd.DataFrame(columns=['model', 'mae', 'mse', 'acc', 'pre', 'rec'])
+      loss_func_df.set_index('model', inplace=True)
+      loss_func_df.to_csv(f'Classifications/{combined_name}/{args.dataset}_loss_func_metrics.csv')
 
       plt.plot(actuals_flat, label='Actuals')
-      plt.plot(y_pred, label=model_name, color='orange')
+      plt.plot(y_pred, label=combined_name, color='orange')
       plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
+      plt.savefig(f'Classifications/{combined_name}/{args.dataset}_overload_visual.png')
       plt.show()
