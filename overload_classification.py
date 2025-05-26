@@ -630,7 +630,7 @@ if __name__ == "__main__":
 
   output_dir = f'Classifications/{combined_name}' 
   os.makedirs(output_dir, exist_ok=True)
-
+  file_path = f'Classifications/{combined_name}/{args.dataset}_metrics.csv'
   predictions = []
   metrics = []
 
@@ -725,7 +725,6 @@ if __name__ == "__main__":
       _metrics = {
         'model': f"{combined_name}_part{i}",
         'mae': mean_absolute_error(predictions, actuals),
-        'mse': mean_squared_error(predictions, actuals),
         'acc': accuracy_score(TP, TN, FP, FN),
         'pre': precision_score(TP, FP),
         'rec': recall_score(TP, FN),
@@ -733,8 +732,6 @@ if __name__ == "__main__":
 
       metrics.append(_metrics)
       print(_metrics)
-
-      file_path = f'Classifications/{combined_name}/{args.dataset}_metrics.csv'
 
       if os.path.exists(file_path):
         metrics_df = pd.read_csv(file_path)
@@ -781,4 +778,19 @@ if __name__ == "__main__":
   #   metrics_df = pd.DataFrame(columns=['model', 'mae', 'acc', 'pre', 'rec'])
   # metrics_df.set_index('model', inplace=True)
   # metrics_df.to_csv(f'Classifications/{combined_name}/{args.dataset}_metrics.csv')
+
+  if os.path.exists(file_path):
+    metrics_df = pd.read_csv(file_path)
+    filtered_metrics_df = metrics_df[metrics_df.index.str.contains(f"{combined_name}_part", na=False)]
+    avg_metrics = filtered_metrics_df[['mae', 'acc', 'pre', 'rec']].mean()
+  else:
+    metrics_df = pd.DataFrame(columns=['model', 'mae', 'acc', 'pre', 'rec'])
+
+  new_metrics_df = pd.DataFrame([_metrics])
+  metrics_df = pd.concat([metrics_df, new_metrics_df], ignore_index=True)
+
+  if 'model' in metrics_df.columns:
+    metrics_df.set_index('model', inplace=True)
+
+  metrics_df.to_csv(file_path)
   
