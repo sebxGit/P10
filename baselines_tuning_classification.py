@@ -765,7 +765,7 @@ def tune_model_with_optuna(args, n_trials):
       print("Loaded an old study:")
     except Exception as e:
       print("No previous tuning found. Starting a new tuning.", e) 
-      study = optuna.create_study(direction="minimize")
+      study = optuna.create_study(direction="maximize")
   else:
     print("Starting a new tuning.")
     study = optuna.create_study(direction="minimize")
