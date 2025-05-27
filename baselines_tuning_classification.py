@@ -740,11 +740,14 @@ def objective(args, trial):
     actual_class = np.where(actuals > threshold, 1, 0)
     pred_class = np.where(predictions > threshold, 1, 0)
 
+    print(f"Actuals: {actuals[:10]}, Predictions: {predictions[:10]}")
+    print(f"Actual class: {actual_class[:10]}, Predicted class: {pred_class[:10]}")
+
     TP = np.sum((pred_class == 1) & (actual_class == 1))
     FN = np.sum((pred_class == 0) & (actual_class == 1))
 
     loss = recall_score(TP, FN)
-
+    print(f"TP: {TP}, FN: {FN}, loss: {loss}")
     return loss
 
 def safe_objective(args, trial):
