@@ -408,14 +408,18 @@ class SDUDataModule(L.LightningDataModule):
     df = pd.read_csv(self.data_dir, skipinitialspace=True)
     df['Timestamp'] = pd.to_datetime(df['Timestamp'], format="%b %d, %Y, %I:%M:%S %p")
     df['Timestamp'] = df['Timestamp'].dt.floor('h')
-    df = df[['Timestamp', 'Aggregated charging load', 'Total number of EVs', 'Number of charging EVs', 'Number of driving EVs']]
+    df = df[['Timestamp', 'Aggregated charging load', 'Day', 'Month', 'Year', 'Hour']]
+    df['Aggregated_charging_load_24h'] = df['Aggregated charging load'].shift(24)
     df = df.set_index('Timestamp')
+    
     df = filter_data(start_date, end_date, df)
+
+    df.to_csv('sdu_test.csv')
 
     X = df.copy()
     y = X.pop('Aggregated charging load')
 
-    self.X_train_val, self.X_test, self.y_train_val, self.y_test = train_test_split( X, y, test_size=0.2, shuffle=False)
+    self.X_train_val, self.X_test, self.y_train_val, self.y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
     self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(self.X_train_val, self.y_train_val, test_size=0.25, shuffle=False)
 
     preprocessing = self.scaler
@@ -630,26 +634,28 @@ def get_actuals_and_prediction_flattened(colmod, prediction):
 
   actuals_flattened = [item for sublist in actuals for item in sublist]
   predictions_flattened = [value.item() for tensor in prediction for value in tensor.flatten()]
-  predictions_flattened = predictions_flattened[-len(actuals_flattened):]
+  # predictions_flattened = predictions_flattened[-len(actuals_flattened):]
 
   return predictions_flattened, actuals_flattened
+
 
 def objective(args, trial):
     
     params = {
-        'input_size': 22 if args.dataset == "Colorado" else 3,
+        'input_size': 22 if args.dataset == "Colorado" else 4,
         'pred_len': args.pred_len,
         'seq_len': 24*7,
         'stride': args.pred_len,
         'batch_size': trial.suggest_int('batch_size', 32, 128, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
-        'criterion': torch.nn.L1Loss(),
+        'criterion': nn.MSELoss(),
         'optimizer': torch.optim.Adam,
         'scaler': RobustScaler(),
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
-        # 'max_epochs': trial.suggest_int('max_epochs', 1000, 5000, step=100),
-        'max_epochs': 5000,
-        'num_workers': trial.suggest_int('num_workers', 5, 12) if args.model != "DPAD" else 2,
+        # 'max_epochs': trial.suggest_int('max_epochs', 1000, 5000, step=100), ###CHANGE
+        'max_epochs': 1000,
+        # 'num_workers': trial.suggest_int('num_workers', 5, 12) if args.model != "DPAD" else 2,
+        'num_workers': 20,
         'is_persistent': True
     }
 
@@ -667,7 +673,8 @@ def objective(args, trial):
     if args.model == "LSTM":
       _params = {
         'hidden_size': trial.suggest_int('hidden_size', 50, 200),
-        'num_layers': trial.suggest_int('num_layers', 1, 10),
+        # 'num_layers': trial.suggest_int('num_layers', 1, 10), ###CHANGE
+        'num_layers': 5,
         'dropout': trial.suggest_float('dropout', 0.0, 1),
       }
       model = LSTM(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
@@ -754,18 +761,22 @@ def objective(args, trial):
       tuned_model = LightningModel(model=model, criterion=params['criterion'], optimizer=params['optimizer'], learning_rate=params['learning_rate'])
 
       # Trainer for fitting using DDP - Multi GPU
-      #trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
-      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed ==
-                          'True' else None, enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
+      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')  ###CHANGE
+      # trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False)
 
       trainer.fit(tuned_model, colmod)
 
       # New Trainer for inference on one GPU
-      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, devices=1)
+      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, devices=1)  ###CHANGE
 
       predictions = trainer.predict(tuned_model, colmod, return_predictions=True)
 
+      print(predictions)
+
+      exit()
+
       pred, act = get_actuals_and_prediction_flattened(colmod, predictions)
+
 
       plt.figure(figsize=(10, 5))
       plt.plot(act, label='Actuals', color='blue')
@@ -804,10 +815,10 @@ def safe_objective(args, trial):
 def tune_model_with_optuna(args, n_trials):
   if args.load == 'True':
     try:
-      # if args.individual:
-      study = joblib.load(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_individual_tuning.pkl')
-      # else:
-      #   study = joblib.load(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_tuning.pkl')
+      if args.individual:
+        study = joblib.load(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_individual_tuning.pkl')
+      else:
+        study = joblib.load(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_tuning.pkl')
       print("Loaded an old study:")
     except Exception as e:
       print("No previous tuning found. Starting a new tuning.", e) 
@@ -849,7 +860,7 @@ def tune_model_with_optuna(args, n_trials):
 if __name__ == '__main__':
   parser = ArgumentParser()
   parser.add_argument("--dataset", type=str, default="SDU")
-  parser.add_argument("--pred_len", type=int, default=24)
+  parser.add_argument("--pred_len", type=int, default=6)
   parser.add_argument("--model", type=str, default="LSTM")
   parser.add_argument("--load", type=str, default='False')
   parser.add_argument("--mixed", type=str, default='True')
