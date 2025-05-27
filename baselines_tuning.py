@@ -655,7 +655,7 @@ def objective(args, trial):
         # 'max_epochs': trial.suggest_int('max_epochs', 1000, 5000, step=100), ###CHANGE
         'max_epochs': 1000,
         # 'num_workers': trial.suggest_int('num_workers', 5, 12) if args.model != "DPAD" else 2,
-        'num_workers': 20,
+        'num_workers': 15,
         'is_persistent': True
     }
 
@@ -773,8 +773,6 @@ def objective(args, trial):
 
       print(predictions)
 
-      exit()
-
       pred, act = get_actuals_and_prediction_flattened(colmod, predictions)
 
 
@@ -785,8 +783,10 @@ def objective(args, trial):
       plt.xlabel('Time')
       plt.ylabel('Energy Consumption') 
       plt.legend()
+      plt.savefig(f"sdu_testplot")
       plt.show()
       plt.close()
+
       
 
       train_loss = mean_absolute_error(act, pred)
@@ -860,7 +860,7 @@ def tune_model_with_optuna(args, n_trials):
 if __name__ == '__main__':
   parser = ArgumentParser()
   parser.add_argument("--dataset", type=str, default="SDU")
-  parser.add_argument("--pred_len", type=int, default=6)
+  parser.add_argument("--pred_len", type=int, default=24)
   parser.add_argument("--model", type=str, default="xPatch")
   parser.add_argument("--load", type=str, default='False')
   parser.add_argument("--mixed", type=str, default='True')
