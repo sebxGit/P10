@@ -730,7 +730,10 @@ def safe_objective(args, trial):
 def tune_model_with_optuna(args, n_trials):
   if args.load == 'True':
     try:
-      study = joblib.load(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_tuning.pkl')
+      if args.individual or not args.individual:
+        study = joblib.load(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_individual_tuning.pkl')
+      else:
+        study = joblib.load(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_tuning.pkl')
       print("Loaded an old study:")
     except Exception as e:
       print("No previous tuning found. Starting a new tuning.", e) 
@@ -747,7 +750,10 @@ def tune_model_with_optuna(args, n_trials):
 
   if study.best_value != float('inf'):
     try:
-      df_tuning = pd.read_csv(f'Tunings/{args.dataset}_{args.pred_len}h_tuning.csv', delimiter=',')
+      if args.individual:
+        df_tuning = pd.read_csv(f'Tunings/{args.dataset}_{args.pred_len}h_individual_tuning.csv', delimiter=',')
+      else:
+        df_tuning = pd.read_csv(f'Tunings/{args.dataset}_{args.pred_len}h_tuning.csv', delimiter=',')
     except Exception:
       df_tuning = pd.DataFrame(columns=['model', 'trials', 'val_loss', 'parameters'])
 
