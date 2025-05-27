@@ -730,10 +730,10 @@ def safe_objective(args, trial):
 def tune_model_with_optuna(args, n_trials):
   if args.load == 'True':
     try:
-      # if args.individual:
-      study = joblib.load(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_individual_tuning.pkl')
-      # else:
-      #   study = joblib.load(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_tuning.pkl')
+      if args.individual:
+        study = joblib.load(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_individual_tuning.pkl')
+      else:
+        study = joblib.load(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_tuning.pkl')
       print("Loaded an old study:")
     except Exception as e:
       print("No previous tuning found. Starting a new tuning.", e) 
