@@ -733,6 +733,8 @@ def objective(args, trial):
 
     baseload = get_baseload(act)
 
+    print(f"Shape of act: {np.array(act).shape}")
+    print(f"Shape of baseload: {baseload.shape}") 
     if len(act) != len(baseload):
       raise ValueError(f"Length mismatch: act ({len(act)}) and baseload ({len(baseload)})")
     
