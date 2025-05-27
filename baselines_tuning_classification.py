@@ -732,6 +732,10 @@ def objective(args, trial):
       pred, act = model.predict(X_val), y_val
 
     baseload = get_baseload(act)
+
+    if len(act) != len(baseload):
+      raise ValueError(f"Length mismatch: act ({len(act)}) and baseload ({len(baseload)})")
+    
     actuals = np.array(act) + baseload
     predictions = np.array(pred) + baseload
     
