@@ -5,9 +5,5 @@ GradientBoostingRegressor,150,49.0843231308325,"{'batch_size': 112, 'learning_ra
 xPatch,150,33.35552348881736,"{'batch_size': 96, 'learning_rate': 0.0038182929996428247, 'max_epochs': 1400, 'num_workers': 7, 'patch_len': 24, 'stride': 48, 'padding_patch': 'None', 'revin': 1, 'ma_type': 'ema', 'alpha': 0.05123511092088373, 'beta': 0.6824592289210996}"
 LSTM,150,18.46639101710418,"{'batch_size': 48, 'learning_rate': 0.0012792723530814668, 'max_epochs': 1600, 'num_workers': 10, 'hidden_size': 182, 'num_layers': 1, 'dropout': 0.01347934700999319}"
 GRU,150,18.07808614469277,"{'batch_size': 32, 'learning_rate': 0.004329514123669416, 'max_epochs': 1600, 'num_workers': 11, 'hidden_size': 167, 'num_layers': 1, 'dropout': 0.6070714207460007}"
-<<<<<<< HEAD
-PatchMixer,150,32.906039211266325,"{'batch_size': 96, 'learning_rate': 0.0032017222885988177, 'max_epochs': 1400, 'num_workers': 5, 'patch_len': 4, 'stride': 12, 'mixer_kernel_size': 4, 'd_model': 1024, 'dropout': 0.1, 'head_dropout': 0.0, 'e_layers': 3}"
-DPAD,32,17.711411012038546,"{'batch_size': 16, 'learning_rate': 0.00020759812390785777, 'max_epochs': 1700, 'enc_hidden': 132, 'dec_hidden': 156, 'num_levels': 2, 'K_IMP': 7, 'RIN': 0}"
-=======
 PatchMixer,99,32.77299018467414,"{'batch_size': 48, 'learning_rate': 0.001272837207327056, 'max_epochs': 1400, 'num_workers': 10, 'patch_len': 16, 'stride': 14, 'mixer_kernel_size': 12, 'd_model': 256, 'dropout': 0.05, 'head_dropout': 0.05, 'e_layers': 4}"
->>>>>>> 55b13092ac9c83a9c32be80b28ad47172a0134a8
+DPAD,32,17.711411012038546,"{'batch_size': 16, 'learning_rate': 0.00020759812390785777, 'max_epochs': 1700, 'enc_hidden': 132, 'dec_hidden': 156, 'num_levels': 2, 'K_IMP': 7, 'RIN': 0}"
