@@ -430,10 +430,14 @@ class SDUDataModule(L.LightningDataModule):
       self.y_val = np.array(self.y_val)
 
   def train_dataloader(self):
-    train_dataset = TimeSeriesDataset(self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-    # sampler = BootstrapSampler(len(train_dataset), random_state=SEED)
-    # train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
-    train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    train_dataset = TimeSeriesDataset(
+        self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+    sampler = BootstrapSampler(len(train_dataset), random_state=SEED)
+    if args.individual == 'False':
+      train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
+    else:
+      train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False,
+                                num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return train_loader
 
   def predict_dataloader(self):
@@ -441,7 +445,7 @@ class SDUDataModule(L.LightningDataModule):
         self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
     val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False,
                             num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
-    return val_loader  
+    return val_loader
 
 class SDUDataModule2(L.LightningDataModule):
   def __init__(self, data_dir: str, scaler: int, seq_len: int, pred_len: int, stride: int, batch_size: int, num_workers: int, is_persistent: bool):
