@@ -554,18 +554,17 @@ def initialize_model(model_name, hyperparameters):
   "AdaBoostRegressor": lambda: MultiOutputRegressor(AdaBoostRegressor(n_estimators=hyperparameters['n_estimators'], learning_rate=hyperparameters['learning_rate'], random_state=SEED), n_jobs=-1),
   "DPAD": lambda: DPAD_GCN(input_len=args.seq_len, output_len=args.pred_len, input_dim=args.input_size, enc_hidden=hyperparameters['enc_hidden'], dec_hidden=hyperparameters['dec_hidden'], num_levels=hyperparameters['num_levels'], K_IMP=hyperparameters['K_IMP'], RIN=hyperparameters['RIN'])
   }
-
   return model_dict[model_name]()
 
 parser = ArgumentParser()
 parser.add_argument("--models", type=str, default="['LSTM', 'GRU', 'PatchMixer', 'xPatch']")
-parser.add_argument("--individual", type=str, default="True")
+parser.add_argument("--individual", type=str, default="False")
 parser.add_argument("--input_size", type=int, default=22)
 parser.add_argument("--pred_len", type=int, default=24)
 parser.add_argument("--seq_len", type=int, default=24*7)
 parser.add_argument("--stride", type=int, default=24)
 parser.add_argument("--dataset", type=str, default="Colorado")
-parser.add_argument("--threshold", type=int, default=400)
+parser.add_argument("--threshold", type=int, default=500)
 parser.add_argument("--multiplier", type=int, default=2)
 parser.add_argument("--downscaling", type=int, default=13)
 
@@ -585,13 +584,13 @@ if __name__ == "__main__":
   os.makedirs(output_dir, exist_ok=True)
   file_path = f'Classifications/{args.dataset}/{combined_name}_metrics.csv'
   
-  predictions = []
+  all_predictions = []
   metrics = []
 
   for model_name in selected_models:
     print(f"-----Training {model_name} model-----")
 
-    if mode == "ensemble":
+    if args.individual == "False":
       hparams = pd.read_csv(f'./Tunings/{args.dataset}_{args.pred_len}h_tuning.csv')
     else:
       hparams = pd.read_csv(f'./Tunings/{args.dataset}_{args.pred_len}h_individual_tuning.csv')
@@ -626,6 +625,11 @@ if __name__ == "__main__":
       model.fit(X_train, y_train)
       y_pred = model.predict(X_test).reshape(-1)
 
+    all_predictions.append(y_pred)
+    print(model_name, selected_models[-1], "predictions:", len(y_pred))
+    if args.individual == "False" and model_name != selected_models[-1]:
+      continue
+    exit()
     actuals = []
     for batch in colmod.predict_dataloader():
       x, y = batch
@@ -655,7 +659,6 @@ if __name__ == "__main__":
       dfs = [df_part1, df_part2, df_part3]
 
     elif args.dataset == "SDU":
-      print(len(y_pred), len(actuals))
       y_pred = [pred for pred in y_pred]
       actuals_flat = [item for sublist in actuals for item in sublist]
       start_date = pd.to_datetime('2024-12-31')
@@ -669,20 +672,14 @@ if __name__ == "__main__":
       df['Timestamp'] = pd.to_datetime(df['Timestamp'], format="%b %d, %Y, %I:%M:%S %p")
       df.set_index('Timestamp', inplace=True)
 
-      df = df[(df.index >= test_start_date) &
-              (df.index <= test_end_date)]
+      df = df[(df.index >= test_start_date) & (df.index <= test_end_date)]
       
       df = df.iloc[:len(actuals_flat)]
 
       df = df[['Aggregated base load']]
 
-
-
       df_pred_act = pd.DataFrame({'y_pred': y_pred, 'actuals_flat': actuals_flat})
       df_pred_act.index = colmod.test_dates[:len(actuals_flat)]
-
-      print(df_pred_act)
-
 
       baseloads = [df]
       dfs = [df_pred_act]
