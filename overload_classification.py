@@ -558,13 +558,13 @@ def initialize_model(model_name, hyperparameters):
   return model_dict[model_name]()
 
 parser = ArgumentParser()
-parser.add_argument("--models", type=str, default="xPatch")
+parser.add_argument("--models", type=str, default="['LSTM', 'GRU', 'PatchMixer', 'xPatch']")
 parser.add_argument("--individual", type=str, default="True")
-parser.add_argument("--input_size", type=int, default=24)
+parser.add_argument("--input_size", type=int, default=22)
 parser.add_argument("--pred_len", type=int, default=24)
 parser.add_argument("--seq_len", type=int, default=24*7)
 parser.add_argument("--stride", type=int, default=24)
-parser.add_argument("--dataset", type=str, default="SDU")
+parser.add_argument("--dataset", type=str, default="Colorado")
 parser.add_argument("--threshold", type=int, default=400)
 parser.add_argument("--multiplier", type=int, default=2)
 parser.add_argument("--downscaling", type=int, default=13)
@@ -584,6 +584,7 @@ if __name__ == "__main__":
   output_dir = f'Classifications/{args.dataset}' 
   os.makedirs(output_dir, exist_ok=True)
   file_path = f'Classifications/{args.dataset}/{combined_name}_metrics.csv'
+  
   predictions = []
   metrics = []
 
@@ -624,7 +625,6 @@ if __name__ == "__main__":
 
       model.fit(X_train, y_train)
       y_pred = model.predict(X_test).reshape(-1)
-    
 
     actuals = []
     for batch in colmod.predict_dataloader():
