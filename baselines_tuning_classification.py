@@ -735,9 +735,10 @@ def objective(args, trial):
     
     actuals = np.array(act) + baseload
     predictions = np.array(pred) + baseload
+    threshold = 500 if args.dataset == "Colorado" else 400
     
-    actual_class = np.where(actuals > args.threshold, 1, 0)
-    pred_class = np.where(predictions > args.threshold, 1, 0)
+    actual_class = np.where(actuals > threshold, 1, 0)
+    pred_class = np.where(predictions > threshold, 1, 0)
 
     TP = np.sum((pred_class == 1) & (actual_class == 1))
     FN = np.sum((pred_class == 0) & (actual_class == 1))
