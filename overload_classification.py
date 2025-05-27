@@ -737,42 +737,43 @@ if __name__ == "__main__":
 
       metrics_df.to_csv(file_path)
 
-      # #baseload plot
-      # plt.figure(figsize=(15, 4))
-      # plt.plot(baseload, label='Baseload')
-      # plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
-      # plt.xlabel('Samples')
-      # plt.ylabel('Electricity Consumption (kW)')
-      # plt.legend()
-      # plt.savefig(f'{file_path}_part{i}_baseload.png')
-      # plt.show()
-      # plt.clf()
+      #baseload plot
+      plt.figure(figsize=(15, 4))
+      plt.plot(baseload, label='Baseload')
+      plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
+      plt.xlabel('Samples')
+      plt.ylabel('Electricity Consumption (kW)')
+      plt.legend()
+      plt.savefig(f'{file_path}_part{i}_baseload.png')
+      plt.show()
+      plt.clf()
 
-      # # pred and act plot
-      # plt.figure(figsize=(15, 4))
-      # plt.plot(actuals, label='Actuals+baseload')
-      # plt.plot(predictions, label=f'{combined_name}+baseload')
-      # plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
-      # plt.xlabel('Samples')
-      # plt.ylabel('Electricity Consumption (kW)')
-      # plt.legend()
-      # plt.savefig(f'{file_path}_part{i}_overload_visual.png')
-      # plt.show()
-      # plt.clf()
+      # pred and act plot
+      plt.figure(figsize=(15, 4))
+      plt.plot(actuals, label='Actuals+baseload')
+      plt.plot(predictions, label=f'{combined_name}+baseload')
+      plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
+      plt.xlabel('Samples')
+      plt.ylabel('Electricity Consumption (kW)')
+      plt.legend()
+      plt.savefig(f'{file_path}_part{i}_overload_visual.png')
+      plt.show()
+      plt.clf()
 
-  if os.path.exists(file_path):
-    metrics_df = pd.read_csv(file_path)
-  else:
-    metrics_df = pd.DataFrame(columns=['model', 'mae', 'acc', 'pre', 'rec'])
+  if args.dataset == "Colorado":
+    if os.path.exists(file_path):
+      metrics_df = pd.read_csv(file_path)
+    else:
+      metrics_df = pd.DataFrame(columns=['model', 'mae', 'acc', 'pre', 'rec'])
 
-  new_metrics_df = metrics_df.drop(columns=['model'])
-  new_metrics_df = new_metrics_df.mean().to_frame().T
-  new_metrics_df['model'] = f"{combined_name}_avg"
-  new_metrics_df = new_metrics_df[['model'] + list(new_metrics_df.columns.difference(['model'], sort=False))]
+    new_metrics_df = metrics_df.drop(columns=['model'])
+    new_metrics_df = new_metrics_df.mean().to_frame().T
+    new_metrics_df['model'] = f"{combined_name}_avg"
+    new_metrics_df = new_metrics_df[['model'] + list(new_metrics_df.columns.difference(['model'], sort=False))]
 
-  metrics_df = pd.concat([metrics_df, new_metrics_df], ignore_index=True)
+    metrics_df = pd.concat([metrics_df, new_metrics_df], ignore_index=True)
 
-  if 'model' in metrics_df.columns:
-    metrics_df.set_index('model', inplace=True)
+    if 'model' in metrics_df.columns:
+      metrics_df.set_index('model', inplace=True)
 
-  metrics_df.to_csv(file_path)
+    metrics_df.to_csv(file_path)
