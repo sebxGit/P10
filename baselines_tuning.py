@@ -777,7 +777,7 @@ if __name__ == '__main__':
   parser.add_argument("--dataset", type=str, default="SDU")
   parser.add_argument("--pred_len", type=int, default=24)
   parser.add_argument("--model", type=str, default="LSTM")
-  parser.add_argument("--load", type=str, default='False')
+  parser.add_argument("--load", type=str, default='True')
   parser.add_argument("--mixed", type=str, default='True')
   parser.add_argument("--individual", type=str, default="False")
   args = parser.parse_args()
