@@ -589,7 +589,7 @@ def get_baseload(actuals_flat):
     
     df = df.iloc[:len(actuals_flat)]
 
-    return df[['Aggregated base load']].flatten()
+    return df[['Aggregated base load']].to_numpy().flatten()
 
 def objective(args, trial):
     
@@ -732,11 +732,6 @@ def objective(args, trial):
       pred, act = model.predict(X_val), y_val
 
     baseload = get_baseload(act)
-
-    print(f"Shape of act: {np.array(act).shape}")
-    print(f"Shape of baseload: {baseload.shape}") 
-    if len(act) != len(baseload):
-      raise ValueError(f"Length mismatch: act ({len(act)}) and baseload ({len(baseload)})")
     
     actuals = np.array(act) + baseload
     predictions = np.array(pred) + baseload
