@@ -629,7 +629,9 @@ if __name__ == "__main__":
     print(model_name, selected_models[-1], "predictions:", len(y_pred))
     if args.individual == "False" and model_name != selected_models[-1]:
       continue
-    exit()
+    if args.individual == "False":
+      y_pred = np.mean(all_predictions, axis=0)
+      
     actuals = []
     for batch in colmod.predict_dataloader():
       x, y = batch
