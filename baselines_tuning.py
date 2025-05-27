@@ -16,7 +16,7 @@ from models.xPatch import xPatch
 from models.PatchMixer import PatchMixer
 
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, RobustScaler
 from sklearn.ensemble import RandomForestRegressor, AdaBoostRegressor, GradientBoostingRegressor
 from sklearn.multioutput import MultiOutputRegressor
 from sklearn.base import BaseEstimator
@@ -381,7 +381,6 @@ class ColoradoDataModule(L.LightningDataModule):
     # Unpack results
     X_window, y_target = zip(*results)
     return np.array(X_window), np.array(y_target)
-  
 
 class SDUDataModule(L.LightningDataModule):
   def __init__(self, data_dir: str, scaler: int, seq_len: int, pred_len: int, stride: int, batch_size: int, num_workers: int, is_persistent: bool):
@@ -404,16 +403,80 @@ class SDUDataModule(L.LightningDataModule):
     self.y_train_val = None
 
   def setup(self, stage: str):
+    start_date = pd.to_datetime('2027-01-01')
+    end_date = pd.to_datetime('2029-01-01')
+    df = pd.read_csv(self.data_dir, skipinitialspace=True)
+    df['Timestamp'] = pd.to_datetime(df['Timestamp'], format="%b %d, %Y, %I:%M:%S %p")
+    df['Timestamp'] = df['Timestamp'].dt.floor('h')
+    df = df[['Timestamp', 'Aggregated charging load', 'Total number of EVs', 'Number of charging EVs', 'Number of driving EVs']]
+    df = df.set_index('Timestamp')
+    df = filter_data(start_date, end_date, df)
+
+    X = df.copy()
+    y = X.pop('Aggregated charging load')
+
+    self.X_train_val, self.X_test, self.y_train_val, self.y_test = train_test_split( X, y, test_size=0.2, shuffle=False)
+    self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(self.X_train_val, self.y_train_val, test_size=0.25, shuffle=False)
+
+    preprocessing = self.scaler
+    preprocessing.fit(self.X_train)
+
+    if stage == "fit" or stage is None:
+      self.X_train = preprocessing.transform(self.X_train)
+      self.y_train = np.array(self.y_train)
+
+    if stage == "test" or "predict" or stage is None:
+      self.X_val = preprocessing.transform(self.X_val)
+      self.y_val = np.array(self.y_val)
+
+  def train_dataloader(self):
+    train_dataset = TimeSeriesDataset(self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+    # sampler = BootstrapSampler(len(train_dataset), random_state=SEED)
+    # train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
+    train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    return train_loader
+
+  def predict_dataloader(self):
+    val_dataset = TimeSeriesDataset(
+        self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+    val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False,
+                            num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    return val_loader  
+
+class SDUDataModule2(L.LightningDataModule):
+  def __init__(self, data_dir: str, scaler: int, seq_len: int, pred_len: int, stride: int, batch_size: int, num_workers: int, is_persistent: bool):
+    super().__init__()
+    self.data_dir = data_dir
+    self.scaler = scaler
+    self.seq_len = seq_len
+    self.pred_len = pred_len
+    self.stride = stride
+    self.batch_size = batch_size
+    self.num_workers = num_workers
+    self.is_persistent = is_persistent
+    self.X_train = None
+    self.y_train = None
+    self.X_val = None
+    self.y_val = None
+    self.X_test = None
+    self.y_test = None
+    self.X_train_val = None
+    self.y_train_val = None
+
+  def setup(self, stage: str):
     # Define the start and end dates
-    start_date = pd.to_datetime('2030-12-31')
-    end_date = pd.to_datetime('2032-12-31')
+    start_date = pd.to_datetime('2027-01-01')
+    end_date = pd.to_datetime('2028-07-01')
 
     # Load the CSV
     df = pd.read_csv(self.data_dir, skipinitialspace=True)
 
     # Convert 'Timestamp' to datetime with exact format
-    df['Timestamp'] = pd.to_datetime(
-        df['Timestamp'], format="%b %d, %Y, %I:%M:%S %p")
+    df['Timestamp'] = pd.to_datetime(df['Timestamp'], format="%b %d, %Y, %I:%M:%S %p")
+
+    # df = df[['Timestamp', 'Aggregated charging load',
+    #          'Total number of EVs', 'Number of charging EVs',
+    #          'Number of driving EVs', 'Overload duration [min]']]
 
     # Keep only relevant columns
     df = df[['Timestamp', 'Aggregated charging load',
@@ -422,13 +485,11 @@ class SDUDataModule(L.LightningDataModule):
 
     # Ensure numeric columns are correctly parsed
     numeric_cols = [
-        'Aggregated charging load',
-        'Total number of EVs',
-        'Number of driving EVs',
-        'Number of charging EVs',
-        'Overload duration [min]'
+        'Aggregated charging load', 'Total number of EVs', 'Number of charging EVs',
+        'Number of driving EVs', 'Overload duration [min]'
     ]
     df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric, errors='coerce')
+
 
     # Use lowercase 'h' to avoid deprecation warning
     df['Timestamp'] = df['Timestamp'].dt.floor('h')
@@ -436,7 +497,11 @@ class SDUDataModule(L.LightningDataModule):
     # Optional: Aggregate if multiple entries exist for the same hour
     df = df.groupby('Timestamp')[numeric_cols].sum().reset_index()
 
-    df = add_featuresSDU(df)
+    df = df[['Timestamp', 'Aggregated charging load',
+        'Total number of EVs', 'Number of charging EVs',
+          'Number of driving EVs']]
+    
+    #df = add_featuresSDU(df)
 
     df = df.set_index('Timestamp')
 
@@ -470,18 +535,11 @@ class SDUDataModule(L.LightningDataModule):
       # self.y_test = np.array(self.y_test)
 
   def train_dataloader(self):
-    train_dataset = TimeSeriesDataset(
-        self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-    sampler = BootstrapSampler(len(train_dataset), random_state=SEED)
-    train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler,
-                              shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
-    # train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    train_dataset = TimeSeriesDataset(self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+    # sampler = BootstrapSampler(len(train_dataset), random_state=SEED)
+    # train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
+    train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return train_loader
-
-  # def predict_dataloader(self):
-  #   test_dataset = TimeSeriesDataset(self.X_test, self.y_test, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-  #   test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
-  #   return test_loader
 
   def predict_dataloader(self):
     val_dataset = TimeSeriesDataset(
@@ -516,7 +574,6 @@ class SDUDataModule(L.LightningDataModule):
     # Unpack results
     X_window, y_target = zip(*results)
     return np.array(X_window), np.array(y_target)
-
 
 class CustomWriter(BasePredictionWriter):
   def __init__(self, output_dir, write_interval, combined_name, model_name):
@@ -576,17 +633,18 @@ def get_actuals_and_prediction_flattened(colmod, prediction):
 def objective(args, trial):
     
     params = {
-        'input_size': 22 if args.dataset == "Colorado" else 24,
+        'input_size': 22 if args.dataset == "Colorado" else 3,
         'pred_len': args.pred_len,
         'seq_len': 24*7,
         'stride': args.pred_len,
         'batch_size': trial.suggest_int('batch_size', 32, 128, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
         'criterion': torch.nn.L1Loss(),
         'optimizer': torch.optim.Adam,
-        'scaler': MinMaxScaler(),
+        'scaler': RobustScaler(),
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
-        'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100),
+        # 'max_epochs': trial.suggest_int('max_epochs', 1000, 5000, step=100),
+        'max_epochs': 5000,
         'num_workers': trial.suggest_int('num_workers', 5, 12) if args.model != "DPAD" else 2,
         'is_persistent': True
     }
@@ -693,7 +751,7 @@ def objective(args, trial):
 
       # Trainer for fitting using DDP - Multi GPU
       #trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
-      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
+      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False)
 
       trainer.fit(tuned_model, colmod)
 
@@ -703,6 +761,17 @@ def objective(args, trial):
       predictions = trainer.predict(tuned_model, colmod, return_predictions=True)
 
       pred, act = get_actuals_and_prediction_flattened(colmod, predictions)
+
+      plt.figure(figsize=(10, 5))
+      plt.plot(act, label='Actuals', color='blue')
+      plt.plot(pred, label='Predictions', color='orange')
+      plt.title(f'Actuals vs Predictions for {args.model} model')
+      plt.xlabel('Time')
+      plt.ylabel('Energy Consumption') 
+      plt.legend()
+      plt.show()
+      plt.close()
+      
 
       train_loss = mean_absolute_error(act, pred)
 
@@ -730,10 +799,10 @@ def safe_objective(args, trial):
 def tune_model_with_optuna(args, n_trials):
   if args.load == 'True':
     try:
-      if args.individual:
-        study = joblib.load(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_individual_tuning.pkl')
-      else:
-        study = joblib.load(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_tuning.pkl')
+      # if args.individual:
+      study = joblib.load(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_individual_tuning.pkl')
+      # else:
+      #   study = joblib.load(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_tuning.pkl')
       print("Loaded an old study:")
     except Exception as e:
       print("No previous tuning found. Starting a new tuning.", e) 
@@ -742,7 +811,7 @@ def tune_model_with_optuna(args, n_trials):
     print("Starting a new tuning.")
     study = optuna.create_study(direction="minimize")
 
-  study.optimize(lambda trial: safe_objective(args, trial), n_trials=n_trials, gc_after_trial=True, timeout=37800)
+  study.optimize(lambda trial: objective(args, trial), n_trials=n_trials, gc_after_trial=True, timeout=37800)
 
   print("Len trials:", len(study.trials))
   print("Best params:", study.best_params)
@@ -777,9 +846,9 @@ if __name__ == '__main__':
   parser.add_argument("--dataset", type=str, default="SDU")
   parser.add_argument("--pred_len", type=int, default=24)
   parser.add_argument("--model", type=str, default="LSTM")
-  parser.add_argument("--load", type=str, default='True')
+  parser.add_argument("--load", type=str, default='False')
   parser.add_argument("--mixed", type=str, default='True')
   parser.add_argument("--individual", type=str, default="False")
   args = parser.parse_args()
 
-  best_params = tune_model_with_optuna(args, n_trials=150)
+  best_params = tune_model_with_optuna(args, n_trials=1)
