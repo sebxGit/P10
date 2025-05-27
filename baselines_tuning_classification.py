@@ -589,7 +589,7 @@ def get_baseload(actuals_flat):
     
     df = df.iloc[:len(actuals_flat)]
 
-    return df[['Aggregated base load']]
+    return df[['Aggregated base load']].flatten()
 
 def objective(args, trial):
     
