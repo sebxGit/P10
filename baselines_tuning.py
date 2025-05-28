@@ -239,59 +239,33 @@ def filter_data(start_date, end_date, data):
 
     return data
 
-# class TimeSeriesDataset(Dataset):
-#   def __init__(self, X: np.ndarray, y: np.ndarray, seq_len: int = 1, pred_len: int = 24, stride: int = 24):
-#     self.seq_len = seq_len
-#     self.pred_len = pred_len
-#     self.stride = stride
-
-#     if isinstance(X, pd.DataFrame):
-#             X = X.to_numpy()
-#     if isinstance(y, pd.Series):
-#         y = y.to_numpy()
-
-#     # Ensure data is numeric and handle non-numeric values
-#     X = np.asarray(X, dtype=np.float32)
-#     y = np.asarray(y, dtype=np.float32)
-
-#     self.X = torch.tensor(X).float()
-#     self.y = torch.tensor(y).float()
-
-#   def __len__(self):
-#     return (len(self.X) - (self.seq_len + self.pred_len - 1)) // self.stride + 1
-
-#   def __getitem__(self, index):
-#     start_idx = index * self.stride
-#     x_window = self.X[start_idx: start_idx + self.seq_len]
-#     y_target = self.y[start_idx + self.seq_len: start_idx + self.seq_len + self.pred_len]
-#     return x_window, y_target
-
-
 class TimeSeriesDataset(Dataset):
-    def __init__(self, X, y, seq_len=24, pred_len=1, stride: int = 24):
-        if isinstance(X, pd.DataFrame):
+  def __init__(self, X: np.ndarray, y: np.ndarray, seq_len: int = 1, pred_len: int = 24, stride: int = 24):
+    self.seq_len = seq_len
+    self.pred_len = pred_len
+    self.stride = stride
+
+    if isinstance(X, pd.DataFrame):
             X = X.to_numpy()
-        if isinstance(y, pd.Series):
-            y = y.to_numpy()
+    if isinstance(y, pd.Series):
+        y = y.to_numpy()
 
-        # Ensure float32 for model compatibility
-        self.X = torch.tensor(np.asarray(X, dtype=np.float32))
-        self.y = torch.tensor(np.asarray(y, dtype=np.float32))
+    # Ensure data is numeric and handle non-numeric values
+    X = np.asarray(X, dtype=np.float32)
+    y = np.asarray(y, dtype=np.float32)
 
-        self.seq_len = seq_len
-        self.pred_len = pred_len
+    self.X = torch.tensor(X).float()
+    self.y = torch.tensor(y).float()
 
-        # Compute valid range
-        self.length = len(self.X) - self.seq_len - self.pred_len + 1
+  def __len__(self):
+    return (len(self.X) - (self.seq_len + self.pred_len - 1)) // self.stride + 1
 
-    def __len__(self):
-        return self.length
+  def __getitem__(self, index):
+    start_idx = index * self.stride
+    x_window = self.X[start_idx: start_idx + self.seq_len]
+    y_target = self.y[start_idx + self.seq_len: start_idx + self.seq_len + self.pred_len]
+    return x_window, y_target
 
-    def __getitem__(self, idx):
-        x_seq = self.X[idx: idx + self.seq_len]
-        y_target = self.y[idx + self.seq_len: idx +
-                          self.seq_len + self.pred_len]
-        return x_seq, y_target
 
 
 
