@@ -702,7 +702,7 @@ def get_actuals_and_prediction_flattened(colmod, prediction):
 def objective(args, trial):
     
     params = {
-        'input_size': 22 if args.dataset == "Colorado" else 16,
+        'input_size': 22 if args.dataset == "Colorado" else 18,
         'pred_len': args.pred_len,
         'seq_len': 12*7,
         'stride': args.pred_len,
@@ -713,7 +713,7 @@ def objective(args, trial):
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
         # 'max_epochs': trial.suggest_int('max_epochs', 1000, 5000, step=100), ###CHANGE
-        'max_epochs': 1000,
+        'max_epochs': 2000,
         # 'num_workers': trial.suggest_int('num_workers', 5, 12) if args.model != "DPAD" else 2,
         'num_workers': 10,
         'is_persistent': True
