@@ -574,6 +574,7 @@ def get_baseloads_and_parts(colmod, y_pred, actuals):
     range2_end = pd.Timestamp('2023-03-06 01:00')
 
     df_pred_act = pd.DataFrame({'y_pred': y_pred, 'actuals_flat': actuals_flat})
+    df_pred_act.index = colmod.test_dates[:len(actuals_flat)]
 
     df_part1 = df_pred_act[df_pred_act.index < range1_start]
     df_part2 = df_pred_act[(df_pred_act.index >= range1_end) & (df_pred_act.index <= range2_start)]
