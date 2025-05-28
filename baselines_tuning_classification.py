@@ -403,6 +403,8 @@ class SDUDataModule(L.LightningDataModule):
     self.y_test = None
     self.X_train_val = None
     self.y_train_val = None
+    self.val_dates = []
+
 
   def setup(self, stage: str):
     # Define the start and end dates
@@ -452,6 +454,8 @@ class SDUDataModule(L.LightningDataModule):
     # 60/20/20 split
     self.X_train_val, self.X_test, self.y_train_val, self.y_test = train_test_split( X, y, test_size=0.2, shuffle=False)
     self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(self.X_train_val, self.y_train_val, test_size=0.25, shuffle=False)
+
+    self.val_dates = self.X_val.index.tolist()
 
     preprocessing = self.scaler
     preprocessing.fit(self.X_train)  # should only fit to training data
@@ -591,8 +595,8 @@ def get_baseloads_and_parts(colmod, y_pred, actuals):
     y_pred = [pred for pred in y_pred]
     actuals_flat = [item for sublist in actuals for item in sublist]
 
-    test_start_date = pd.to_datetime('2031-05-26 15:00:00')
-    test_end_date = pd.to_datetime('2032-12-31 00:00:00')
+    test_start_date = pd.to_datetime('2029-10-19 05:00:00')
+    test_end_date = pd.to_datetime('2031-05-26 14:00:00')
 
     df = pd.read_csv('SDU Dataset/DumbCharging_2020_to_2032/Measurements.csv', skipinitialspace=True)
 
@@ -606,7 +610,7 @@ def get_baseloads_and_parts(colmod, y_pred, actuals):
     df = df[['Aggregated base load']]
 
     df_pred_act = pd.DataFrame({'y_pred': y_pred, 'actuals_flat': actuals_flat})
-    df_pred_act.index = colmod.test_dates[:len(actuals_flat)]
+    df_pred_act.index = colmod.val_dates[:len(actuals_flat)]
 
     baseloads = [df]
     dfs = [df_pred_act]
@@ -625,12 +629,12 @@ def objective(args, trial):
         'scaler': MinMaxScaler(),
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
-        'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100), #change
-        # 'max_epochs': 1,
-        'num_workers': trial.suggest_int('num_workers', 5, 12) if args.model != "DPAD" else 2, #change
-        # 'num_workers': 0,
-        'is_persistent': True #change
-        # 'is_persistent': False
+        # 'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100), #change
+        'max_epochs': 1,
+        # 'num_workers': trial.suggest_int('num_workers', 5, 12) if args.model != "DPAD" else 2, #change
+        'num_workers': 0,
+        # 'is_persistent': True #change
+        'is_persistent': False
 
     }
 
@@ -735,8 +739,8 @@ def objective(args, trial):
       tuned_model = LightningModel(model=model, criterion=params['criterion'], optimizer=params['optimizer'], learning_rate=params['learning_rate'])
 
       # Trainer for fitting using DDP - Multi GPU
-      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, strategy='ddp_find_unused_parameters_true') #change
-      # trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False)
+      # trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, strategy='ddp_find_unused_parameters_true') #change
+      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False)
 
       trainer.fit(tuned_model, colmod)
 
@@ -786,28 +790,9 @@ def objective(args, trial):
       FP = np.sum((pred_class == 1) & (actual_class == 0))
       FN = np.sum((pred_class == 0) & (actual_class == 1))
 
-      #baseload plot
-      plt.figure(figsize=(15, 4))
-      plt.plot(baseload, label='Baseload')
-      plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
-      plt.xlabel('Samples')
-      plt.ylabel('Electricity Consumption (kW)')
-      plt.legend()
-      plt.savefig(f'Classifications/{args.dataset}/{args.pred_len}h_{args.model}_classification_baseload_plot.png')
-      plt.show()
-      plt.clf()
-
-      # pred and act plot
-      plt.figure(figsize=(15, 4))
-      plt.plot(actuals, label='Actuals+baseload')
-      plt.plot(predictions, label=f'model+baseload')
-      plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
-      plt.xlabel('Samples')
-      plt.ylabel('Electricity Consumption (kW)')
-      plt.legend()
-      plt.savefig(f'Classifications/{args.dataset}/{args.pred_len}h_{args.model}_classification_predact_plot.png')
-      plt.show()
-      plt.clf()
+      trial.set_user_attr('baseload', baseload)
+      trial.set_user_attr('predictions', predictions)
+      trial.set_user_attr('actuals', actuals)
       recall_scores.append(recall_score(TP, FN))
 
     return np.mean(recall_scores) if len(recall_scores) > 0 else 0
@@ -859,6 +844,34 @@ def tune_model_with_optuna(args, n_trials):
     df_tuning = pd.concat([df_tuning, new_row_df], ignore_index=True)
     df_tuning = df_tuning.sort_values(by=['model', 'val_loss'], ascending=True).reset_index(drop=True)
 
+    if args.plot == 'True':
+      baseload = study.best_trial.user_attrs["baseload"]
+      predictions = study.best_trial.user_attrs["predictions"]
+      actuals = study.best_trial.user_attrs["actuals"]
+
+      #baseload plot
+      plt.figure(figsize=(15, 4))
+      plt.plot(baseload, label='Baseload')
+      plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
+      plt.xlabel('Samples')
+      plt.ylabel('Electricity Consumption (kW)')
+      plt.legend()
+      plt.savefig(f'Classifications/{args.dataset}/{args.pred_len}h_{args.model}_classification_baseload_plot.png')
+      plt.show()
+      plt.clf()
+
+      # pred and act plot
+      plt.figure(figsize=(15, 4))
+      plt.plot(actuals, label='Actuals+baseload')
+      plt.plot(predictions, label=f'model+baseload')
+      plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
+      plt.xlabel('Samples')
+      plt.ylabel('Electricity Consumption (kW)')
+      plt.legend()
+      plt.savefig(f'Classifications/{args.dataset}/{args.pred_len}h_{args.model}_classification_predact_plot.png')
+      plt.show()
+      plt.clf()
+
     if not os.path.exists(f'Tunings'):
       os.makedirs(f'Tunings', exist_ok=True)
 
@@ -868,16 +881,17 @@ def tune_model_with_optuna(args, n_trials):
 
 if __name__ == '__main__':
   parser = ArgumentParser()
-  parser.add_argument("--dataset", type=str, default="Colorado")
+  parser.add_argument("--dataset", type=str, default="SDU")
   parser.add_argument("--pred_len", type=int, default=24)
   parser.add_argument("--model", type=str, default="MLP")
   parser.add_argument("--load", type=str, default='True')
   parser.add_argument("--mixed", type=str, default='True')
   parser.add_argument("--individual", type=str, default="True")
-  parser.add_argument("--threshold", type=float, default=500)
+  parser.add_argument("--threshold", type=float, default=100)
   parser.add_argument("--downscaling", type=int, default=13)
   parser.add_argument("--multiplier", type=int, default=2)
-  parser.add_argument("--trials", type=int, default=150)
+  parser.add_argument("--plot", type=str, default='True')
+  parser.add_argument("--trials", type=int, default=5)
 
   args = parser.parse_args()
 
