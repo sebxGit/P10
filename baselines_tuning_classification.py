@@ -738,13 +738,10 @@ def objective(args, trial):
 
       y_pred = trainer.predict(tuned_model, colmod, return_predictions=True)
 
-      actuals = []
+      act = []
       for batch in colmod.predict_dataloader():
         x, y = batch
-        actuals.extend(y.numpy())
-
-      y_pred = [pred * args.multiplier for pred in y_pred]
-      act = [item * args.multiplier for sublist in actuals for item in sublist]
+        act.extend(y.numpy())
 
     elif isinstance(model, BaseEstimator):
       name = model.__class__.__name__
@@ -801,7 +798,7 @@ def tune_model_with_optuna(args, n_trials):
   else:
     path_pkl = f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_classification_tuning.pkl'
     path_csv = f'Tunings/{args.dataset}_{args.pred_len}h_classification_tuning.csv'
-  study_name = f'{args.dataset}_{args.pred_len}h_{args.model}_{args.individual}_classification_tuning'
+  study_name = f'{args.dataset}_{args.pred_len}h_{args.model}_{"Individual" if args.individual else "BootstrapSampling"}_classification_tuning'
 
   if args.load == 'True':
     try:
