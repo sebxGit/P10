@@ -416,6 +416,7 @@ class SDUDataModule(L.LightningDataModule):
     df = df[['Timestamp', 'Aggregated charging load', 'Day', 'Month', 'Year', 'Hour']]
 
     df['Aggregated_charging_load_6h'] = df['Aggregated charging load'].shift(6)
+    df['Rolling_Max_12h'] = df['Aggregated charging load'].rolling(window=6).max()
     
     # df['hour_sin'] = np.sin(2 * np.pi * df['Hour'] / 24)
     # df['hour_cos'] = np.cos(2 * np.pi * df['Hour'] / 24)
