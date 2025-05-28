@@ -564,6 +564,8 @@ def get_baseloads_and_parts(colmod, y_pred, actuals):
   if args.dataset == "Colorado":
     y_pred = [pred * args.multiplier for pred in y_pred]
     actuals_flat = [item * args.multiplier for sublist in actuals for item in sublist]
+    if len(y_pred) != len(actuals_flat):
+      raise ValueError(f"Length mismatch: y_pred ({len(y_pred)}) and actuals_flat ({len(actuals_flat)}) must be the same length.")
     baseload1 = pd.read_csv('Colorado/ElectricityDemandColorado/ColoradoDemand_Part1.csv')
     baseload2 = pd.read_csv('Colorado/ElectricityDemandColorado/ColoradoDemand_Part2.csv')
     baseload3 = pd.read_csv('Colorado/ElectricityDemandColorado/ColoradoDemand_Part3.csv')
