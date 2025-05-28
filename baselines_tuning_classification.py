@@ -570,7 +570,12 @@ def get_baseloads_and_parts(colmod, y_pred, actuals):
     actuals_flat = [item * args.multiplier for sublist in actuals for item in sublist]
     if len(y_pred) != len(actuals_flat):
       raise ValueError(f"Length mismatch: y_pred ({len(y_pred)}) and actuals_flat ({len(actuals_flat)}) must be the same length.")
+
+    range1_start = pd.Timestamp('2022-08-11 00:00')
+    range1_end = pd.Timestamp('2023-01-03 23:00')
+    
     baseload1 = pd.read_csv('Colorado/ElectricityDemandColorado/ColoradoDemand_val.csv')
+    baseload1 = [date for date in colmod.val_dates if range1_start <= date <= range1_end]
 
     df_pred_act = pd.DataFrame({'y_pred': y_pred, 'actuals_flat': actuals_flat})
     df_pred_act.index = colmod.val_dates[:len(actuals_flat)]
@@ -616,7 +621,8 @@ def objective(args, trial):
         'scaler': MinMaxScaler(),
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
-        'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100),
+        # 'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100), #change
+        'max_epochs': 1,
         'num_workers': trial.suggest_int('num_workers', 5, 12) if args.model != "DPAD" else 2,
         'is_persistent': True
     }
