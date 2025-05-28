@@ -602,6 +602,8 @@ def get_baseloads_and_parts(colmod, y_pred, actuals):
 
     df = df[['Aggregated base load']]
 
+    print(len(y_pred), len(actuals_flat), len(df))
+
     df_pred_act = pd.DataFrame({'y_pred': y_pred, 'actuals_flat': actuals_flat})
     df_pred_act.index = colmod.test_dates[:len(actuals_flat)]
 
