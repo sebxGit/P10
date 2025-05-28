@@ -40,10 +40,8 @@ print(merged_and_sorted)
 
 df['Timestamp (Hour Ending)'] = pd.to_datetime(df['Timestamp (Hour Ending)'])
 
-# Create a complete range of timestamps based on the min and max timestamps in the dataset
-full_range = pd.date_range(start=df['Timestamp (Hour Ending)'].min(),
-                           end=df['Timestamp (Hour Ending)'].max(),
-                           freq='H')  # Hourly frequency
+df.to_csv('ColoradoDemand_val.csv', index=False)
+
 
 plt.plot(df["Timestamp (Hour Ending)"], df["Demand (MWh)"])
 plt.show()
