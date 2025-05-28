@@ -534,14 +534,17 @@ class Configs:
     for key, value in config_dict.items():
       setattr(self, key, value)
 
-def accuracy_score(TP, TN, FP, FN):
-  return (TP + TN) / (TP + TN + FP + FN)
+class CustomWriter(BasePredictionWriter):
+  def __init__(self, output_dir, write_interval, combined_name, model_name):
+    super().__init__(write_interval)
+    self.output_dir = output_dir
+    self.combined_name = combined_name
+    self.model_name = model_name
 
-def precision_score(TP, FP):
-  return TP / (TP + FP)
-
-def recall_score(TP, FN):
-  return TP / (TP + FN)
+  def write_on_epoch_end(self, trainer, pl_module, predictions, batch_indices):
+    filename = os.path.join(self.output_dir, f"{self.combined_name}/predictions_{self.model_name}.pt")
+    os.makedirs(os.path.join(self.output_dir, self.combined_name), exist_ok=True)
+    torch.save(predictions, filename)
 
 def initialize_model(model_name, hyperparameters):
   model_dict = {
@@ -559,11 +562,11 @@ def initialize_model(model_name, hyperparameters):
 parser = ArgumentParser()
 parser.add_argument("--models", type=str, default="['LSTM', 'GRU', 'PatchMixer', 'xPatch']")
 parser.add_argument("--individual", type=str, default="False")
-parser.add_argument("--input_size", type=int, default=24)
+parser.add_argument("--input_size", type=int, default=22)
 parser.add_argument("--pred_len", type=int, default=24)
 parser.add_argument("--seq_len", type=int, default=24*7)
 parser.add_argument("--stride", type=int, default=24)
-parser.add_argument("--dataset", type=str, default="SDU")
+parser.add_argument("--dataset", type=str, default="Colorado")
 parser.add_argument("--threshold", type=int, default=500)
 parser.add_argument("--multiplier", type=int, default=2)
 parser.add_argument("--downscaling", type=int, default=13)
@@ -576,13 +579,14 @@ if __name__ == "__main__":
   if mode == "ensemble":
     selected_models = ast.literal_eval(args.models)
     combined_name = "-".join([m for m in selected_models])
+    file_path = f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning.csv'
   else:
     selected_models = [args.models]
     combined_name = args.models
+    file_path = f'Tunings/{args.dataset}_{args.pred_len}h_tuning.csv'
 
-  output_dir = f'Classifications/{args.dataset}' 
+  output_dir = f'Predictions/{args.dataset}' 
   os.makedirs(output_dir, exist_ok=True)
-  file_path = f'Classifications/{args.dataset}/{combined_name}_metrics.csv'
   
   all_predictions = []
   metrics = []
