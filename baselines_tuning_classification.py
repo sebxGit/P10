@@ -739,6 +739,7 @@ def objective(args, trial):
       trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, devices=1)
 
       y_pred = trainer.predict(tuned_model, colmod, return_predictions=True)
+      y_pred = [value.item() for tensor in y_pred for value in tensor.flatten()]
 
       act = []
       for batch in colmod.predict_dataloader():
