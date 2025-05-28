@@ -581,7 +581,6 @@ def objective(args, trial, all_subsets):
 
     print(f"-----Training {model_name} model-----")
     if isinstance(model, torch.nn.Module):
-
       model = LightningModel(model=model, criterion=criterion_map.get(args.criterion)(), optimizer=optimizer_map.get(args.optimizer), learning_rate=_hparams['learning_rate'])
       pred_writer = CustomWriter(output_dir="Tunings", write_interval="epoch", combined_name=combined_name, model_name=model_name)
       trainer = L.Trainer(max_epochs=_hparams['max_epochs'], log_every_n_steps=100, precision='16-mixed', callbacks=[pred_writer], enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
@@ -612,6 +611,9 @@ def objective(args, trial, all_subsets):
 
   trial.set_user_attr('mse', mse.item())
 
+  # rank top 10 baggings save in trial.set_user_attr
+  tuning_results.append({ 'combined_name': combined_name, 'mse': mse.item(), 'mae': mae.item(), 'parameters': trial.params})
+
   if os.path.exists(f"Tunings/{combined_name}"):
     shutil.rmtree(f"Tunings/{combined_name}")
   return mae
@@ -619,14 +621,14 @@ def objective(args, trial, all_subsets):
 parser = ArgumentParser()
 parser.add_argument("--criterion", type=str, default="MAELoss")
 parser.add_argument("--models", type=str, default="['RandomForestRegressor', 'GradientBoostingRegressor', 'AdaBoostRegressor', 'LSTM', 'GRU', 'PatchMixer', 'xPatch', 'DPAD']")
-parser.add_argument("--dataset", type=str, default="SDU")
-parser.add_argument("--input_size", type=int, default=24)
+parser.add_argument("--dataset", type=str, default="Colorado")
+parser.add_argument("--input_size", type=int, default=22)
 parser.add_argument("--pred_len", type=int, default=24)
 parser.add_argument("--stride", type=int, default=24)
 parser.add_argument("--seq_len", type=int, default=24*7)
 parser.add_argument("--optimizer", type=str, default="Adam")
 parser.add_argument("--scaler", type=str, default="MinMaxScaler")
-parser.add_argument("--load", type=bool, default=False)
+parser.add_argument("--load", type=bool, default=True)
 criterion_map = { 
                   "MSELoss": nn.MSELoss, 
                   "MAELoss": nn.L1Loss,
@@ -690,20 +692,14 @@ if __name__ == "__main__":
     print("Starting a new tuning.")
     study = optuna.create_study(direction="minimize", study_name=f"Bagging-{combined_name}")
 
-  study.optimize(lambda trial: safe_objective(args, trial, all_subsets), n_trials=100, gc_after_trial=True, timeout=37800)
+  tuning_results = []
+
+  study.optimize(lambda trial: safe_objective(args, trial, all_subsets), n_trials=20, gc_after_trial=True, timeout=37800)
 
   if study.best_value != float('inf'):
     joblib.dump(study, f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_architecture_tuning.pkl')
-    
-    try:
-      df_tuning = pd.read_csv(f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning.csv', delimiter=',')
-    except Exception:
-      df_tuning = pd.DataFrame(columns=['model', 'trials', 'mae', 'mse', 'parameters'])
-    new_row = {'model': args.models, 'trials': len(study.trials), 'mae': study.best_value, 'mse': study.best_trial.user_attrs["mse"], 'parameters': study.best_params}
-    new_row_df = pd.DataFrame([new_row]).dropna(axis=1, how='all')
-    df_tuning = pd.concat([df_tuning, new_row_df], ignore_index=True)
-    df_tuning = df_tuning.sort_values(by=['model', 'mae'], ascending=True).reset_index(drop=True)
 
-    if not os.path.exists(f'Tunings'):
-      os.makedirs(f'Tunings', exist_ok=True)
-    df_tuning.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning.csv', index=False)
+    sorted_trials = sorted(tuning_results, key=lambda x: x['mae'])
+    top_10_tunings = sorted_trials[:10]
+    df_top_10 = pd.DataFrame(top_10_tunings)
+    df_top_10.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning.csv', index=False)
