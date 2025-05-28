@@ -701,10 +701,10 @@ def get_actuals_and_prediction_flattened(colmod, prediction):
 
 def objective(args, trial):
     
-    params = {
+    params = {  
         'input_size': 22 if args.dataset == "Colorado" else 18,
         'pred_len': args.pred_len,
-        'seq_len': 12*7,
+        'seq_len': 24*7,
         'stride': args.pred_len,
         'batch_size': trial.suggest_int('batch_size', 32, 128, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
         'criterion': nn.SmoothL1Loss(),
