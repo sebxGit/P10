@@ -568,18 +568,21 @@ def get_baseloads_and_parts(colmod, y_pred, actuals):
   if args.dataset == "Colorado":
     y_pred = [pred * args.multiplier for pred in y_pred]
     actuals_flat = [item * args.multiplier for sublist in actuals for item in sublist]
-    if len(y_pred) != len(actuals_flat):
-      raise ValueError(f"Length mismatch: y_pred ({len(y_pred)}) and actuals_flat ({len(actuals_flat)}) must be the same length.")
+    baseload1 = pd.read_csv('Colorado/ElectricityDemandColorado/ColoradoDemand_val.csv')
+    baseload1['Timestamp (Hour Ending)'] = pd.to_datetime(baseload1['Timestamp (Hour Ending)'])
 
     range1_start = pd.Timestamp('2022-08-11 00:00')
     range1_end = pd.Timestamp('2023-01-03 23:00')
-    
-    baseload1 = pd.read_csv('Colorado/ElectricityDemandColorado/ColoradoDemand_val.csv')
+
+    range1_start = pd.to_datetime(range1_start)
+    range1_end = pd.to_datetime(range1_end)
 
     df_pred_act = pd.DataFrame({'y_pred': y_pred, 'actuals_flat': actuals_flat})
     df_pred_act.index = colmod.val_dates[:len(actuals_flat)]
 
     df_part1 = df_pred_act[(df_pred_act.index >= range1_start) & (df_pred_act.index <= range1_end)]
+    baseload1 = baseload1[(baseload1['Timestamp (Hour Ending)'] >= range1_start) & (baseload1['Timestamp (Hour Ending)'] <= range1_end)]
+    baseload1 = baseload1[:len(actuals_flat)]
 
     baseloads = [baseload1]
     dfs = [df_part1]
@@ -622,10 +625,13 @@ def objective(args, trial):
         'scaler': MinMaxScaler(),
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
-        # 'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100), #change
-        'max_epochs': 1,
-        'num_workers': trial.suggest_int('num_workers', 5, 12) if args.model != "DPAD" else 2,
-        'is_persistent': True
+        'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100), #change
+        # 'max_epochs': 1,
+        'num_workers': trial.suggest_int('num_workers', 5, 12) if args.model != "DPAD" else 2, #change
+        # 'num_workers': 0,
+        'is_persistent': True #change
+        # 'is_persistent': False
+
     }
 
     if args.dataset == "Colorado":
@@ -729,8 +735,8 @@ def objective(args, trial):
       tuned_model = LightningModel(model=model, criterion=params['criterion'], optimizer=params['optimizer'], learning_rate=params['learning_rate'])
 
       # Trainer for fitting using DDP - Multi GPU
-      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
-      # trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
+      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, strategy='ddp_find_unused_parameters_true') #change
+      # trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False)
 
       trainer.fit(tuned_model, colmod)
 
@@ -779,6 +785,29 @@ def objective(args, trial):
       TN = np.sum((pred_class == 0) & (actual_class == 0))
       FP = np.sum((pred_class == 1) & (actual_class == 0))
       FN = np.sum((pred_class == 0) & (actual_class == 1))
+
+      #baseload plot
+      plt.figure(figsize=(15, 4))
+      plt.plot(baseload, label='Baseload')
+      plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
+      plt.xlabel('Samples')
+      plt.ylabel('Electricity Consumption (kW)')
+      plt.legend()
+      plt.savefig(f'Classifications/{args.dataset}/{args.pred_len}h_{args.model}_classification_baseload_plot.png')
+      plt.show()
+      plt.clf()
+
+      # pred and act plot
+      plt.figure(figsize=(15, 4))
+      plt.plot(actuals, label='Actuals+baseload')
+      plt.plot(predictions, label=f'model+baseload')
+      plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
+      plt.xlabel('Samples')
+      plt.ylabel('Electricity Consumption (kW)')
+      plt.legend()
+      plt.savefig(f'Classifications/{args.dataset}/{args.pred_len}h_{args.model}_classification_predact_plot.png')
+      plt.show()
+      plt.clf()
       recall_scores.append(recall_score(TP, FN))
 
     return np.mean(recall_scores) if len(recall_scores) > 0 else 0
@@ -840,8 +869,8 @@ def tune_model_with_optuna(args, n_trials):
 if __name__ == '__main__':
   parser = ArgumentParser()
   parser.add_argument("--dataset", type=str, default="Colorado")
-  parser.add_argument("--pred_len", type=int, default=22)
-  parser.add_argument("--model", type=str, default="LSTM")
+  parser.add_argument("--pred_len", type=int, default=24)
+  parser.add_argument("--model", type=str, default="MLP")
   parser.add_argument("--load", type=str, default='True')
   parser.add_argument("--mixed", type=str, default='True')
   parser.add_argument("--individual", type=str, default="True")
