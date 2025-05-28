@@ -715,6 +715,9 @@ parser.add_argument("--scaler", type=str, default="MinMaxScaler")
 parser.add_argument("--load", type=str, default='True')
 parser.add_argument("--plot", type=str, default='True')
 parser.add_argument("--trials", type=int, default=150)
+parser.add_argument("--threshold", type=float, default=500)
+parser.add_argument("--downscaling", type=int, default=13)
+parser.add_argument("--multiplier", type=int, default=2)
 
 criterion_map = { 
                   "MSELoss": nn.MSELoss, 
