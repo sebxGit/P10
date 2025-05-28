@@ -785,6 +785,29 @@ def objective(args, trial):
       TN = np.sum((pred_class == 0) & (actual_class == 0))
       FP = np.sum((pred_class == 1) & (actual_class == 0))
       FN = np.sum((pred_class == 0) & (actual_class == 1))
+
+      #baseload plot
+      plt.figure(figsize=(15, 4))
+      plt.plot(baseload, label='Baseload')
+      plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
+      plt.xlabel('Samples')
+      plt.ylabel('Electricity Consumption (kW)')
+      plt.legend()
+      plt.savefig(f'Classifications/{args.dataset}/{args.pred_len}h_{args.model}_classification_baseload_plot.png')
+      plt.show()
+      plt.clf()
+
+      # pred and act plot
+      plt.figure(figsize=(15, 4))
+      plt.plot(actuals, label='Actuals+baseload')
+      plt.plot(predictions, label=f'model+baseload')
+      plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
+      plt.xlabel('Samples')
+      plt.ylabel('Electricity Consumption (kW)')
+      plt.legend()
+      plt.savefig(f'Classifications/{args.dataset}/{args.pred_len}h_{args.model}_classification_predact_plot.png')
+      plt.show()
+      plt.clf()
       recall_scores.append(recall_score(TP, FN))
 
     return np.mean(recall_scores) if len(recall_scores) > 0 else 0
