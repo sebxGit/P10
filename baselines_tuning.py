@@ -707,7 +707,7 @@ def objective(args, trial):
         'seq_len': 12*7,
         'stride': args.pred_len,
         'batch_size': trial.suggest_int('batch_size', 32, 128, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
-        'criterion': nn.MSELoss(),
+        'criterion': nn.SmoothL1Loss(),
         'optimizer': torch.optim.Adam,
         'scaler': RobustScaler(),
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
