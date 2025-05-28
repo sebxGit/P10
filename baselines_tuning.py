@@ -439,7 +439,7 @@ class SDUDataModule(L.LightningDataModule):
     cols_to_log = [
         'Aggregated charging load', 'Aggregated_charging_load_1h', 'Aggregated_charging_load_3h', 
         'Aggregated_charging_load_6h', 'Aggregated_charging_load_12h', 'Aggregated_charging_load_36h', 
-        'Aggregated_charging_load_60h', 'Rolling_Mean_6h', 'Rolling_Mean_6h', 'Rolling_Max_6h', 'Rolling_Mean_12h', 
+        'Aggregated_charging_load_60h', 'Rolling_Mean_6h', 'Rolling_Max_6h', 'Rolling_Mean_12h', 
         'Rolling_Max_12h'
     ]
 
