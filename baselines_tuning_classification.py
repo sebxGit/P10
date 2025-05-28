@@ -572,21 +572,11 @@ def get_baseloads_and_parts(colmod, y_pred, actuals):
       raise ValueError(f"Length mismatch: y_pred ({len(y_pred)}) and actuals_flat ({len(actuals_flat)}) must be the same length.")
     baseload1 = pd.read_csv('Colorado/ElectricityDemandColorado/ColoradoDemand_val.csv')
 
-    range1_start = pd.Timestamp('2023-02-04 00:00')
-    range1_end = pd.Timestamp('2023-02-05 01:00')
-    range2_start = pd.Timestamp('2023-02-28 00:00')
-    range2_end = pd.Timestamp('2023-03-06 01:00')
-
     df_pred_act = pd.DataFrame({'y_pred': y_pred, 'actuals_flat': actuals_flat})
     df_pred_act.index = colmod.val_dates[:len(actuals_flat)]
 
-    df_part1 = df_pred_act[df_pred_act.index < range1_start]
-    df_part2 = df_pred_act[(df_pred_act.index >= range1_end) & (df_pred_act.index <= range2_start)]
-    df_part3 = df_pred_act[df_pred_act.index >= range2_end]
-    df_part3 = df_part3.drop(pd.Timestamp('2023-03-12 02:00'))
-
-    baseloads = [baseload1, baseload2, baseload3]
-    dfs = [df_part1, df_part2, df_part3]
+    baseloads = [baseload1]
+    dfs = [df_pred_act]
 
   elif args.dataset == "SDU":
     y_pred = [pred for pred in y_pred]
