@@ -415,9 +415,55 @@ class SDUDataModule(L.LightningDataModule):
     df['Timestamp'] = df['Timestamp'].dt.floor('h')
     df = df[['Timestamp', 'Aggregated charging load', 'Day', 'Month', 'Year', 'Hour']]
 
-    df['Aggregated_charging_load_6h'] = df['Aggregated charging load'].shift(6)
-    df['Rolling_Max_12h'] = df['Aggregated charging load'].rolling(window=6).max()
+    if 'Timestamp' not in df.columns:
+        print("The 'Timestamp' column is missing from the CSV file.")
+
+    print(df.head())
+
+    print("CSV Columns:", df.columns.tolist())
+    #df.set_index('Timestamp', inplace=True)
+
+    # Mask zero away the zero values
+    # df['Aggregated charging load'] = df['Aggregated charging load'].mask(df['Aggregated charging load'] == 0, np.nan)
+    #print(f"Number of zero values: {df['Aggregated charging load'].isna().sum()} out of {len(df)}")
+    df = df[df["Aggregated charging load"] != 0.0]
+
+    # print(f"Number of Masked values: {df['Aggregated charging load'].isna().sum()} out of {len(df)}")
+
+    print("CSV Columns before reset:", df.columns.tolist())
+    print(df.info())
+
+    if 'Timestamp' in df.columns and not df.empty:
+      df.set_index('Timestamp', inplace=True)
+    else:
+        print("Warning: Timestamp missing or df is empty")
+
+    df['hour'] = df.index.hour
+    df['dayofweek'] = df.index.dayofweek
+    df['month'] = df.index.month
+
+    print("CSV Columns:", df.columns.tolist())
+
+
+    print(df.head())
+
+    # df['Aggregated charging load'] = df['Aggregated charging load'].interpolate(method='time')
+    #df['lag_1h'] = df['Aggregated charging load'].shift(1)
     
+    print(df.head())
+
+    print(df.info())
+
+    df.to_csv('sdu_test.csv')
+
+    #exit()
+
+
+
+
+    # df['Aggregated_charging_load_6h'] = df['Aggregated charging load'].shift(6)
+    # df['Rolling_Max_12h'] = df['Aggregated charging load'].rolling(window=6).max()
+
     # df['hour_sin'] = np.sin(2 * np.pi * df['Hour'] / 24)
     # df['hour_cos'] = np.cos(2 * np.pi * df['Hour'] / 24)
 
@@ -449,7 +495,7 @@ class SDUDataModule(L.LightningDataModule):
     # df[cols_to_log] = df[cols_to_log].apply(lambda x: np.log1p(x))
 
 
-    df = df.set_index('Timestamp')
+    #df = df.set_index('Timestamp')
     
     df = filter_data(start_date, end_date, df)
 
@@ -709,20 +755,20 @@ def get_actuals_and_prediction_flattened(colmod, prediction):
 def objective(args, trial):
     
     params = {  
-        'input_size': 22 if args.dataset == "Colorado" else 6,
+        'input_size': 22 if args.dataset == "Colorado" else 7,
         'pred_len': args.pred_len,
         'seq_len': 24*7,
         'stride': args.pred_len,
         'batch_size': trial.suggest_int('batch_size', 32, 128, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
-        'criterion': nn.HuberLoss(),
+        'criterion': nn.MSELoss(),
         'optimizer': torch.optim.Adam,
-        'scaler': RobustScaler(),
+        'scaler': MinMaxScaler(),
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
-        # 'max_epochs': trial.suggest_int('max_epochs', 1000, 5000, step=100), ###CHANGE
-        'max_epochs': 1000,
-        # 'num_workers': trial.suggest_int('num_workers', 5, 12) if args.model != "DPAD" else 2,
-        'num_workers': 10,
+        'max_epochs': trial.suggest_int('max_epochs', 1000, 5000, step=100), ###CHANGE
+        # 'max_epochs': 1,
+        'num_workers': trial.suggest_int('num_workers', 5, 15) if args.model != "DPAD" else 2,
+        # 'num_workers': 10,
         'is_persistent': True
     }
 
@@ -740,15 +786,16 @@ def objective(args, trial):
     if args.model == "LSTM":
       _params = {
         'hidden_size': trial.suggest_int('hidden_size', 50, 200),
-        # 'num_layers': trial.suggest_int('num_layers', 1, 10), ###CHANGE
-        'num_layers': 5,
+         'num_layers': trial.suggest_int('num_layers', 1, 10), ###CHANGE
+        #'num_layers': 5,
         'dropout': trial.suggest_float('dropout', 0.0, 1),
       }
       model = LSTM(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "GRU":
       _params = {
         'hidden_size': trial.suggest_int('hidden_size', 50, 200),
-        'num_layers': trial.suggest_int('num_layers', 1, 10),        'dropout': trial.suggest_float('dropout', 0.0, 1),
+        'num_layers': trial.suggest_int('num_layers', 1, 10),        
+        'dropout': trial.suggest_float('dropout', 0.0, 1),
       }
       model = GRU(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "MLP":
@@ -855,7 +902,7 @@ def objective(args, trial):
       plt.xlabel('Time')
       plt.ylabel('Energy Consumption') 
       plt.legend()
-      plt.savefig(f"sdu_testplot")
+      plt.savefig(f"Tunings/SDU_PLOT{args.model}_{trial.number}.png")
       plt.show()
       plt.close()
 
@@ -875,10 +922,6 @@ def objective(args, trial):
 
       act = y_val.reshape(-1)
       pred = y_pred.reshape(-1)
-
-      pred = np.expm1(pred)
-      act = np.expm1(act)
-
 
       plt.figure(figsize=(10, 5))
       plt.plot(act, label='Actuals', color='blue')
@@ -961,4 +1004,4 @@ if __name__ == '__main__':
   parser.add_argument("--individual", type=str, default="False")
   args = parser.parse_args()
 
-  best_params = tune_model_with_optuna(args, n_trials=1)
+  best_params = tune_model_with_optuna(args, n_trials=5)
