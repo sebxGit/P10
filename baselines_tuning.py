@@ -431,12 +431,16 @@ class SDUDataModule(L.LightningDataModule):
     df['Aggregated_charging_load_36h'] = df['Aggregated charging load'].shift(36)
     df['Aggregated_charging_load_60h'] = df['Aggregated charging load'].shift(60)
 
-    # df['Rolling_Mean_6h'] = df['Aggregated charging load'].rolling(window=6).mean()
-    # df['Rolling_Max_6h'] = df['Aggregated charging load'].rolling(window=6).max()
+    df['Rolling_Mean_6h'] = df['Aggregated charging load'].rolling(window=6).mean()
+    df['Rolling_Max_6h'] = df['Aggregated charging load'].rolling(window=6).max()
+    df['Rolling_Mean_12h'] = df['Aggregated charging load'].rolling(window=6).mean()
+    df['Rolling_Max_12h'] = df['Aggregated charging load'].rolling(window=6).max()
 
     cols_to_log = [
         'Aggregated charging load', 'Aggregated_charging_load_1h', 'Aggregated_charging_load_3h', 
-        'Aggregated_charging_load_6h', 'Aggregated_charging_load_12h', 'Aggregated_charging_load_36h', 'Aggregated_charging_load_60h'
+        'Aggregated_charging_load_6h', 'Aggregated_charging_load_12h', 'Aggregated_charging_load_36h', 
+        'Aggregated_charging_load_60h', 'Rolling_Mean_6h', 'Rolling_Mean_6h', 'Rolling_Max_6h', 'Rolling_Mean_12h', 
+        'Rolling_Max_12h'
     ]
 
     df[cols_to_log] = df[cols_to_log].apply(lambda x: np.log1p(x))
@@ -467,7 +471,7 @@ class SDUDataModule(L.LightningDataModule):
 
   def train_dataloader(self):
     train_dataset = TimeSeriesDataset(
-        self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=12)
+        self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
     sampler = BootstrapSampler(len(train_dataset), random_state=SEED)
     if args.individual == 'False':
       train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
@@ -478,7 +482,7 @@ class SDUDataModule(L.LightningDataModule):
 
   def predict_dataloader(self):
     val_dataset = TimeSeriesDataset(
-        self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=24)
+        self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
     val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False,
                             num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return val_loader
@@ -702,7 +706,7 @@ def get_actuals_and_prediction_flattened(colmod, prediction):
 def objective(args, trial):
     
     params = {  
-        'input_size': 22 if args.dataset == "Colorado" else 16,
+        'input_size': 22 if args.dataset == "Colorado" else 18,
         'pred_len': args.pred_len,
         'seq_len': 24*7,
         'stride': args.pred_len,
