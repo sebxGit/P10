@@ -302,6 +302,8 @@ class ColoradoDataModule(L.LightningDataModule):
     self.y_val = None
     self.X_test = None
     self.y_test = None
+    self.val_dates = []
+
 
   def setup(self, stage: str):
     start_date = pd.to_datetime('2021-05-30')
@@ -322,6 +324,8 @@ class ColoradoDataModule(L.LightningDataModule):
     # 60/20/20 split
     X_tv, self.X_test, y_tv, self.y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
     self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(X_tv, y_tv, test_size=0.25, shuffle=False)
+
+    self.val_dates = self.X_val.index.tolist()
 
     preprocessing = self.scaler
     preprocessing.fit(self.X_train)  # should only fit to training data
@@ -576,7 +580,7 @@ def get_baseloads_and_parts(colmod, y_pred, actuals):
     range2_end = pd.Timestamp('2023-03-06 01:00')
 
     df_pred_act = pd.DataFrame({'y_pred': y_pred, 'actuals_flat': actuals_flat})
-    df_pred_act.index = colmod.test_dates[:len(actuals_flat)]
+    df_pred_act.index = colmod.val_dates[:len(actuals_flat)]
 
     df_part1 = df_pred_act[df_pred_act.index < range1_start]
     df_part2 = df_pred_act[(df_pred_act.index >= range1_end) & (df_pred_act.index <= range2_start)]
