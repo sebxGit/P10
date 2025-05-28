@@ -820,7 +820,7 @@ def tune_model_with_optuna(args, n_trials):
 
     if not os.path.exists(f'Tunings'):
       os.makedirs(f'Tunings', exist_ok=True)
-      
+
     df_tuning.to_csv(path_csv, index=False)
     joblib.dump(study, path_pkl)
     return study.best_params
@@ -832,7 +832,7 @@ if __name__ == '__main__':
   parser.add_argument("--model", type=str, default="LSTM")
   parser.add_argument("--load", type=str, default='True')
   parser.add_argument("--mixed", type=str, default='True')
-  parser.add_argument("--individual", type=str, default="False")
+  parser.add_argument("--individual", type=str, default="True")
   parser.add_argument("--threshold", type=float, default=500)
   parser.add_argument("--downscaling", type=int, default=13)
   parser.add_argument("--multiplier", type=int, default=2)
