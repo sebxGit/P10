@@ -231,7 +231,6 @@ def add_featuresSDU(df):
 
     return df
 
-
 def filter_data(start_date, end_date, data):
     ####################### FILTER DATASET  #######################
     data = data[(data.index >= start_date) & (data.index <= end_date)].copy()
@@ -278,7 +277,6 @@ class BootstrapSampler:
 
     def __len__(self):
         return self.dataset_size
-
 
 def process_window(i, X, y, seq_len, pred_len):
   X_win = X[i:i + seq_len]
@@ -382,7 +380,6 @@ class ColoradoDataModule(L.LightningDataModule):
     X_window, y_target = zip(*results)
     return np.array(X_window), np.array(y_target)
   
-
 class SDUDataModule(L.LightningDataModule):
   def __init__(self, data_dir: str, scaler: int, seq_len: int, pred_len: int, stride: int, batch_size: int, num_workers: int, is_persistent: bool):
     super().__init__()
@@ -517,7 +514,6 @@ class SDUDataModule(L.LightningDataModule):
     X_window, y_target = zip(*results)
     return np.array(X_window), np.array(y_target)
 
-
 class CustomWriter(BasePredictionWriter):
   def __init__(self, output_dir, write_interval, combined_name, model_name):
     super().__init__(write_interval)
@@ -564,23 +560,38 @@ class Configs:
 def recall_score(TP, FN):
   return TP / (TP + FN)
 
-def get_actuals_and_prediction_flattened(colmod, prediction):
-  actuals = []
-  for batch in colmod.predict_dataloader():
-    x, y = batch
-    actuals.extend(y.numpy())
+def get_baseloads_and_parts(colmod, y_pred, actuals):
+  if args.dataset == "Colorado":
+    y_pred = [pred * args.multiplier for pred in y_pred]
+    actuals_flat = [item*args.multiplier for sublist in actuals for item in sublist]
+    baseload1 = pd.read_csv('Colorado/ElectricityDemandColorado/ColoradoDemand_Part1.csv')
+    baseload2 = pd.read_csv('Colorado/ElectricityDemandColorado/ColoradoDemand_Part2.csv')
+    baseload3 = pd.read_csv('Colorado/ElectricityDemandColorado/ColoradoDemand_Part3.csv')
 
-  actuals_flattened = [item for sublist in actuals for item in sublist]
-  predictions_flattened = [value.item() for tensor in prediction for value in tensor.flatten()]
-  predictions_flattened = predictions_flattened[-len(actuals_flattened):]
+    range1_start = pd.Timestamp('2023-02-04 00:00')
+    range1_end = pd.Timestamp('2023-02-05 01:00')
+    range2_start = pd.Timestamp('2023-02-28 00:00')
+    range2_end = pd.Timestamp('2023-03-06 01:00')
 
-  return predictions_flattened, actuals_flattened
+    df_pred_act = pd.DataFrame({'y_pred': y_pred, 'actuals_flat': actuals_flat})
+    df_pred_act.index = colmod.test_dates[:len(actuals_flat)]
 
-def get_baseload(actuals_flat):
-  if args.dataset == "SDU":
-    df = pd.read_csv('SDU Dataset/DumbCharging_2020_to_2032/Measurements.csv', skipinitialspace=True)
+    df_part1 = df_pred_act[df_pred_act.index < range1_start]
+    df_part2 = df_pred_act[(df_pred_act.index >= range1_end) & (df_pred_act.index <= range2_start)]
+    df_part3 = df_pred_act[df_pred_act.index >= range2_end]
+    df_part3 = df_part3.drop(pd.Timestamp('2023-03-12 02:00'))
+
+    baseloads = [baseload1, baseload2, baseload3]
+    dfs = [df_part1, df_part2, df_part3]
+
+  elif args.dataset == "SDU":
+    y_pred = [pred for pred in y_pred]
+    actuals_flat = [item for sublist in actuals for item in sublist]
+
     test_start_date = pd.to_datetime('2031-05-26 15:00:00')
     test_end_date = pd.to_datetime('2032-12-31 00:00:00')
+
+    df = pd.read_csv('SDU Dataset/DumbCharging_2020_to_2032/Measurements.csv', skipinitialspace=True)
 
     df['Timestamp'] = pd.to_datetime(df['Timestamp'], format="%b %d, %Y, %I:%M:%S %p")
     df.set_index('Timestamp', inplace=True)
@@ -589,10 +600,17 @@ def get_baseload(actuals_flat):
     
     df = df.iloc[:len(actuals_flat)]
 
-    return df[['Aggregated base load']].to_numpy().flatten()
+    df = df[['Aggregated base load']]
+
+    df_pred_act = pd.DataFrame({'y_pred': y_pred, 'actuals_flat': actuals_flat})
+    df_pred_act.index = colmod.test_dates[:len(actuals_flat)]
+
+    baseloads = [df]
+    dfs = [df_pred_act]
+
+  return baseloads, dfs
 
 def objective(args, trial):
-    
     params = {
         'input_size': 22 if args.dataset == "Colorado" else 24,
         'pred_len': args.pred_len,
@@ -710,17 +728,15 @@ def objective(args, trial):
       tuned_model = LightningModel(model=model, criterion=params['criterion'], optimizer=params['optimizer'], learning_rate=params['learning_rate'])
 
       # Trainer for fitting using DDP - Multi GPU
-      #trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
-      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
+      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
+      # trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
 
       trainer.fit(tuned_model, colmod)
 
       # New Trainer for inference on one GPU
       trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, devices=1)
 
-      predictions = trainer.predict(tuned_model, colmod, return_predictions=True)
-
-      pred, act = get_actuals_and_prediction_flattened(colmod, predictions)
+      y_pred = trainer.predict(tuned_model, colmod, return_predictions=True)
 
     elif isinstance(model, BaseEstimator):
       name = model.__class__.__name__
@@ -729,26 +745,33 @@ def objective(args, trial):
       X_val, y_val = colmod.sklearn_setup("val")
       
       model.fit(X_train, y_train)
-      pred, act = model.predict(X_val), y_val
+      y_pred, act = model.predict(X_val), y_val
 
-    baseload = get_baseload(act)
-    
-    actuals = np.array(act) + baseload
-    predictions = np.array(pred) + baseload
-    threshold = 500 if args.dataset == "Colorado" else 400
-    
-    actual_class = np.where(actuals > threshold, 1, 0)
-    pred_class = np.where(predictions > threshold, 1, 0)
+    baseloads, dfs = get_baseloads_and_parts(colmod, y_pred, act)
 
-    print(f"Actuals: {actuals[:10]}, Predictions: {predictions[:10]}")
-    print(f"Actual class: {actual_class[:10]}, Predicted class: {pred_class[:10]}")
+    for i, (baseload, df) in enumerate(zip(baseloads, dfs)):
+      if args.dataset == "Colorado":
+        y_pred = df['y_pred'].values
+        actuals_flat = df['actuals_flat'].values
+        baseload = baseload['Demand (MWh)'].values / args.downscaling
 
-    TP = np.sum((pred_class == 1) & (actual_class == 1))
-    FN = np.sum((pred_class == 0) & (actual_class == 1))
+      elif args.dataset == "SDU":
+        y_pred = df['y_pred'].values
+        actuals_flat = df['actuals_flat'].values
+        baseload = baseload['Aggregated base load'].values
 
-    loss = recall_score(TP, FN)
-    print(f"TP: {TP}, FN: {FN}, loss: {loss}")
-    return loss
+      actuals = np.array(actuals_flat) + baseload
+      predictions = np.array(y_pred) + baseload
+      
+      actual_class = np.where(actuals > args.threshold, 1, 0)
+      pred_class = np.where(predictions > args.threshold, 1, 0)
+
+      TP = np.sum((pred_class == 1) & (actual_class == 1))
+      TN = np.sum((pred_class == 0) & (actual_class == 0))
+      FP = np.sum((pred_class == 1) & (actual_class == 0))
+      FN = np.sum((pred_class == 0) & (actual_class == 1))
+
+    return recall_score(TP, FN)
 
 def safe_objective(args, trial):
   try:
@@ -761,19 +784,22 @@ def safe_objective(args, trial):
     torch.cuda.empty_cache()
   
 def tune_model_with_optuna(args, n_trials):
+  if args.individual:
+    path_pkl = f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_classification_individual_tuning.pkl'
+    path_csv = f'Tunings/{args.dataset}_{args.pred_len}h_classification_individual_tuning.csv'
+  else:
+    path_pkl = f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_classification_tuning.pkl'
+    path_csv = f'Tunings/{args.dataset}_{args.pred_len}h_classification_tuning.csv'
   if args.load == 'True':
     try:
-      if args.individual:
-        study = joblib.load(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_individual_tuning.pkl')
-      else:
-        study = joblib.load(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_tuning.pkl')
       print("Loaded an old study:")
+      study = joblib.load(path_pkl)
     except Exception as e:
       print("No previous tuning found. Starting a new tuning.", e) 
       study = optuna.create_study(direction="maximize")
   else:
     print("Starting a new tuning.")
-    study = optuna.create_study(direction="minimize")
+    study = optuna.create_study(direction="maximize")
 
   study.optimize(lambda trial: objective(args, trial), n_trials=n_trials, gc_after_trial=True, timeout=37800)
 
@@ -783,10 +809,7 @@ def tune_model_with_optuna(args, n_trials):
 
   if study.best_value != float('inf'):
     try:
-      if args.individual:
-        df_tuning = pd.read_csv(f'Tunings/{args.dataset}_{args.pred_len}h_individual_tuning.csv', delimiter=',')
-      else:
-        df_tuning = pd.read_csv(f'Tunings/{args.dataset}_{args.pred_len}h_tuning.csv', delimiter=',')
+      df_tuning = pd.read_csv(path_csv, delimiter=',')
     except Exception:
       df_tuning = pd.DataFrame(columns=['model', 'trials', 'val_loss', 'parameters'])
 
@@ -797,22 +820,24 @@ def tune_model_with_optuna(args, n_trials):
 
     if not os.path.exists(f'Tunings'):
       os.makedirs(f'Tunings', exist_ok=True)
-    if args.individual:
-      df_tuning.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_individual_tuning.csv', index=False)
-      joblib.dump(study, f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_individual_tuning.pkl')
-    else:
-      df_tuning.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_tuning.csv', index=False)
-      joblib.dump(study, f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_tuning.pkl')
+      
+    df_tuning.to_csv(path_csv, index=False)
+    joblib.dump(study, path_pkl)
     return study.best_params
 
 if __name__ == '__main__':
   parser = ArgumentParser()
-  parser.add_argument("--dataset", type=str, default="SDU")
-  parser.add_argument("--pred_len", type=int, default=24)
+  parser.add_argument("--dataset", type=str, default="Colorado")
+  parser.add_argument("--pred_len", type=int, default=22)
   parser.add_argument("--model", type=str, default="LSTM")
   parser.add_argument("--load", type=str, default='True')
   parser.add_argument("--mixed", type=str, default='True')
   parser.add_argument("--individual", type=str, default="False")
+  parser.add_argument("--threshold", type=float, default=500)
+  parser.add_argument("--downscaling", type=int, default=13)
+  parser.add_argument("--multiplier", type=int, default=2)
+  parser.add_argument("--trials", type=int, default=150)
+
   args = parser.parse_args()
 
-  best_params = tune_model_with_optuna(args, n_trials=150)
+  best_params = tune_model_with_optuna(args, n_trials=args.trials)
