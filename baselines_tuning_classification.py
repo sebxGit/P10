@@ -575,13 +575,14 @@ def get_baseloads_and_parts(colmod, y_pred, actuals):
     range1_end = pd.Timestamp('2023-01-03 23:00')
     
     baseload1 = pd.read_csv('Colorado/ElectricityDemandColorado/ColoradoDemand_val.csv')
-    baseload1 = [date for date in colmod.val_dates if range1_start <= date <= range1_end]
 
     df_pred_act = pd.DataFrame({'y_pred': y_pred, 'actuals_flat': actuals_flat})
     df_pred_act.index = colmod.val_dates[:len(actuals_flat)]
 
+    df_part1 = df_pred_act[(df_pred_act.index >= range1_start) & (df_pred_act.index <= range1_end)]
+
     baseloads = [baseload1]
-    dfs = [df_pred_act]
+    dfs = [df_part1]
 
   elif args.dataset == "SDU":
     y_pred = [pred for pred in y_pred]
