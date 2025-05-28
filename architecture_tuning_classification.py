@@ -691,6 +691,7 @@ def objective(args, trial, all_subsets):
     trial.set_user_attr('baseload', baseload)
     trial.set_user_attr('predictions', predictions)
     trial.set_user_attr('actuals', actuals)
+    trial.set_user_attr('y_pred', y_pred)
     recall_scores.append(recall_score(TP, FN))
 
   total_recall_score = np.mean(recall_scores) if len(recall_scores) > 0 else 0
@@ -789,3 +790,5 @@ if __name__ == "__main__":
     top_10_tunings = sorted_trials[:10]
     df_top_10 = pd.DataFrame(top_10_tunings)
     df_top_10.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning_classification.csv', index=False)
+    df = sorted_trials[0]['y_pred']
+    df.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning_classification_best.csv', index=False)

@@ -611,9 +611,10 @@ def objective(args, trial, all_subsets):
   mse = nn.MSELoss()(y_val_tensor[-len(y_pred_tensor):], y_pred_tensor)
 
   trial.set_user_attr('mse', mse.item())
+  trial.set_user_attr('y_pred', y_pred)
   
   # rank top 10 baggings save in trial.set_user_attr
-  tuning_results.append({ 'combined_name': combined_name, 'mse': mse.item(), 'mae': mae.item(), 'parameters': trial.params})
+  tuning_results.append({'combined_name': combined_name, 'mse': mse.item(), 'mae': mae.item(), 'parameters': trial.params})
 
   if os.path.exists(f"Tunings/{combined_name}"):
     shutil.rmtree(f"Tunings/{combined_name}")
@@ -704,3 +705,5 @@ if __name__ == "__main__":
     top_10_tunings = sorted_trials[:10]
     df_top_10 = pd.DataFrame(top_10_tunings)
     df_top_10.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning.csv', index=False)
+    df = sorted_trials[0]['y_pred']
+    df.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning_classification_best.csv', index=False)
