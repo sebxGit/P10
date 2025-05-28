@@ -629,7 +629,7 @@ parser.add_argument("--stride", type=int, default=24)
 parser.add_argument("--seq_len", type=int, default=24*7)
 parser.add_argument("--optimizer", type=str, default="Adam")
 parser.add_argument("--scaler", type=str, default="MinMaxScaler")
-parser.add_argument("--load", type=bool, default=False)
+parser.add_argument("--load", type=str, default="True")
 criterion_map = { 
                   "MSELoss": nn.MSELoss, 
                   "MAELoss": nn.L1Loss,
@@ -682,7 +682,7 @@ if __name__ == "__main__":
 
   all_subsets = [list(subset) for subset in all_subsets if len(subset) >= 3]
 
-  if args.load:
+  if args.load == "True":
     try:
       study = joblib.load(f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_architecture_tuning.pkl')
       print("Loaded an old study:")

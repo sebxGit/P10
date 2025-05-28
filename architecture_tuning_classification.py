@@ -558,6 +558,58 @@ def create_and_save_ensemble(combined_name):
   filename = f"{folder_path}/predictions_{combined_name}.pt"
   torch.save(ensemble_predictions, filename)
 
+def get_baseloads_and_parts(colmod, y_pred, actuals):
+  if args.dataset == "Colorado":
+    y_pred = [pred * args.multiplier for pred in y_pred]
+    actuals_flat = [item * args.multiplier for sublist in actuals for item in sublist]
+    baseload1 = pd.read_csv('Colorado/ElectricityDemandColorado/ColoradoDemand_val.csv')
+    baseload1['Timestamp (Hour Ending)'] = pd.to_datetime(baseload1['Timestamp (Hour Ending)'])
+
+    range1_start = pd.Timestamp('2022-08-11 00:00')
+    range1_end = pd.Timestamp('2023-01-03 23:00')
+
+    range1_start = pd.to_datetime(range1_start)
+    range1_end = pd.to_datetime(range1_end)
+
+    df_pred_act = pd.DataFrame({'y_pred': y_pred, 'actuals_flat': actuals_flat})
+    df_pred_act.index = colmod.val_dates[:len(actuals_flat)]
+
+    df_part1 = df_pred_act[(df_pred_act.index >= range1_start) & (df_pred_act.index <= range1_end)]
+    baseload1 = baseload1[(baseload1['Timestamp (Hour Ending)'] >= range1_start) & (baseload1['Timestamp (Hour Ending)'] <= range1_end)]
+    baseload1 = baseload1[:len(actuals_flat)]
+
+    baseloads = [baseload1]
+    dfs = [df_part1]
+
+  elif args.dataset == "SDU":
+    y_pred = [pred for pred in y_pred]
+    actuals_flat = [item for sublist in actuals for item in sublist]
+
+    test_start_date = pd.to_datetime('2029-10-19 05:00:00')
+    test_end_date = pd.to_datetime('2031-05-26 14:00:00')
+
+    df = pd.read_csv('SDU Dataset/DumbCharging_2020_to_2032/Measurements.csv', skipinitialspace=True)
+
+    df['Timestamp'] = pd.to_datetime(df['Timestamp'], format="%b %d, %Y, %I:%M:%S %p")
+    df.set_index('Timestamp', inplace=True)
+
+    df = df[(df.index >= test_start_date) & (df.index <= test_end_date)]
+    
+    df = df.iloc[:len(actuals_flat)]
+
+    df = df[['Aggregated base load']]
+
+    df_pred_act = pd.DataFrame({'y_pred': y_pred, 'actuals_flat': actuals_flat})
+    df_pred_act.index = colmod.val_dates[:len(actuals_flat)]
+
+    baseloads = [df]
+    dfs = [df_pred_act]
+
+  return baseloads, dfs
+
+def recall_score(TP, FN):
+  return TP / (TP + FN)
+
 def objective(args, trial, all_subsets):
   all_subsets_as_strings = [str(subset) for subset in all_subsets]
   selected_subset_as_string = trial.suggest_categorical("model_subsets", all_subsets_as_strings)
@@ -610,17 +662,44 @@ def objective(args, trial, all_subsets):
   y_val_tensor = torch.tensor(colmod.y_val.values if isinstance(colmod.y_val, pd.Series) else colmod.y_val, dtype=torch.float32)
   y_pred_tensor = torch.tensor(y_pred, dtype=torch.float32)
 
-  mae = nn.L1Loss()(y_val_tensor[-len(y_pred_tensor):], y_pred_tensor)
-  mse = nn.MSELoss()(y_val_tensor[-len(y_pred_tensor):], y_pred_tensor)
+  baseloads, dfs = get_baseloads_and_parts(colmod, y_pred_tensor, y_val_tensor)
 
-  trial.set_user_attr('mse', mse.item())
+  recall_scores = []
 
-  # rank top 10 baggings save in trial.set_user_attr
-  tuning_results.append({ 'combined_name': combined_name, 'mse': mse.item(), 'mae': mae.item(), 'parameters': trial.params})
+  for i, (baseload, df) in enumerate(zip(baseloads, dfs)):
+    if args.dataset == "Colorado":
+      y_pred = df['y_pred'].values
+      actuals_flat = df['actuals_flat'].values
+      baseload = baseload['Demand (MWh)'].values / args.downscaling
+
+    elif args.dataset == "SDU":
+      y_pred = df['y_pred'].values
+      actuals_flat = df['actuals_flat'].values
+      baseload = baseload['Aggregated base load'].values
+
+    actuals = np.array(actuals_flat) + baseload
+    predictions = np.array(y_pred) + baseload
+    
+    actual_class = np.where(actuals > args.threshold, 1, 0)
+    pred_class = np.where(predictions > args.threshold, 1, 0)
+
+    TP = np.sum((pred_class == 1) & (actual_class == 1))
+    TN = np.sum((pred_class == 0) & (actual_class == 0))
+    FP = np.sum((pred_class == 1) & (actual_class == 0))
+    FN = np.sum((pred_class == 0) & (actual_class == 1))
+
+    trial.set_user_attr('baseload', baseload)
+    trial.set_user_attr('predictions', predictions)
+    trial.set_user_attr('actuals', actuals)
+    recall_scores.append(recall_score(TP, FN))
+
+  total_recall_score = np.mean(recall_scores) if len(recall_scores) > 0 else 0
+
+  tuning_results.append({'combined_name': combined_name, 'rec': total_recall_score, 'parameters': trial.params})
 
   if os.path.exists(f"Tunings/{combined_name}"):
     shutil.rmtree(f"Tunings/{combined_name}")
-  return mae
+  return total_recall_score
 
 parser = ArgumentParser()
 parser.add_argument("--criterion", type=str, default="MAELoss")
@@ -632,7 +711,10 @@ parser.add_argument("--stride", type=int, default=24)
 parser.add_argument("--seq_len", type=int, default=24*7)
 parser.add_argument("--optimizer", type=str, default="Adam")
 parser.add_argument("--scaler", type=str, default="MinMaxScaler")
-parser.add_argument("--load", type=bool, default=True)
+parser.add_argument("--load", type=str, default='True')
+parser.add_argument("--plot", type=str, default='True')
+parser.add_argument("--trials", type=int, default=150)
+
 criterion_map = { 
                   "MSELoss": nn.MSELoss, 
                   "MAELoss": nn.L1Loss,
@@ -685,9 +767,9 @@ if __name__ == "__main__":
 
   all_subsets = [list(subset) for subset in all_subsets if len(subset) >= 3]
 
-  if args.load:
+  if args.load == "True":
     try:
-      study = joblib.load(f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_architecture_tuning.pkl')
+      study = joblib.load(f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_architecture_tuning_classification.pkl')
       print("Loaded an old study:")
     except Exception as e:
       print("No previous tuning found. Starting a new tuning.", e)
@@ -698,12 +780,12 @@ if __name__ == "__main__":
 
   tuning_results = []
 
-  study.optimize(lambda trial: safe_objective(args, trial, all_subsets), n_trials=20, gc_after_trial=True, timeout=37800)
+  study.optimize(lambda trial: safe_objective(args, trial, all_subsets), n_trials=args.trials, gc_after_trial=True, timeout=37800)
 
   if study.best_value != float('inf'):
-    joblib.dump(study, f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_architecture_tuning.pkl')
+    joblib.dump(study, f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_architecture_tuning_classification.pkl')
 
-    sorted_trials = sorted(tuning_results, key=lambda x: x['mae'])
+    sorted_trials = sorted(tuning_results, key=lambda x: x['rec'])
     top_10_tunings = sorted_trials[:10]
     df_top_10 = pd.DataFrame(top_10_tunings)
-    df_top_10.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning.csv', index=False)
+    df_top_10.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning_classification.csv', index=False)
