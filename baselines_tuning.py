@@ -431,14 +431,12 @@ class SDUDataModule(L.LightningDataModule):
     df['Aggregated_charging_load_36h'] = df['Aggregated charging load'].shift(36)
     df['Aggregated_charging_load_60h'] = df['Aggregated charging load'].shift(60)
 
-    # df['Rolling_Mean_6h'] = df['Aggregated charging load'].rolling(
-    #     window=6).mean()
-    # df['Rolling_Max_6h'] = df['Aggregated charging load'].rolling(
-    #     window=6).max()
+    df['Rolling_Mean_6h'] = df['Aggregated charging load'].rolling(window=6).mean()
+    df['Rolling_Max_6h'] = df['Aggregated charging load'].rolling(window=6).max()
 
     cols_to_log = [
         'Aggregated charging load', 'Aggregated_charging_load_1h', 'Aggregated_charging_load_3h', 
-        'Aggregated_charging_load_6h', 'Aggregated_charging_load_12h', 'Aggregated_charging_load_36h', 'Aggregated_charging_load_60h'
+        'Aggregated_charging_load_6h', 'Aggregated_charging_load_12h', 'Aggregated_charging_load_36h', 'Aggregated_charging_load_60h', 'Rolling_Max_6h', 'Rolling_Mean_6h'
     ]
 
     df[cols_to_log] = df[cols_to_log].apply(lambda x: np.log1p(x))
