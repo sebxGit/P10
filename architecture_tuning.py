@@ -695,7 +695,7 @@ if __name__ == "__main__":
   
   tuning_results = []
 
-  study.optimize(lambda trial: safe_objective(args, trial, all_subsets), n_trials=100, gc_after_trial=True, timeout=37800)
+  study.optimize(lambda trial: safe_objective(args, trial, all_subsets), n_trials=20, gc_after_trial=True, timeout=37800)
 
   if study.best_value != float('inf'):
     joblib.dump(study, f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_architecture_tuning.pkl')
