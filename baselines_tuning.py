@@ -408,42 +408,44 @@ class SDUDataModule(L.LightningDataModule):
     self.y_train_val = None
 
   def setup(self, stage: str):
-    start_date = pd.to_datetime('2027-01-01')
-    end_date = pd.to_datetime('2029-01-01')
+    start_date = pd.to_datetime('2031-01-01')
+    end_date = pd.to_datetime('2031-12-31')
     df = pd.read_csv(self.data_dir, skipinitialspace=True)
     df['Timestamp'] = pd.to_datetime(df['Timestamp'], format="%b %d, %Y, %I:%M:%S %p")
     df['Timestamp'] = df['Timestamp'].dt.floor('h')
     df = df[['Timestamp', 'Aggregated charging load', 'Day', 'Month', 'Year', 'Hour']]
-    
-    df['hour_sin'] = np.sin(2 * np.pi * df['Hour'] / 24)
-    df['hour_cos'] = np.cos(2 * np.pi * df['Hour'] / 24)
 
-    df['day_sin'] = np.sin(2 * np.pi * df['Day'] / 31)
-    df['day_cos'] = np.cos(2 * np.pi * df['Day'] / 31)
-
-    df['month_sin'] = np.sin(2 * np.pi * df['Month'] / 12)
-    df['month_cos'] = np.cos(2 * np.pi * df['Month'] / 12)
-   
-    df['Aggregated_charging_load_1h'] = df['Aggregated charging load'].shift(1)
-    df['Aggregated_charging_load_3h'] = df['Aggregated charging load'].shift(3)
     df['Aggregated_charging_load_6h'] = df['Aggregated charging load'].shift(6)
-    df['Aggregated_charging_load_12h'] = df['Aggregated charging load'].shift(12)
-    df['Aggregated_charging_load_36h'] = df['Aggregated charging load'].shift(36)
-    df['Aggregated_charging_load_60h'] = df['Aggregated charging load'].shift(60)
+    
+    # df['hour_sin'] = np.sin(2 * np.pi * df['Hour'] / 24)
+    # df['hour_cos'] = np.cos(2 * np.pi * df['Hour'] / 24)
 
-    df['Rolling_Mean_6h'] = df['Aggregated charging load'].rolling(window=6).mean()
-    df['Rolling_Max_6h'] = df['Aggregated charging load'].rolling(window=6).max()
-    df['Rolling_Mean_12h'] = df['Aggregated charging load'].rolling(window=6).mean()
-    df['Rolling_Max_12h'] = df['Aggregated charging load'].rolling(window=6).max()
+    # df['day_sin'] = np.sin(2 * np.pi * df['Day'] / 31)
+    # df['day_cos'] = np.cos(2 * np.pi * df['Day'] / 31)
 
-    cols_to_log = [
-        'Aggregated charging load', 'Aggregated_charging_load_1h', 'Aggregated_charging_load_3h', 
-        'Aggregated_charging_load_6h', 'Aggregated_charging_load_12h', 'Aggregated_charging_load_36h', 
-        'Aggregated_charging_load_60h', 'Rolling_Mean_6h', 'Rolling_Max_6h', 'Rolling_Mean_12h', 
-        'Rolling_Max_12h'
-    ]
+    # df['month_sin'] = np.sin(2 * np.pi * df['Month'] / 12)
+    # df['month_cos'] = np.cos(2 * np.pi * df['Month'] / 12)
+   
+    # df['Aggregated_charging_load_1h'] = df['Aggregated charging load'].shift(1)
+    # df['Aggregated_charging_load_3h'] = df['Aggregated charging load'].shift(3)
+    # df['Aggregated_charging_load_6h'] = df['Aggregated charging load'].shift(6)
+    # df['Aggregated_charging_load_12h'] = df['Aggregated charging load'].shift(12)
+    # df['Aggregated_charging_load_36h'] = df['Aggregated charging load'].shift(36)
+    # df['Aggregated_charging_load_60h'] = df['Aggregated charging load'].shift(60)
 
-    df[cols_to_log] = df[cols_to_log].apply(lambda x: np.log1p(x))
+    # df['Rolling_Mean_6h'] = df['Aggregated charging load'].rolling(window=6).mean()
+    # df['Rolling_Max_6h'] = df['Aggregated charging load'].rolling(window=6).max()
+    # df['Rolling_Mean_12h'] = df['Aggregated charging load'].rolling(window=6).mean()
+    # df['Rolling_Max_12h'] = df['Aggregated charging load'].rolling(window=6).max()
+
+    # cols_to_log = [
+    #     'Aggregated charging load', 'Aggregated_charging_load_1h', 'Aggregated_charging_load_3h', 
+    #     'Aggregated_charging_load_6h', 'Aggregated_charging_load_12h', 'Aggregated_charging_load_36h', 
+    #     'Aggregated_charging_load_60h', 'Rolling_Mean_6h', 'Rolling_Max_6h', 'Rolling_Mean_12h', 
+    #     'Rolling_Max_12h'
+    # ]
+
+    # df[cols_to_log] = df[cols_to_log].apply(lambda x: np.log1p(x))
 
 
     df = df.set_index('Timestamp')
@@ -706,7 +708,7 @@ def get_actuals_and_prediction_flattened(colmod, prediction):
 def objective(args, trial):
     
     params = {  
-        'input_size': 22 if args.dataset == "Colorado" else 18,
+        'input_size': 22 if args.dataset == "Colorado" else 5,
         'pred_len': args.pred_len,
         'seq_len': 24*7,
         'stride': args.pred_len,
@@ -717,7 +719,7 @@ def objective(args, trial):
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
         # 'max_epochs': trial.suggest_int('max_epochs', 1000, 5000, step=100), ###CHANGE
-        'max_epochs': 4000,
+        'max_epochs': 1000,
         # 'num_workers': trial.suggest_int('num_workers', 5, 12) if args.model != "DPAD" else 2,
         'num_workers': 10,
         'is_persistent': True
@@ -839,8 +841,8 @@ def objective(args, trial):
       pred, act = get_actuals_and_prediction_flattened(colmod, predictions)
 
 
-      pred = np.expm1(pred)
-      act = np.expm1(act)
+      # pred = np.expm1(pred)
+      # act = np.expm1(act)
 
       print(f"Predictions: {pred[:10]}")
       print(f"Actuals: {act[:10]}")
@@ -951,7 +953,7 @@ def tune_model_with_optuna(args, n_trials):
 if __name__ == '__main__':
   parser = ArgumentParser()
   parser.add_argument("--dataset", type=str, default="SDU")
-  parser.add_argument("--pred_len", type=int, default=12)
+  parser.add_argument("--pred_len", type=int, default=24)
   parser.add_argument("--model", type=str, default="xPatch")
   parser.add_argument("--load", type=str, default='False')
   parser.add_argument("--mixed", type=str, default='True')
