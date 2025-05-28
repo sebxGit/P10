@@ -738,6 +738,14 @@ def objective(args, trial):
 
       y_pred = trainer.predict(tuned_model, colmod, return_predictions=True)
 
+      actuals = []
+      for batch in colmod.predict_dataloader():
+        x, y = batch
+        actuals.extend(y.numpy())
+
+      y_pred = [pred * args.multiplier for pred in y_pred]
+      act = [item * args.multiplier for sublist in actuals for item in sublist]
+
     elif isinstance(model, BaseEstimator):
       name = model.__class__.__name__
       print(f"-----Training {type(model.estimator).__name__ if name == 'MultiOutputRegressor' else name} model-----")
@@ -748,6 +756,8 @@ def objective(args, trial):
       y_pred, act = model.predict(X_val), y_val
 
     baseloads, dfs = get_baseloads_and_parts(colmod, y_pred, act)
+
+    recall_scores = []
 
     for i, (baseload, df) in enumerate(zip(baseloads, dfs)):
       if args.dataset == "Colorado":
@@ -770,8 +780,9 @@ def objective(args, trial):
       TN = np.sum((pred_class == 0) & (actual_class == 0))
       FP = np.sum((pred_class == 1) & (actual_class == 0))
       FN = np.sum((pred_class == 0) & (actual_class == 1))
+      recall_scores.append(recall_score(TP, FN))
 
-    return recall_score(TP, FN)
+    return np.mean(recall_scores) if len(recall_scores) > 0 else 0
 
 def safe_objective(args, trial):
   try:
@@ -790,16 +801,18 @@ def tune_model_with_optuna(args, n_trials):
   else:
     path_pkl = f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_classification_tuning.pkl'
     path_csv = f'Tunings/{args.dataset}_{args.pred_len}h_classification_tuning.csv'
+  study_name = f'{args.dataset}_{args.pred_len}h_{args.model}_{args.individual}_classification_tuning'
+
   if args.load == 'True':
     try:
       print("Loaded an old study:")
       study = joblib.load(path_pkl)
     except Exception as e:
       print("No previous tuning found. Starting a new tuning.", e) 
-      study = optuna.create_study(direction="maximize")
+      study = optuna.create_study(direction="maximize", study_name=study_name)
   else:
     print("Starting a new tuning.")
-    study = optuna.create_study(direction="maximize")
+    study = optuna.create_study(direction="maximize", study_name=study_name)
 
   study.optimize(lambda trial: objective(args, trial), n_trials=n_trials, gc_after_trial=True, timeout=37800)
 
