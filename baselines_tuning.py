@@ -35,7 +35,7 @@ from lightning.pytorch import seed_everything
 from joblib import Parallel, delayed
 
 # tensorboard --logdir=Predictions/MLP-GRU-LSTM
-SEED = 42
+SEED = 20
 seed_everything(SEED, workers=True)
 
 def convert_Colorado_to_hourly(data):
@@ -317,9 +317,14 @@ class ColoradoDataModule(L.LightningDataModule):
 
     df = df.dropna()
 
+    df.to_csv('colorado_test.csv')
+    exit()
+
     X = df.copy()
 
     y = X.pop('Energy_Consumption')
+
+
 
     # 60/20/20 split
     X_tv, self.X_test, y_tv, self.y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
@@ -409,7 +414,36 @@ class SDUDataModule(L.LightningDataModule):
     df['Timestamp'] = pd.to_datetime(df['Timestamp'], format="%b %d, %Y, %I:%M:%S %p")
     df['Timestamp'] = df['Timestamp'].dt.floor('h')
     df = df[['Timestamp', 'Aggregated charging load', 'Day', 'Month', 'Year', 'Hour']]
-    df['Aggregated_charging_load_24h'] = df['Aggregated charging load'].shift(24)
+    
+    df['hour_sin'] = np.sin(2 * np.pi * df['Hour'] / 24)
+    df['hour_cos'] = np.cos(2 * np.pi * df['Hour'] / 24)
+
+    df['day_sin'] = np.sin(2 * np.pi * df['Day'] / 31)
+    df['day_cos'] = np.cos(2 * np.pi * df['Day'] / 31)
+
+    df['month_sin'] = np.sin(2 * np.pi * df['Month'] / 12)
+    df['month_cos'] = np.cos(2 * np.pi * df['Month'] / 12)
+   
+    df['Aggregated_charging_load_1h'] = df['Aggregated charging load'].shift(1)
+    df['Aggregated_charging_load_3h'] = df['Aggregated charging load'].shift(3)
+    df['Aggregated_charging_load_6h'] = df['Aggregated charging load'].shift(6)
+    df['Aggregated_charging_load_12h'] = df['Aggregated charging load'].shift(12)
+    df['Aggregated_charging_load_36h'] = df['Aggregated charging load'].shift(36)
+    df['Aggregated_charging_load_60h'] = df['Aggregated charging load'].shift(60)
+
+    # df['Rolling_Mean_6h'] = df['Aggregated charging load'].rolling(
+    #     window=6).mean()
+    # df['Rolling_Max_6h'] = df['Aggregated charging load'].rolling(
+    #     window=6).max()
+
+    cols_to_log = [
+        'Aggregated charging load', 'Aggregated_charging_load_1h', 'Aggregated_charging_load_3h', 
+        'Aggregated_charging_load_6h', 'Aggregated_charging_load_12h', 'Aggregated_charging_load_36h', 'Aggregated_charging_load_60h'
+    ]
+
+    df[cols_to_log] = df[cols_to_log].apply(lambda x: np.log1p(x))
+
+
     df = df.set_index('Timestamp')
     
     df = filter_data(start_date, end_date, df)
@@ -450,6 +484,34 @@ class SDUDataModule(L.LightningDataModule):
     val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False,
                             num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return val_loader
+  
+  def sklearn_setup(self, set_name: str = "train"):
+    if set_name == "train":
+      if args.individual == 'False':
+        X, y = resample(self.X_train, self.y_train, replace=True,
+                        n_samples=len(self.X_train), random_state=SEED)
+      else:
+        X, y = self.X_train, self.y_train
+    elif set_name == "val":
+        X, y = self.X_val, self.y_val
+    elif set_name == "test":
+        X, y = self.X_test, self.y_test
+    else:
+        raise ValueError(
+            "Invalid set name. Choose from 'train', 'val', or 'test'.")
+
+    seq_len, pred_len, stride = self.seq_len, self.pred_len, self.stride
+    max_start = len(X) - (seq_len + pred_len) + 1
+
+    # Parallelize the loop
+    results = Parallel(n_jobs=-1)(
+        delayed(process_window)(i, X, y, seq_len, pred_len) for i in range(0, max_start, stride)
+    )
+
+    # Unpack results
+    X_window, y_target = zip(*results)
+    return np.array(X_window), np.array(y_target)
+
 
 class SDUDataModule2(L.LightningDataModule):
   def __init__(self, data_dir: str, scaler: int, seq_len: int, pred_len: int, stride: int, batch_size: int, num_workers: int, is_persistent: bool):
@@ -634,7 +696,7 @@ def get_actuals_and_prediction_flattened(colmod, prediction):
 
   actuals_flattened = [item for sublist in actuals for item in sublist]
   predictions_flattened = [value.item() for tensor in prediction for value in tensor.flatten()]
-  # predictions_flattened = predictions_flattened[-len(actuals_flattened):]
+  predictions_flattened = predictions_flattened[-len(actuals_flattened):]
 
   return predictions_flattened, actuals_flattened
 
@@ -642,9 +704,9 @@ def get_actuals_and_prediction_flattened(colmod, prediction):
 def objective(args, trial):
     
     params = {
-        'input_size': 22 if args.dataset == "Colorado" else 5,
+        'input_size': 22 if args.dataset == "Colorado" else 16,
         'pred_len': args.pred_len,
-        'seq_len': 24*7,
+        'seq_len': 12*7,
         'stride': args.pred_len,
         'batch_size': trial.suggest_int('batch_size', 32, 128, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
         'criterion': nn.MSELoss(),
@@ -655,7 +717,7 @@ def objective(args, trial):
         # 'max_epochs': trial.suggest_int('max_epochs', 1000, 5000, step=100), ###CHANGE
         'max_epochs': 1000,
         # 'num_workers': trial.suggest_int('num_workers', 5, 12) if args.model != "DPAD" else 2,
-        'num_workers': 15,
+        'num_workers': 10,
         'is_persistent': True
     }
 
@@ -681,8 +743,7 @@ def objective(args, trial):
     elif args.model == "GRU":
       _params = {
         'hidden_size': trial.suggest_int('hidden_size', 50, 200),
-        'num_layers': trial.suggest_int('num_layers', 1, 10),
-        'dropout': trial.suggest_float('dropout', 0.0, 1),
+        'num_layers': trial.suggest_int('num_layers', 1, 10),        'dropout': trial.suggest_float('dropout', 0.0, 1),
       }
       model = GRU(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "MLP":
@@ -744,8 +805,8 @@ def objective(args, trial):
         "seq_len": params['seq_len'],               # Context window (lookback length)
         "pred_len": params['pred_len'],
         "batch_size": params['batch_size'],
-        "patch_len": trial.suggest_int("patch_len", 4, 32, step=4),  # Patch size
-        "stride": trial.suggest_int("stride", 1, 16, step=1),  # Stride for patching
+        "patch_len": trial.suggest_int("patch_len", 4, 32, step=4),  # Patch size  
+        "stride": trial.suggest_int("stride", 1, 16, step=1),  # Stride for patching 
         "mixer_kernel_size": trial.suggest_int("mixer_kernel_size", 2, 16, step=2),  # Kernel size for the PatchMixer layer
         "d_model": trial.suggest_int("d_model", 128, 1024, step=64),  # Dimension of the model
         "dropout": trial.suggest_float("dropout", 0.0, 0.5, step=0.05),  # Dropout rate for the model
@@ -776,6 +837,12 @@ def objective(args, trial):
       pred, act = get_actuals_and_prediction_flattened(colmod, predictions)
 
 
+      # pred = np.expm1(pred)
+      # act = np.expm1(act)
+
+      print(f"Predictions: {pred[:10]}")
+      print(f"Actuals: {act[:10]}")
+
       plt.figure(figsize=(10, 5))
       plt.plot(act, label='Actuals', color='blue')
       plt.plot(pred, label='Predictions', color='orange')
@@ -798,7 +865,29 @@ def objective(args, trial):
       X_val, y_val = colmod.sklearn_setup("val")
       
       model.fit(X_train, y_train)
-      train_loss = mean_absolute_error(y_val, model.predict(X_val))
+
+      y_pred = model.predict(X_val)
+
+      act = y_val.reshape(-1)
+      pred = y_pred.reshape(-1)
+
+      pred = np.expm1(pred)
+      act = np.expm1(act)
+
+
+      plt.figure(figsize=(10, 5))
+      plt.plot(act, label='Actuals', color='blue')
+      plt.plot(pred, label='Predictions', color='orange')
+      plt.title(f'Actuals vs Predictions for {args.model} model')
+      plt.xlabel('Time')
+      plt.ylabel('Energy Consumption')
+      plt.legend()
+      plt.savefig(f"sdu_testplot")
+      plt.show()
+      plt.savefig(f"sdu_testplot_{args.model}.png")
+      plt.close()
+
+      train_loss = mean_absolute_error(y_val, y_pred)
 
     return train_loss
 
@@ -860,7 +949,7 @@ def tune_model_with_optuna(args, n_trials):
 if __name__ == '__main__':
   parser = ArgumentParser()
   parser.add_argument("--dataset", type=str, default="SDU")
-  parser.add_argument("--pred_len", type=int, default=24)
+  parser.add_argument("--pred_len", type=int, default=12)
   parser.add_argument("--model", type=str, default="xPatch")
   parser.add_argument("--load", type=str, default='False')
   parser.add_argument("--mixed", type=str, default='True')
