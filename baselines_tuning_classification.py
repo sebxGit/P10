@@ -629,12 +629,12 @@ def objective(args, trial):
         'scaler': MinMaxScaler(),
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
-        # 'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100), #change
-        'max_epochs': 1,
-        # 'num_workers': trial.suggest_int('num_workers', 5, 12) if args.model != "DPAD" else 2, #change
-        'num_workers': 0,
-        # 'is_persistent': True #change
-        'is_persistent': False
+        'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100), #change
+        # 'max_epochs': 1,
+        'num_workers': trial.suggest_int('num_workers', 5, 12) if args.model != "DPAD" else 2, #change
+        # 'num_workers': 0,
+        'is_persistent': True #change
+        # 'is_persistent': False
 
     }
 
@@ -739,8 +739,8 @@ def objective(args, trial):
       tuned_model = LightningModel(model=model, criterion=params['criterion'], optimizer=params['optimizer'], learning_rate=params['learning_rate'])
 
       # Trainer for fitting using DDP - Multi GPU
-      # trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, strategy='ddp_find_unused_parameters_true') #change
-      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False)
+      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, strategy='ddp_find_unused_parameters_true') #change
+      # trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False)
 
       trainer.fit(tuned_model, colmod)
 
@@ -884,14 +884,14 @@ if __name__ == '__main__':
   parser.add_argument("--dataset", type=str, default="SDU")
   parser.add_argument("--pred_len", type=int, default=24)
   parser.add_argument("--model", type=str, default="MLP")
-  parser.add_argument("--load", type=str, default='True')
+  parser.add_argument("--load", type=str, default='True') #change
   parser.add_argument("--mixed", type=str, default='True')
   parser.add_argument("--individual", type=str, default="True")
   parser.add_argument("--threshold", type=float, default=100)
   parser.add_argument("--downscaling", type=int, default=13)
   parser.add_argument("--multiplier", type=int, default=2)
   parser.add_argument("--plot", type=str, default='True')
-  parser.add_argument("--trials", type=int, default=5)
+  parser.add_argument("--trials", type=int, default=150) #change
 
   args = parser.parse_args()
 
