@@ -611,6 +611,9 @@ def objective(args, trial, all_subsets):
   mse = nn.MSELoss()(y_val_tensor[-len(y_pred_tensor):], y_pred_tensor)
 
   trial.set_user_attr('mse', mse.item())
+  
+  # rank top 10 baggings save in trial.set_user_attr
+  tuning_results.append({ 'combined_name': combined_name, 'mse': mse.item(), 'mae': mae.item(), 'parameters': trial.params})
 
   if os.path.exists(f"Tunings/{combined_name}"):
     shutil.rmtree(f"Tunings/{combined_name}")
@@ -689,21 +692,15 @@ if __name__ == "__main__":
   else:
     print("Starting a new tuning.")
     study = optuna.create_study(direction="minimize", study_name=f"Bagging-{combined_name}")
+  
+  tuning_results = []
 
   study.optimize(lambda trial: safe_objective(args, trial, all_subsets), n_trials=100, gc_after_trial=True, timeout=37800)
 
   if study.best_value != float('inf'):
     joblib.dump(study, f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_architecture_tuning.pkl')
-    
-    try:
-      df_tuning = pd.read_csv(f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning.csv', delimiter=',')
-    except Exception:
-      df_tuning = pd.DataFrame(columns=['model', 'trials', 'mae', 'mse', 'parameters'])
-    new_row = {'model': args.models, 'trials': len(study.trials), 'mae': study.best_value, 'mse': study.best_trial.user_attrs["mse"], 'parameters': study.best_params}
-    new_row_df = pd.DataFrame([new_row]).dropna(axis=1, how='all')
-    df_tuning = pd.concat([df_tuning, new_row_df], ignore_index=True)
-    df_tuning = df_tuning.sort_values(by=['model', 'mae'], ascending=True).reset_index(drop=True)
 
-    if not os.path.exists(f'Tunings'):
-      os.makedirs(f'Tunings', exist_ok=True)
-    df_tuning.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning.csv', index=False)
+    sorted_trials = sorted(tuning_results, key=lambda x: x['mae'])
+    top_10_tunings = sorted_trials[:10]
+    df_top_10 = pd.DataFrame(top_10_tunings)
+    df_top_10.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning.csv', index=False)
