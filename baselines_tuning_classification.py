@@ -563,7 +563,7 @@ def recall_score(TP, FN):
 def get_baseloads_and_parts(colmod, y_pred, actuals):
   if args.dataset == "Colorado":
     y_pred = [pred * args.multiplier for pred in y_pred]
-    actuals_flat = [item*args.multiplier for sublist in actuals for item in sublist]
+    actuals_flat = [item * args.multiplier for sublist in actuals for item in sublist]
     baseload1 = pd.read_csv('Colorado/ElectricityDemandColorado/ColoradoDemand_Part1.csv')
     baseload2 = pd.read_csv('Colorado/ElectricityDemandColorado/ColoradoDemand_Part2.csv')
     baseload3 = pd.read_csv('Colorado/ElectricityDemandColorado/ColoradoDemand_Part3.csv')
@@ -573,10 +573,7 @@ def get_baseloads_and_parts(colmod, y_pred, actuals):
     range2_start = pd.Timestamp('2023-02-28 00:00')
     range2_end = pd.Timestamp('2023-03-06 01:00')
 
-    print(len(y_pred), len(actuals_flat))
-
     df_pred_act = pd.DataFrame({'y_pred': y_pred, 'actuals_flat': actuals_flat})
-    df_pred_act.index = colmod.test_dates[:len(actuals_flat)]
 
     df_part1 = df_pred_act[df_pred_act.index < range1_start]
     df_part2 = df_pred_act[(df_pred_act.index >= range1_end) & (df_pred_act.index <= range2_start)]
