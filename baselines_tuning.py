@@ -837,8 +837,8 @@ def objective(args, trial):
       pred, act = get_actuals_and_prediction_flattened(colmod, predictions)
 
 
-      # pred = np.expm1(pred)
-      # act = np.expm1(act)
+      pred = np.expm1(pred)
+      act = np.expm1(act)
 
       print(f"Predictions: {pred[:10]}")
       print(f"Actuals: {act[:10]}")
