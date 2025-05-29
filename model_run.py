@@ -656,7 +656,7 @@ if __name__ == "__main__":
     except Exception:
       df_tuning = pd.DataFrame(columns=['model', 'mae', 'mse'])
 
-    new_row = {'model': args.models, 'mae': nn.L1Loss()(y_pred, actuals_flattened), 'mse': nn.MSELoss()(y_pred, actuals_flattened)}
+    new_row = {'model': args.models, 'mae': mean_absolute_error(y_pred, actuals_flattened), 'mse': mean_squared_error(y_pred, actuals_flattened)}
     new_row_df = pd.DataFrame([new_row]).dropna(axis=1, how='all')
     df_tuning = pd.concat([df_tuning, new_row_df], ignore_index=True)
     df_tuning = df_tuning.sort_values(by=['model', 'mae'], ascending=True).reset_index(drop=True)
