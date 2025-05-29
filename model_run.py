@@ -643,7 +643,7 @@ if __name__ == "__main__":
 
     plt.figure(figsize=(15, 4))
     plt.plot(actuals_flattened, label='Actuals')
-    plt.plot(y_pred, label=f'{selected_models} Predictions')
+    plt.plot(y_pred, label=f'{combined_name} Predictions')
     plt.xlabel('Samples')
     plt.ylabel('Electricity Consumption (kW)')
     plt.legend()
