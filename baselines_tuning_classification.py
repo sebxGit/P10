@@ -800,10 +800,9 @@ def objective(args, trial):
 
     if score > max_score:
       max_score = score
-      trial.set_user_attr('baseload', baseload)
-      trial.set_user_attr('predictions', predictions)
-      trial.set_user_attr('actuals', actuals)
-
+      best_baseload = baseload
+      best_predictions = predictions
+      best_actuals = actuals
     return score
 
 def safe_objective(args, trial):
