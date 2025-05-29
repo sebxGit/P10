@@ -647,19 +647,19 @@ if __name__ == "__main__":
     plt.xlabel('Samples')
     plt.ylabel('Electricity Consumption (kW)')
     plt.legend()
-    plt.savefig(f'Predictions/{args.dataset}_{args.pred_len}h_{args.model}_predact_plot.png')
+    plt.savefig(f'Predictions/{args.dataset}_{args.pred_len}h_{args.models}_predact_plot.png')
     plt.show()
     plt.clf()
 
     try:
-      df_tuning = pd.read_csv(f'Predictions/{args.dataset}_{args.pred_len}h_{args.model}.csv', delimiter=',')
+      df_tuning = pd.read_csv(f'Predictions/{args.dataset}_{args.pred_len}h_{args.models}.csv', delimiter=',')
     except Exception:
       df_tuning = pd.DataFrame(columns=['model', 'mae', 'mse'])
 
-    new_row = {'model': args.model, 'mae': nn.L1Loss()(y_pred, actuals_flattened), 'mse': nn.MSELoss()(y_pred, actuals_flattened)}
+    new_row = {'model': args.models, 'mae': nn.L1Loss()(y_pred, actuals_flattened), 'mse': nn.MSELoss()(y_pred, actuals_flattened)}
     new_row_df = pd.DataFrame([new_row]).dropna(axis=1, how='all')
     df_tuning = pd.concat([df_tuning, new_row_df], ignore_index=True)
     df_tuning = df_tuning.sort_values(by=['model', 'mae'], ascending=True).reset_index(drop=True)
-    df_tuning.to_csv(f'Predictions/{args.dataset}_{args.pred_len}h_{args.model}.csv', index=False)
+    df_tuning.to_csv(f'Predictions/{args.dataset}_{args.pred_len}h_{args.models}.csv', index=False)
     
     
