@@ -794,7 +794,7 @@ def objective(args, trial, study):
       
     score = np.mean(recall_scores) if len(recall_scores) > 0 else 0
 
-    if len(study.trials) > 0 and study.best_value != float('inf'):
+    if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials):
       if score > study.best_value:
         best_list.clear()
         best_list.append({'baseload': baseload, 'predictions': predictions, 'actuals': actuals})
