@@ -628,7 +628,7 @@ def objective(args, trial, all_subsets, study):
   tuning_results.append({'combined_name': combined_name, 'mse': mse.item(), 'mae': mae.item(), 'parameters': trial.params})
 
   if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials):
-    if mae > study.best_value:
+    if mae >= study.best_value:
       best_list.clear()
       best_list.append({'predictions': y_pred, 'actuals': actuals_flattened})
 
@@ -730,19 +730,20 @@ if __name__ == "__main__":
     parsed_parameters = ast.literal_eval(parameters)
     model_subsets = ast.literal_eval(parsed_parameters['model_subsets'])
 
+    tuning_results = list(dict.fromkeys(tuning_results)) # remove duplicates
+    sorted_trials = sorted(tuning_results, key=lambda x: x['mae'])
+    top_10_tunings = sorted_trials[:10]
+    df_top_10 = pd.DataFrame(top_10_tunings)
+    df_top_10.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning.csv', index=False)
+
     # pred and act plot
+    best_ensemble_name = sorted_trials[0]['combined_name']
     plt.figure(figsize=(15, 4))
     plt.plot(actuals, label='Actuals')
-    plt.plot(predictions, label=f'{model_subsets} Predictions')
+    plt.plot(predictions, label=f'{best_ensemble_name} Predictions')
     plt.xlabel('Samples')
     plt.ylabel('Electricity Consumption (kW)')
     plt.legend()
     plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_predact_plot.png')
     plt.show()
     plt.clf()
-
-    tuning_results = list(dict.fromkeys(tuning_results)) # remove duplicates
-    sorted_trials = sorted(tuning_results, key=lambda x: x['mae'])
-    top_10_tunings = sorted_trials[:10]
-    df_top_10 = pd.DataFrame(top_10_tunings)
-    df_top_10.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning.csv', index=False)

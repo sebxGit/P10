@@ -703,8 +703,12 @@ def objective(args, trial, all_subsets, study):
 
   tuning_results.append({'combined_name': combined_name, 'rec': total_recall_score, 'parameters': trial.params})
 
+  print("Total Recall Score:", total_recall_score)
+  print("Study Best Value:", study.best_value)
+  print("Best List Before Append:", best_list)
+
   if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials):
-      if total_recall_score > study.best_value:
+      if total_recall_score >= study.best_value:
         best_list.clear()
         best_list.append({'baseload': baseload, 'predictions': predictions, 'actuals': actuals})
 
