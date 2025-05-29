@@ -803,7 +803,7 @@ def objective(args, trial, study):
 
 def safe_objective(args, trial, study):
   try:
-    return objective(args, trial, study)
+    return safe_objective(args, trial, study)
   except Exception as e:
     print(f"Failed trial: {e}. Skipped this trial.")
     return float('inf')

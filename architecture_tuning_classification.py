@@ -610,7 +610,7 @@ def get_baseloads_and_parts(colmod, y_pred, actuals):
 def recall_score(TP, FN):
   return TP / (TP + FN)
 
-def objective(args, trial, all_subsets):
+def objective(args, trial, all_subsets, study):
   all_subsets_as_strings = [str(subset) for subset in all_subsets]
   selected_subset_as_string = trial.suggest_categorical("model_subsets", all_subsets_as_strings)
   selected_subset = ast.literal_eval(selected_subset_as_string)
@@ -699,6 +699,11 @@ def objective(args, trial, all_subsets):
 
   tuning_results.append({'combined_name': combined_name, 'rec': total_recall_score, 'parameters': trial.params})
 
+  if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials):
+      if total_recall_score > study.best_value:
+        best_list.clear()
+        best_list.append({'baseload': baseload, 'predictions': predictions, 'actuals': actuals})
+
   if os.path.exists(f"Tunings/{combined_name}"):
     shutil.rmtree(f"Tunings/{combined_name}")
   return total_recall_score
@@ -741,9 +746,9 @@ model_initializers = {
   "DPAD": lambda: DPAD_GCN(input_len=args.seq_len, output_len=args.pred_len, input_dim=args.input_size, enc_hidden=dpad_params['enc_hidden'], dec_hidden=dpad_params['dec_hidden'], dropout=dpad_params['dropout'], num_levels=dpad_params['num_levels'], K_IMP=dpad_params['K_IMP'], RIN=dpad_params['RIN'])
 }
 
-def safe_objective(args, trial, all_subsets):
+def safe_objective(args, trial, all_subsets, study):
   try:
-    return objective(args, trial, all_subsets)
+    return objective(args, trial, all_subsets, study)
   except Exception as e:
     print(f"Failed trial: {e}. Skipped this trial.")
     return float('inf')
@@ -765,6 +770,8 @@ if __name__ == "__main__":
   selected_models = ast.literal_eval(args.models)
   combined_name = "-".join([m for m in selected_models])
 
+  best_list = []
+
   all_subsets = []
   for r in range(1, len(selected_models) + 1):
     all_subsets.extend(combinations(selected_models, r))
@@ -784,14 +791,12 @@ if __name__ == "__main__":
 
   tuning_results = []
 
-  study.optimize(lambda trial: safe_objective(args, trial, all_subsets), n_trials=args.trials, gc_after_trial=True, timeout=37800)
+  study.optimize(lambda trial: safe_objective(args, trial, all_subsets, study), n_trials=args.trials, gc_after_trial=True, timeout=37800)
 
   if study.best_value != float('inf'):
     joblib.dump(study, f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_architecture_tuning_classification.pkl')
 
-    baseload = study.best_trial.user_attrs["baseload"]
-    predictions = study.best_trial.user_attrs["predictions"]
-    actuals = study.best_trial.user_attrs["actuals"]
+    baseload, predictions, actuals = best_list[0]['baseload'], best_list[0]['predictions'], best_list[0]['actuals']
 
     #baseload plot
     plt.figure(figsize=(15, 4))

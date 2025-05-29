@@ -618,11 +618,15 @@ def objective(args, trial, all_subsets):
   actuals_flattened = [item for sublist in actuals for item in sublist]
 
   trial.set_user_attr('mse', mse.item())
-  trial.set_user_attr('predictions', y_pred)
-  trial.set_user_attr('actuals', actuals_flattened)
+  trial.set_user_attr('mae', mae.item())
   
   # rank top 10 baggings save in trial.set_user_attr
   tuning_results.append({'combined_name': combined_name, 'mse': mse.item(), 'mae': mae.item(), 'parameters': trial.params})
+
+  if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials):
+      if mae > study.best_value:
+        best_list.clear()
+        best_list.append({'predictions': y_pred, 'actuals': actuals_flattened})
 
   if os.path.exists(f"Tunings/{combined_name}"):
     shutil.rmtree(f"Tunings/{combined_name}")
@@ -663,9 +667,9 @@ model_initializers = {
   "DPAD": lambda: DPAD_GCN(input_len=args.seq_len, output_len=args.pred_len, input_dim=args.input_size, enc_hidden=dpad_params['enc_hidden'], dec_hidden=dpad_params['dec_hidden'], dropout=dpad_params['dropout'], num_levels=dpad_params['num_levels'], K_IMP=dpad_params['K_IMP'], RIN=dpad_params['RIN'])
 }
 
-def safe_objective(args, trial, all_subsets):
+def safe_objective(args, trial, all_subsets, study):
   try:
-    return objective(args, trial, all_subsets)
+    return objective(args, trial, all_subsets, study)
   except Exception as e:
     print(f"Failed trial: {e}. Skipped this trial.")
     return float('inf')
@@ -687,6 +691,8 @@ if __name__ == "__main__":
   selected_models = ast.literal_eval(args.models)
   combined_name = "-".join([m for m in selected_models])
 
+  best_list = []
+
   all_subsets = []
   for r in range(1, len(selected_models) + 1):
     all_subsets.extend(combinations(selected_models, r))
@@ -706,13 +712,12 @@ if __name__ == "__main__":
   
   tuning_results = []
 
-  study.optimize(lambda trial: safe_objective(args, trial, all_subsets), n_trials=args.trials, gc_after_trial=True, timeout=37800)
+  study.optimize(lambda trial: safe_objective(args, trial, all_subsets, study), n_trials=args.trials, gc_after_trial=True, timeout=37800)
 
   if study.best_value != float('inf'):
     joblib.dump(study, f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_architecture_tuning.pkl')
 
-    predictions = study.best_trial.user_attrs["predictions"]
-    actuals = study.best_trial.user_attrs["actuals"]
+    predictions, actuals = best_list[0]['predictions'], best_list[0]['actuals']
 
     parameters = study.best_trial.params["model_subsets"]
     parsed_parameters = ast.literal_eval(parameters)
