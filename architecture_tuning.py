@@ -624,9 +624,9 @@ def objective(args, trial, all_subsets, study):
   tuning_results.append({'combined_name': combined_name, 'mse': mse.item(), 'mae': mae.item(), 'parameters': trial.params})
 
   if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials):
-      if mae > study.best_value:
-        best_list.clear()
-        best_list.append({'predictions': y_pred, 'actuals': actuals_flattened})
+    if mae > study.best_value:
+      best_list.clear()
+      best_list.append({'predictions': y_pred, 'actuals': actuals_flattened})
 
   if os.path.exists(f"Tunings/{combined_name}"):
     shutil.rmtree(f"Tunings/{combined_name}")
@@ -728,12 +728,12 @@ if __name__ == "__main__":
 
     # pred and act plot
     plt.figure(figsize=(15, 4))
-    plt.plot(actuals, label='Actuals+baseload')
+    plt.plot(actuals, label='Actuals')
     plt.plot(predictions, label=f'{model_subsets} Predictions')
     plt.xlabel('Samples')
     plt.ylabel('Electricity Consumption (kW)')
     plt.legend()
-    plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_classification_predact_plot.png')
+    plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_predact_plot.png')
     plt.show()
     plt.clf()
 

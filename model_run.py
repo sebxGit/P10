@@ -593,14 +593,13 @@ if __name__ == "__main__":
 
   for model_name in selected_models:
     print(f"-----Training {model_name} model-----")
-
-    if args.individual == "False":
-      hparams = pd.read_csv(f'./Tunings/{args.dataset}_{args.pred_len}h_tuning.csv')
-    else:
-      hparams = pd.read_csv(f'./Tunings/{args.dataset}_{args.pred_len}h_individual_tuning.csv')
+    hparams = pd.read_csv(file_path)
 
     hyperparameters = ast.literal_eval(hparams[hparams['model'] == model_name].iloc[0].values[3])
-    if model_name == "DPAD": hyperparameters['num_workers'] = 2
+    if model_name == "DPAD": 
+      hyperparameters['num_workers'] = 2
+      hyperparameters['dropout'] = 0.5
+
     model = initialize_model(model_name, hyperparameters)
 
     # prepare colmod
@@ -642,7 +641,25 @@ if __name__ == "__main__":
 
     actuals_flattened = [item for sublist in actuals for item in sublist]
 
-    mae = nn.L1Loss()(y_pred, actuals_flattened)
-    mse = nn.MSELoss()(y_pred, actuals_flattened)
+    plt.figure(figsize=(15, 4))
+    plt.plot(actuals_flattened, label='Actuals')
+    plt.plot(y_pred, label=f'{selected_models} Predictions')
+    plt.xlabel('Samples')
+    plt.ylabel('Electricity Consumption (kW)')
+    plt.legend()
+    plt.savefig(f'Predictions/{args.dataset}_{args.pred_len}h_{args.model}_predact_plot.png')
+    plt.show()
+    plt.clf()
+
+    try:
+      df_tuning = pd.read_csv(f'Predictions/{args.dataset}_{args.pred_len}h_{args.model}.csv', delimiter=',')
+    except Exception:
+      df_tuning = pd.DataFrame(columns=['model', 'mae', 'mse'])
+
+    new_row = {'model': args.model, 'mae': nn.L1Loss()(y_pred, actuals_flattened), 'mse': nn.MSELoss()(y_pred, actuals_flattened)}
+    new_row_df = pd.DataFrame([new_row]).dropna(axis=1, how='all')
+    df_tuning = pd.concat([df_tuning, new_row_df], ignore_index=True)
+    df_tuning = df_tuning.sort_values(by=['model', 'mae'], ascending=True).reset_index(drop=True)
+    df_tuning.to_csv(f'Predictions/{args.dataset}_{args.pred_len}h_{args.model}.csv', index=False)
     
     
