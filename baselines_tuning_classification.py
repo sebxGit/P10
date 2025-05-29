@@ -891,7 +891,7 @@ if __name__ == '__main__':
   parser.add_argument("--downscaling", type=int, default=13)
   parser.add_argument("--multiplier", type=int, default=2)
   parser.add_argument("--plot", type=str, default='True')
-  parser.add_argument("--trials", type=int, default=150) #change
+  parser.add_argument("--trials", type=int, default=1) #change
 
   args = parser.parse_args()
 
