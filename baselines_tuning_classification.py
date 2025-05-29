@@ -882,14 +882,14 @@ if __name__ == '__main__':
   parser = ArgumentParser()
   parser.add_argument("--dataset", type=str, default="Colorado")
   parser.add_argument("--pred_len", type=int, default=24)
-  parser.add_argument("--model", type=str, default="MLP")
+  parser.add_argument("--model", type=str, default="AdaBoost")
   parser.add_argument("--load", type=str, default='False') #change
   parser.add_argument("--mixed", type=str, default='True')
   parser.add_argument("--individual", type=str, default="True")
   parser.add_argument("--threshold", type=float, default=500)
   parser.add_argument("--downscaling", type=int, default=13)
   parser.add_argument("--multiplier", type=int, default=2)
-  parser.add_argument("--trials", type=int, default=1) #change
+  parser.add_argument("--trials", type=int, default=150) #change
 
   args = parser.parse_args()
 
