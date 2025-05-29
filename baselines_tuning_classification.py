@@ -844,33 +844,32 @@ def tune_model_with_optuna(args, n_trials):
     df_tuning = pd.concat([df_tuning, new_row_df], ignore_index=True)
     df_tuning = df_tuning.sort_values(by=['model', 'val_loss'], ascending=True).reset_index(drop=True)
 
-    if args.plot == 'True':
-      baseload = study.best_trial.user_attrs["baseload"]
-      predictions = study.best_trial.user_attrs["predictions"]
-      actuals = study.best_trial.user_attrs["actuals"]
+    baseload = study.best_trial.user_attrs["baseload"]
+    predictions = study.best_trial.user_attrs["predictions"]
+    actuals = study.best_trial.user_attrs["actuals"]
 
-      #baseload plot
-      plt.figure(figsize=(15, 4))
-      plt.plot(baseload, label='Baseload')
-      plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
-      plt.xlabel('Samples')
-      plt.ylabel('Electricity Consumption (kW)')
-      plt.legend()
-      plt.savefig(f'Classifications/{args.dataset}/{args.pred_len}h_{args.model}_classification_baseload_plot.png')
-      plt.show()
-      plt.clf()
+    #baseload plot
+    plt.figure(figsize=(15, 4))
+    plt.plot(baseload, label='Baseload')
+    plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
+    plt.xlabel('Samples')
+    plt.ylabel('Electricity Consumption (kW)')
+    plt.legend()
+    plt.savefig(f'Tunings/{args.dataset}/{args.pred_len}h_{args.model}_classification_baseload_plot.png')
+    plt.show()
+    plt.clf()
 
-      # pred and act plot
-      plt.figure(figsize=(15, 4))
-      plt.plot(actuals, label='Actuals+baseload')
-      plt.plot(predictions, label=f'model+baseload')
-      plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
-      plt.xlabel('Samples')
-      plt.ylabel('Electricity Consumption (kW)')
-      plt.legend()
-      plt.savefig(f'Classifications/{args.dataset}/{args.pred_len}h_{args.model}_classification_predact_plot.png')
-      plt.show()
-      plt.clf()
+    # pred and act plot
+    plt.figure(figsize=(15, 4))
+    plt.plot(actuals, label='Actuals+baseload')
+    plt.plot(predictions, label=f'model+baseload')
+    plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
+    plt.xlabel('Samples')
+    plt.ylabel('Electricity Consumption (kW)')
+    plt.legend()
+    plt.savefig(f'Tunings/{args.dataset}/{args.pred_len}h_{args.model}_classification_predact_plot.png')
+    plt.show()
+    plt.clf()
 
     if not os.path.exists(f'Tunings'):
       os.makedirs(f'Tunings', exist_ok=True)
@@ -890,7 +889,6 @@ if __name__ == '__main__':
   parser.add_argument("--threshold", type=float, default=500)
   parser.add_argument("--downscaling", type=int, default=13)
   parser.add_argument("--multiplier", type=int, default=2)
-  parser.add_argument("--plot", type=str, default='True')
   parser.add_argument("--trials", type=int, default=1) #change
 
   args = parser.parse_args()

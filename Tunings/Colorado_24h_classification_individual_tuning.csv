@@ -1,0 +1,4 @@
+model,trials,val_loss,parameters
+GRU,150,0.8497409326424871,"{'batch_size': 80, 'learning_rate': 0.009884035194744026, 'max_epochs': 1900, 'num_workers': 5, 'hidden_size': 126, 'num_layers': 1, 'dropout': 0.7789479065047873}"
+LSTM,150,0.7202072538860104,"{'batch_size': 96, 'learning_rate': 0.009398686469880246, 'max_epochs': 1200, 'num_workers': 8, 'hidden_size': 195, 'num_layers': 8, 'dropout': 0.9991641449121531}"
+
