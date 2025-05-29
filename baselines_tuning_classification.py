@@ -762,7 +762,7 @@ def objective(args, trial):
       X_val, y_val = colmod.sklearn_setup("val")
       
       model.fit(X_train, y_train)
-      y_pred, act = model.predict(X_val), y_val
+      y_pred, act = model.predict(X_val).reshape(-1), y_val
 
     baseloads, dfs = get_baseloads_and_parts(colmod, y_pred, act)
 
