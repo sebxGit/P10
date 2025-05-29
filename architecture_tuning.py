@@ -690,6 +690,7 @@ if __name__ == "__main__":
 
   if 'dropout' not in dpad_params:
     dpad_params['dropout'] = 0.5
+    dpad_params['num_workers'] = 2
 
   selected_models = ast.literal_eval(args.models)
   combined_name = "-".join([m for m in selected_models])
