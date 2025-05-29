@@ -688,7 +688,6 @@ if __name__ == "__main__":
   ada_params = ast.literal_eval(hparams[hparams['model'] == 'AdaBoostRegressor']['parameters'].values[0])
   gb_params = ast.literal_eval(hparams[hparams['model'] == 'GradientBoostingRegressor']['parameters'].values[0])
 
-
   dpad_params['dropout'] = 0.5
   dpad_params['num_workers'] = 2
 
