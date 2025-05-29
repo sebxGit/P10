@@ -617,7 +617,7 @@ def get_baseloads_and_parts(colmod, y_pred, actuals):
 
   return baseloads, dfs
 
-def objective(args, trial):
+def objective(args, trial, study):
     params = {
         'input_size': 22 if args.dataset == "Colorado" else 24,
         'pred_len': args.pred_len,
@@ -794,17 +794,15 @@ def objective(args, trial):
       
     score = np.mean(recall_scores) if len(recall_scores) > 0 else 0
 
-    if score > max_score:
-      max_score = score
-      best_baseload = baseload
-      best_predictions = predictions
-      best_actuals = actuals
-
+    if score > study.best_value:
+      best_list.clear()
+      best_list.append({'baseload': baseload, 'predictions': predictions, 'actuals': actuals})
+      
     return score
 
-def safe_objective(args, trial):
+def safe_objective(args, trial, study):
   try:
-    return objective(args, trial)
+    return objective(args, trial, study)
   except Exception as e:
     print(f"Failed trial: {e}. Skipped this trial.")
     return float('inf')
@@ -832,13 +830,7 @@ def tune_model_with_optuna(args, n_trials):
     print("Starting a new tuning.")
     study = optuna.create_study(direction="maximize", study_name=study_name)
 
-
-  max_score = float('-inf')
-  best_baseload = 0
-  best_predictions = None
-  best_actuals = None
-
-  study.optimize(lambda trial: safe_objective(args, trial), n_trials=n_trials, gc_after_trial=True, timeout=37800)
+  study.optimize(lambda trial: safe_objective(args, trial, study), n_trials=n_trials, gc_after_trial=True, timeout=37800)
 
   print("Len trials:", len(study.trials))
   print("Best params:", study.best_params)
@@ -855,9 +847,11 @@ def tune_model_with_optuna(args, n_trials):
     df_tuning = pd.concat([df_tuning, new_row_df], ignore_index=True)
     df_tuning = df_tuning.sort_values(by=['model', 'val_loss'], ascending=True).reset_index(drop=True)
 
+    baseload, predictions, actuals = best_list[0]['baseload'], best_list[0]['predictions'], best_list[0]['actuals']
+
     #baseload plot
     plt.figure(figsize=(15, 4))
-    plt.plot(best_baseload, label='Baseload')
+    plt.plot(baseload, label='Baseload')
     plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
     plt.xlabel('Samples')
     plt.ylabel('Electricity Consumption (kW)')
@@ -868,9 +862,8 @@ def tune_model_with_optuna(args, n_trials):
 
     # pred and act plot
     plt.figure(figsize=(15, 4))
-    plt.plot(best_actuals, label='Actuals+baseload')
-    plt.plot(best_predictions, label=f'model+baseload')
-    plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
+    plt.plot(actuals, label='Actuals')
+    plt.plot(predictions, label=f'predictions')
     plt.xlabel('Samples')
     plt.ylabel('Electricity Consumption (kW)')
     plt.legend()
@@ -899,5 +892,7 @@ if __name__ == '__main__':
   parser.add_argument("--trials", type=int, default=150) #change
 
   args = parser.parse_args()
+  
+  best_list = []
 
   best_params = tune_model_with_optuna(args, n_trials=args.trials)
