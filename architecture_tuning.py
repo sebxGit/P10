@@ -554,7 +554,7 @@ def create_and_save_ensemble(combined_name):
   filename = f"{folder_path}/predictions_{combined_name}.pt"
   torch.save(ensemble_predictions, filename)
 
-def objective(args, trial, all_subsets):
+def objective(args, trial, all_subsets, study):
   all_subsets_as_strings = [str(subset) for subset in all_subsets]
   selected_subset_as_string = trial.suggest_categorical("model_subsets", all_subsets_as_strings)
   selected_subset = ast.literal_eval(selected_subset_as_string)
