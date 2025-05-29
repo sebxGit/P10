@@ -639,5 +639,10 @@ if __name__ == "__main__":
     for batch in colmod.predict_dataloader():
       x, y = batch
       actuals.extend(y.numpy())
+
+    actuals_flattened = [item for sublist in actuals for item in sublist]
+
+    mae = nn.L1Loss()(y_pred, actuals_flattened)
+    mse = nn.MSELoss()(y_pred, actuals_flattened)
     
     

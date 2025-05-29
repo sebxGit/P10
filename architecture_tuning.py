@@ -688,6 +688,9 @@ if __name__ == "__main__":
   ada_params = ast.literal_eval(hparams[hparams['model'] == 'AdaBoostRegressor']['parameters'].values[0])
   gb_params = ast.literal_eval(hparams[hparams['model'] == 'GradientBoostingRegressor']['parameters'].values[0])
 
+  if 'dropout' not in dpad_params:
+    dpad_params['dropout'] = 0.5
+
   selected_models = ast.literal_eval(args.models)
   combined_name = "-".join([m for m in selected_models])
 
