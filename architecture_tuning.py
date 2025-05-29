@@ -631,7 +631,7 @@ def objective(args, trial, all_subsets):
 parser = ArgumentParser()
 parser.add_argument("--criterion", type=str, default="MAELoss")
 parser.add_argument("--models", type=str, default="['RandomForestRegressor', 'GradientBoostingRegressor', 'AdaBoostRegressor', 'LSTM', 'GRU', 'PatchMixer', 'xPatch', 'DPAD']")
-parser.add_argument("--dataset", type=str, default="SDU")
+parser.add_argument("--dataset", type=str, default="Colorado")
 parser.add_argument("--input_size", type=int, default=24)
 parser.add_argument("--pred_len", type=int, default=24)
 parser.add_argument("--stride", type=int, default=24)
@@ -726,7 +726,6 @@ if __name__ == "__main__":
     plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_classification_predact_plot.png')
     plt.show()
     plt.clf()
-
 
     tuning_results = list(dict.fromkeys(tuning_results)) # remove duplicates
     sorted_trials = sorted(tuning_results, key=lambda x: x['mae'])
