@@ -659,10 +659,12 @@ def objective(args, trial, all_subsets):
   y_pred = torch.load(f"Tunings/{combined_name}/predictions_{combined_name}.pt", weights_only=False)
   y_pred = y_pred.flatten()
 
-  y_val_tensor = torch.tensor(colmod.y_val.values if isinstance(colmod.y_val, pd.Series) else colmod.y_val, dtype=torch.float32)
-  y_pred_tensor = torch.tensor(y_pred, dtype=torch.float32)
+  act = []
+  for batch in colmod.predict_dataloader():
+    x, y = batch
+    act.extend(y.numpy())
 
-  baseloads, dfs = get_baseloads_and_parts(colmod, y_pred_tensor, y_val_tensor)
+  baseloads, dfs = get_baseloads_and_parts(colmod, y_pred, act)
 
   recall_scores = []
 
@@ -691,7 +693,6 @@ def objective(args, trial, all_subsets):
     trial.set_user_attr('baseload', baseload)
     trial.set_user_attr('predictions', predictions)
     trial.set_user_attr('actuals', actuals)
-    trial.set_user_attr('y_pred', y_pred)
     recall_scores.append(recall_score(TP, FN))
 
   total_recall_score = np.mean(recall_scores) if len(recall_scores) > 0 else 0
@@ -713,7 +714,6 @@ parser.add_argument("--seq_len", type=int, default=24*7)
 parser.add_argument("--optimizer", type=str, default="Adam")
 parser.add_argument("--scaler", type=str, default="MinMaxScaler")
 parser.add_argument("--load", type=str, default='True')
-parser.add_argument("--plot", type=str, default='True')
 parser.add_argument("--trials", type=int, default=150)
 parser.add_argument("--threshold", type=float, default=500)
 parser.add_argument("--downscaling", type=int, default=13)
@@ -788,6 +788,33 @@ if __name__ == "__main__":
 
   if study.best_value != float('inf'):
     joblib.dump(study, f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_architecture_tuning_classification.pkl')
+
+    baseload = study.best_trial.user_attrs["baseload"]
+    predictions = study.best_trial.user_attrs["predictions"]
+    actuals = study.best_trial.user_attrs["actuals"]
+
+    #baseload plot
+    plt.figure(figsize=(15, 4))
+    plt.plot(baseload, label='Baseload')
+    plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
+    plt.xlabel('Samples')
+    plt.ylabel('Electricity Consumption (kW)')
+    plt.legend()
+    plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_classification_baseload_plot.png')
+    plt.show()
+    plt.clf()
+
+    # pred and act plot
+    plt.figure(figsize=(15, 4))
+    plt.plot(actuals, label='Actuals+baseload')
+    plt.plot(predictions, label=f'model+baseload')
+    plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
+    plt.xlabel('Samples')
+    plt.ylabel('Electricity Consumption (kW)')
+    plt.legend()
+    plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_classification_predact_plot.png')
+    plt.show()
+    plt.clf()
 
     tuning_results = list(dict.fromkeys(tuning_results)) # remove duplicates
     sorted_trials = sorted(tuning_results, key=lambda x: x['rec'])

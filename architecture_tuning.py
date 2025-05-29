@@ -610,8 +610,16 @@ def objective(args, trial, all_subsets):
   mae = nn.L1Loss()(y_val_tensor[-len(y_pred_tensor):], y_pred_tensor)
   mse = nn.MSELoss()(y_val_tensor[-len(y_pred_tensor):], y_pred_tensor)
 
+  actuals = []
+  for batch in colmod.predict_dataloader():
+    x, y = batch
+    actuals.extend(y.numpy())
+
+  actuals_flattened = [item for sublist in actuals for item in sublist]
+
   trial.set_user_attr('mse', mse.item())
-  trial.set_user_attr('y_pred', y_pred)
+  trial.set_user_attr('predictions', y_pred)
+  trial.set_user_attr('actuals', actuals_flattened)
   
   # rank top 10 baggings save in trial.set_user_attr
   tuning_results.append({'combined_name': combined_name, 'mse': mse.item(), 'mae': mae.item(), 'parameters': trial.params})
@@ -701,10 +709,27 @@ if __name__ == "__main__":
   if study.best_value != float('inf'):
     joblib.dump(study, f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_architecture_tuning.pkl')
 
+    predictions = study.best_trial.user_attrs["predictions"]
+    actuals = study.best_trial.user_attrs["actuals"]
+
+    parameters = study.best_trial.params["model_subsets"]
+    parsed_parameters = ast.literal_eval(parameters)
+    model_subsets = ast.literal_eval(parsed_parameters['model_subsets'])
+
+    # pred and act plot
+    plt.figure(figsize=(15, 4))
+    plt.plot(actuals, label='Actuals+baseload')
+    plt.plot(predictions, label=f'{model_subsets} Predictions')
+    plt.xlabel('Samples')
+    plt.ylabel('Electricity Consumption (kW)')
+    plt.legend()
+    plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_classification_predact_plot.png')
+    plt.show()
+    plt.clf()
+
+
     tuning_results = list(dict.fromkeys(tuning_results)) # remove duplicates
     sorted_trials = sorted(tuning_results, key=lambda x: x['mae'])
     top_10_tunings = sorted_trials[:10]
     df_top_10 = pd.DataFrame(top_10_tunings)
     df_top_10.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning.csv', index=False)
-    df = sorted_trials[0]['y_pred']
-    df.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning_best.csv', index=False)
