@@ -790,6 +790,11 @@ def objective(args, trial):
       FP = np.sum((pred_class == 1) & (actual_class == 0))
       FN = np.sum((pred_class == 0) & (actual_class == 1))
 
+      if y_pred is not None:
+        trial.set_user_attr('predictions', y_pred)
+      else:
+        raise ValueError("y_pred is None, model did not return predictions.")
+
       trial.set_user_attr('baseload', baseload)
       trial.set_user_attr('predictions', predictions)
       trial.set_user_attr('actuals', actuals)
