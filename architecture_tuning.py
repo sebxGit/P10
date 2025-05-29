@@ -696,14 +696,15 @@ if __name__ == "__main__":
   
   tuning_results = []
 
-  study.optimize(lambda trial: safe_objective(args, trial, all_subsets), n_trials=20, gc_after_trial=True, timeout=37800)
+  study.optimize(lambda trial: safe_objective(args, trial, all_subsets), n_trials=150, gc_after_trial=True, timeout=37800)
 
   if study.best_value != float('inf'):
     joblib.dump(study, f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_architecture_tuning.pkl')
 
+    tuning_results = list(dict.fromkeys(tuning_results)) # remove duplicates
     sorted_trials = sorted(tuning_results, key=lambda x: x['mae'])
     top_10_tunings = sorted_trials[:10]
     df_top_10 = pd.DataFrame(top_10_tunings)
     df_top_10.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning.csv', index=False)
     df = sorted_trials[0]['y_pred']
-    df.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning_classification_best.csv', index=False)
+    df.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning_best.csv', index=False)
