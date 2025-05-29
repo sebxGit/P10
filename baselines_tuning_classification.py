@@ -795,12 +795,9 @@ def objective(args, trial):
       else:
         raise ValueError("y_pred is None, model did not return predictions.")
 
-      trial.set_user_attr('baseload', baseload)
-      trial.set_user_attr('predictions', predictions)
-      trial.set_user_attr('actuals', actuals)
       recall_scores.append(recall_score(TP, FN))
 
-    return np.mean(recall_scores) if len(recall_scores) > 0 else 0
+    return np.mean(recall_scores) if len(recall_scores) > 0 else 0, {"actuals": actuals, "predictions": predictions, "baseload": baseload}
 
 def safe_objective(args, trial):
   try:
@@ -849,9 +846,10 @@ def tune_model_with_optuna(args, n_trials):
     df_tuning = pd.concat([df_tuning, new_row_df], ignore_index=True)
     df_tuning = df_tuning.sort_values(by=['model', 'val_loss'], ascending=True).reset_index(drop=True)
 
-    baseload = study.best_trial.user_attrs["baseload"]
-    predictions = study.best_trial.user_attrs["predictions"]
-    actuals = study.best_trial.user_attrs["actuals"]
+    best_metric, best_values = study.best_trial.value
+    actuals = best_values["actuals"]
+    predictions = best_values["predictions"]
+    baseload = best_values["baseload"]
 
     #baseload plot
     plt.figure(figsize=(15, 4))
