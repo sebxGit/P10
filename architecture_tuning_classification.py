@@ -625,6 +625,10 @@ def objective(args, trial, all_subsets, study):
     model_name = model.name if isinstance(model, torch.nn.Module) else type(model.estimator).__name__ if model.__class__.__name__ == 'MultiOutputRegressor' else model.__class__.__name__
     _hparams = ast.literal_eval(hparams[hparams['model'] == model_name]['parameters'].values[0])
 
+    if model_name == 'DPAD':
+      _hparams['dropout'] = 0.5
+      _hparams['num_workers'] = 2
+
     print("Hyperparameters: ", _hparams)
 
     if args.dataset == "Colorado":
