@@ -585,8 +585,7 @@ if __name__ == "__main__":
     combined_name = args.models
     file_path = f'Tunings/{args.dataset}_{args.pred_len}h_tuning.csv'
 
-  output_dir = f'Predictions/{args.dataset}' 
-  os.makedirs(output_dir, exist_ok=True)
+  os.makedirs('Predictions/', exist_ok=True)
   
   all_predictions = []
   metrics = []
