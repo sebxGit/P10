@@ -599,7 +599,7 @@ if __name__ == "__main__":
     if model_name == "DPAD": 
       hyperparameters['num_workers'] = 2
       hyperparameters['dropout'] = 0.5
-    if model_name == "DPAD": hyperparameters['num_workers'] = 2
+
     model = initialize_model(model_name, hyperparameters)
 
     # prepare colmod
