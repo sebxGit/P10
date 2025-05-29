@@ -726,10 +726,6 @@ if __name__ == "__main__":
 
     predictions, actuals = best_list[0]['predictions'], best_list[0]['actuals']
 
-    parameters = study.best_trial.params["model_subsets"]
-    parsed_parameters = ast.literal_eval(parameters)
-    model_subsets = ast.literal_eval(parsed_parameters['model_subsets'])
-
     tuning_results = list(dict.fromkeys(tuning_results)) # remove duplicates
     sorted_trials = sorted(tuning_results, key=lambda x: x['mae'])
     top_10_tunings = sorted_trials[:10]
