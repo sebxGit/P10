@@ -794,10 +794,17 @@ def objective(args, trial):
         trial.set_user_attr('predictions', y_pred)
       else:
         raise ValueError("y_pred is None, model did not return predictions.")
-
       recall_scores.append(recall_score(TP, FN))
+      
+    score = np.mean(recall_scores) if len(recall_scores) > 0 else 0
 
-    return np.mean(recall_scores) if len(recall_scores) > 0 else 0, {"actuals": actuals, "predictions": predictions, "baseload": baseload}
+    if score > max_score:
+      max_score = score
+      trial.set_user_attr('baseload', baseload)
+      trial.set_user_attr('predictions', predictions)
+      trial.set_user_attr('actuals', actuals)
+
+    return score
 
 def safe_objective(args, trial):
   try:
@@ -829,6 +836,12 @@ def tune_model_with_optuna(args, n_trials):
     print("Starting a new tuning.")
     study = optuna.create_study(direction="maximize", study_name=study_name)
 
+
+  max_score = float('-inf')
+  best_baseload = 0
+  best_predictions = None
+  best_actuals = None
+
   study.optimize(lambda trial: safe_objective(args, trial), n_trials=n_trials, gc_after_trial=True, timeout=37800)
 
   print("Len trials:", len(study.trials))
@@ -846,14 +859,9 @@ def tune_model_with_optuna(args, n_trials):
     df_tuning = pd.concat([df_tuning, new_row_df], ignore_index=True)
     df_tuning = df_tuning.sort_values(by=['model', 'val_loss'], ascending=True).reset_index(drop=True)
 
-    best_metric, best_values = study.best_trial.value
-    actuals = best_values["actuals"]
-    predictions = best_values["predictions"]
-    baseload = best_values["baseload"]
-
     #baseload plot
     plt.figure(figsize=(15, 4))
-    plt.plot(baseload, label='Baseload')
+    plt.plot(best_baseload, label='Baseload')
     plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
     plt.xlabel('Samples')
     plt.ylabel('Electricity Consumption (kW)')
@@ -864,8 +872,8 @@ def tune_model_with_optuna(args, n_trials):
 
     # pred and act plot
     plt.figure(figsize=(15, 4))
-    plt.plot(actuals, label='Actuals+baseload')
-    plt.plot(predictions, label=f'model+baseload')
+    plt.plot(best_actuals, label='Actuals+baseload')
+    plt.plot(best_predictions, label=f'model+baseload')
     plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
     plt.xlabel('Samples')
     plt.ylabel('Electricity Consumption (kW)')
