@@ -740,6 +740,6 @@ if __name__ == "__main__":
     plt.xlabel('Samples')
     plt.ylabel('Electricity Consumption (kW)')
     plt.legend()
-    plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_predact_plot.png')
+    plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_predact_plot.png')
     plt.show()
     plt.clf()

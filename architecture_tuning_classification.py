@@ -703,14 +703,9 @@ def objective(args, trial, all_subsets, study):
 
   tuning_results.append({'combined_name': combined_name, 'rec': total_recall_score, 'parameters': trial.params})
 
-  print("Total Recall Score:", total_recall_score)
-  print("Study Best Value:", study.best_value)
-  print("Best List Before Append:", best_list)
-
-  if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials):
-      if total_recall_score >= study.best_value:
-        best_list.clear()
-        best_list.append({'baseload': baseload, 'predictions': predictions, 'actuals': actuals})
+  if len(study.trials) > 0 and total_recall_score >= study.best_value:
+      best_list.clear()
+      best_list.append({'baseload': baseload, 'predictions': predictions, 'actuals': actuals})
 
   if os.path.exists(f"Tunings/{combined_name}"):
     shutil.rmtree(f"Tunings/{combined_name}")
@@ -718,7 +713,7 @@ def objective(args, trial, all_subsets, study):
 
 parser = ArgumentParser()
 parser.add_argument("--criterion", type=str, default="MAELoss")
-parser.add_argument("--models", type=str, default="['RandomForestRegressor', 'GradientBoostingRegressor', 'AdaBoostRegressor', 'LSTM', 'GRU', 'PatchMixer', 'xPatch', 'DPAD']")
+parser.add_argument("--models", type=str, default="['RandomForestRegressor', 'GradientBoostingRegressor', 'AdaBoostRegressor']") #"['RandomForestRegressor', 'GradientBoostingRegressor', 'AdaBoostRegressor', 'LSTM', 'GRU', 'PatchMixer', 'xPatch', 'DPAD']"
 parser.add_argument("--dataset", type=str, default="Colorado")
 parser.add_argument("--input_size", type=int, default=22)
 parser.add_argument("--pred_len", type=int, default=24)
@@ -781,7 +776,6 @@ if __name__ == "__main__":
   selected_models = ast.literal_eval(args.models)
   combined_name = "-".join([m for m in selected_models])
 
-  best_list = []
 
   all_subsets = []
   for r in range(1, len(selected_models) + 1):
@@ -801,6 +795,7 @@ if __name__ == "__main__":
     study = optuna.create_study(direction="minimize", study_name=f"Bagging-{combined_name}")
 
   tuning_results = []
+  best_list = []
 
   study.optimize(lambda trial: objective(args, trial, all_subsets, study), n_trials=args.trials, gc_after_trial=True, timeout=37800)
 
