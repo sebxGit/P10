@@ -798,7 +798,6 @@ def objective(args, trial, study):
       if score > study.best_value:
         best_list.clear()
         best_list.append({'baseload': baseload, 'predictions': predictions, 'actuals': actuals})
-
     return score
 
 def safe_objective(args, trial, study):
