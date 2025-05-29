@@ -797,7 +797,7 @@ def objective(args, trial, study):
     if score > study.best_value:
       best_list.clear()
       best_list.append({'baseload': baseload, 'predictions': predictions, 'actuals': actuals})
-      
+
     return score
 
 def safe_objective(args, trial, study):
@@ -830,7 +830,7 @@ def tune_model_with_optuna(args, n_trials):
     print("Starting a new tuning.")
     study = optuna.create_study(direction="maximize", study_name=study_name)
 
-  study.optimize(lambda trial: safe_objective(args, trial, study), n_trials=n_trials, gc_after_trial=True, timeout=37800)
+  study.optimize(lambda trial: objective(args, trial, study), n_trials=n_trials, gc_after_trial=True, timeout=37800) #change
 
   print("Len trials:", len(study.trials))
   print("Best params:", study.best_params)
