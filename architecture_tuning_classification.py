@@ -820,7 +820,7 @@ if __name__ == "__main__":
     plt.xlabel('Samples')
     plt.ylabel('Electricity Consumption (kW)')
     plt.legend()
-    plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_classification_baseload_plot.png')
+    plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_classification_baseload_plot.png')
     plt.show()
     plt.clf()
 
@@ -832,6 +832,6 @@ if __name__ == "__main__":
     plt.xlabel('Samples')
     plt.ylabel('Electricity Consumption (kW)')
     plt.legend()
-    plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_classification_predact_plot.png')
+    plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_classification_predact_plot.png')
     plt.show()
     plt.clf()
