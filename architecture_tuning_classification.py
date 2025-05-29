@@ -703,9 +703,9 @@ def objective(args, trial, all_subsets, study):
 
   tuning_results.append({'combined_name': combined_name, 'rec': total_recall_score, 'parameters': trial.params})
 
-  if len(study.trials) > 0 and total_recall_score >= study.best_value:
-      best_list.clear()
-      best_list.append({'baseload': baseload, 'predictions': predictions, 'actuals': actuals})
+  if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials) and study.best_value != None and mae >= study.best_value:
+    best_list.clear()
+    best_list.append({'predictions': y_pred, 'actuals': actuals_flat})
 
   if os.path.exists(f"Tunings/{combined_name}"):
     shutil.rmtree(f"Tunings/{combined_name}")
@@ -713,7 +713,7 @@ def objective(args, trial, all_subsets, study):
 
 parser = ArgumentParser()
 parser.add_argument("--criterion", type=str, default="MAELoss")
-parser.add_argument("--models", type=str, default="['RandomForestRegressor', 'GradientBoostingRegressor', 'AdaBoostRegressor']") #"['RandomForestRegressor', 'GradientBoostingRegressor', 'AdaBoostRegressor', 'LSTM', 'GRU', 'PatchMixer', 'xPatch', 'DPAD']"
+parser.add_argument("--models", type=str, default="['RandomForestRegressor', 'GradientBoostingRegressor', 'AdaBoostRegressor', 'LSTM', 'GRU', 'PatchMixer', 'xPatch', 'DPAD']")
 parser.add_argument("--dataset", type=str, default="Colorado")
 parser.add_argument("--input_size", type=int, default=22)
 parser.add_argument("--pred_len", type=int, default=24)
@@ -721,8 +721,8 @@ parser.add_argument("--stride", type=int, default=24)
 parser.add_argument("--seq_len", type=int, default=24*7)
 parser.add_argument("--optimizer", type=str, default="Adam")
 parser.add_argument("--scaler", type=str, default="MinMaxScaler")
-parser.add_argument("--load", type=str, default='True')
-parser.add_argument("--trials", type=int, default=1)
+parser.add_argument("--load", type=str, default='False')
+parser.add_argument("--trials", type=int, default=100)
 parser.add_argument("--threshold", type=float, default=500)
 parser.add_argument("--downscaling", type=int, default=13)
 parser.add_argument("--multiplier", type=int, default=2)
@@ -804,6 +804,15 @@ if __name__ == "__main__":
 
     baseload, predictions, actuals = best_list[0]['baseload'], best_list[0]['predictions'], best_list[0]['actuals']
 
+    unique_results = []
+    for d in tuning_results:
+      if d not in unique_results:
+        unique_results.append(d)
+    sorted_trials = sorted(tuning_results, key=lambda x: x.get('rec', float('inf')))
+    top_10_tunings = sorted_trials[:10]
+    df_top_10 = pd.DataFrame(top_10_tunings)
+    df_top_10.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning_classification.csv', index=False)
+    
     #baseload plot
     plt.figure(figsize=(15, 4))
     plt.plot(baseload, label='Baseload')
@@ -826,11 +835,3 @@ if __name__ == "__main__":
     plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_classification_predact_plot.png')
     plt.show()
     plt.clf()
-
-    tuning_results = list(dict.fromkeys(tuning_results)) # remove duplicates
-    sorted_trials = sorted(tuning_results, key=lambda x: x['rec'])
-    top_10_tunings = sorted_trials[:10]
-    df_top_10 = pd.DataFrame(top_10_tunings)
-    df_top_10.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning_classification.csv', index=False)
-    df = sorted_trials[0]['y_pred']
-    df.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning_classification_best.csv', index=False)

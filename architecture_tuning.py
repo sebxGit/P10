@@ -627,10 +627,9 @@ def objective(args, trial, all_subsets, study):
   # rank top 10 baggings save in trial.set_user_attr
   tuning_results.append({'combined_name': combined_name, 'mse': mse.item(), 'mae': mae.item(), 'parameters': trial.params})
 
-  if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials):
-    if mae >= study.best_value:
-      best_list.clear()
-      best_list.append({'predictions': y_pred, 'actuals': actuals_flattened})
+  if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials) and study.best_value != None and mae >= study.best_value:
+    best_list.clear()
+    best_list.append({'predictions': y_pred, 'actuals': actuals_flattened})
 
   if os.path.exists(f"Tunings/{combined_name}"):
     shutil.rmtree(f"Tunings/{combined_name}")
@@ -646,8 +645,8 @@ parser.add_argument("--stride", type=int, default=24)
 parser.add_argument("--seq_len", type=int, default=24*7)
 parser.add_argument("--optimizer", type=str, default="Adam")
 parser.add_argument("--scaler", type=str, default="MinMaxScaler")
-parser.add_argument("--load", type=str, default="True")
-parser.add_argument("--trials", type=int, default=1) #change
+parser.add_argument("--load", type=str, default="False")
+parser.add_argument("--trials", type=int, default=100)
 
 criterion_map = { 
                   "MSELoss": nn.MSELoss, 
@@ -726,8 +725,12 @@ if __name__ == "__main__":
 
     predictions, actuals = best_list[0]['predictions'], best_list[0]['actuals']
 
-    tuning_results = list(dict.fromkeys(tuning_results)) # remove duplicates
-    sorted_trials = sorted(tuning_results, key=lambda x: x['mae'])
+    unique_results = []
+    for d in tuning_results:
+      if d not in unique_results:
+        unique_results.append(d)
+    tuning_results = unique_results
+    sorted_trials = sorted(tuning_results, key=lambda x: x.get('mae', float('inf')))
     top_10_tunings = sorted_trials[:10]
     df_top_10 = pd.DataFrame(top_10_tunings)
     df_top_10.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning.csv', index=False)
