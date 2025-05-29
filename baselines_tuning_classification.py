@@ -789,11 +789,7 @@ def objective(args, trial):
       TN = np.sum((pred_class == 0) & (actual_class == 0))
       FP = np.sum((pred_class == 1) & (actual_class == 0))
       FN = np.sum((pred_class == 0) & (actual_class == 1))
-
-      if y_pred is not None:
-        trial.set_user_attr('predictions', y_pred)
-      else:
-        raise ValueError("y_pred is None, model did not return predictions.")
+      
       recall_scores.append(recall_score(TP, FN))
       
     score = np.mean(recall_scores) if len(recall_scores) > 0 else 0
@@ -803,6 +799,7 @@ def objective(args, trial):
       best_baseload = baseload
       best_predictions = predictions
       best_actuals = actuals
+
     return score
 
 def safe_objective(args, trial):
