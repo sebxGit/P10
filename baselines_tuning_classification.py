@@ -762,7 +762,7 @@ def objective(args, trial):
       X_val, y_val = colmod.sklearn_setup("val")
       
       model.fit(X_train, y_train)
-      y_pred, act = model.predict(X_val), y_val
+      y_pred, act = model.predict(X_val).reshape(-1), y_val
 
     baseloads, dfs = get_baseloads_and_parts(colmod, y_pred, act)
 
@@ -855,7 +855,7 @@ def tune_model_with_optuna(args, n_trials):
     plt.xlabel('Samples')
     plt.ylabel('Electricity Consumption (kW)')
     plt.legend()
-    plt.savefig(f'Tunings/{args.dataset}/{args.pred_len}h_{args.model}_classification_baseload_plot.png')
+    plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_classification_baseload_plot.png')
     plt.show()
     plt.clf()
 
@@ -867,7 +867,7 @@ def tune_model_with_optuna(args, n_trials):
     plt.xlabel('Samples')
     plt.ylabel('Electricity Consumption (kW)')
     plt.legend()
-    plt.savefig(f'Tunings/{args.dataset}/{args.pred_len}h_{args.model}_classification_predact_plot.png')
+    plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_classification_predact_plot.png')
     plt.show()
     plt.clf()
 
