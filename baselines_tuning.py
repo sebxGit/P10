@@ -490,6 +490,7 @@ class SDUDataModule(L.LightningDataModule):
 
     # df['lag12h'] = df['Aggregated charging load'].shift(12)
     df['lag24h'] = df['Aggregated charging load'].shift(24)  # 1 day
+    df['lag24h'] = df['Aggregated charging load'].shift(48)  # 1 day
     # df['lag1w'] = df['Aggregated charging load'].shift(24*7)  # 1 week
 
     # df['roll_std_24h'] = df['Aggregated charging load'].rolling(window=24).std()
@@ -773,7 +774,7 @@ def get_actuals_and_prediction_flattened(colmod, prediction):
 
 def objective(args, trial):
     params = {  
-        'input_size': 22 if args.dataset == "Colorado" else 13,
+        'input_size': 22 if args.dataset == "Colorado" else 14,
         'pred_len': args.pred_len,
         'seq_len': 24*7,
         'stride': args.pred_len,
