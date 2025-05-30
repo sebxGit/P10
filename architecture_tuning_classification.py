@@ -695,9 +695,6 @@ def objective(args, trial, all_subsets, study):
     FP = np.sum((pred_class == 1) & (actual_class == 0))
     FN = np.sum((pred_class == 0) & (actual_class == 1))
 
-    trial.set_user_attr('baseload', baseload)
-    trial.set_user_attr('predictions', predictions)
-    trial.set_user_attr('actuals', actuals)
     recall_scores.append(recall_score(TP, FN))
 
   total_recall_score = np.mean(recall_scores) if len(recall_scores) > 0 else 0
@@ -706,7 +703,7 @@ def objective(args, trial, all_subsets, study):
 
   if len(study.trials) > 0 and study.best_value != None and total_recall_score >= study.best_value:
     best_list.clear()
-    best_list.append({'predictions': y_pred, 'actuals': actuals_flat})
+    best_list.append({'baseload': baseload, 'predictions': y_pred, 'actuals': actuals_flat})
 
   if os.path.exists(f"Tunings/{combined_name}"):
     shutil.rmtree(f"Tunings/{combined_name}")
