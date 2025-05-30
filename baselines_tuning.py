@@ -807,7 +807,8 @@ def objective(args, trial):
         'hidden_size': trial.suggest_int('hidden_size', 50, 200),
         # 'num_layers': trial.suggest_int('num_layers', 1, 10), ### CHANGE 
         'num_layers': 5,
-        'dropout': trial.suggest_float('dropout', 0.0, 1),
+        #'dropout': trial.suggest_float('dropout', 0.0, 1),
+        'dropout': 0.001,
       }
       model = LSTM(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "GRU":
