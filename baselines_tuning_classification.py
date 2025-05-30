@@ -793,7 +793,7 @@ def objective(args, trial, study):
 
 def safe_objective(args, trial, study):
   try:
-    return safe_objective(args, trial, study)
+    return objective(args, trial, study)
   except Exception as e:
     print(f"Failed trial: {e}. Skipped this trial.")
     return float('inf')
@@ -821,7 +821,7 @@ def tune_model_with_optuna(args, n_trials):
     print("Starting a new tuning.")
     study = optuna.create_study(direction="maximize", study_name=study_name)
 
-  study.optimize(lambda trial: objective(args, trial, study), n_trials=n_trials, gc_after_trial=True, timeout=37800) #change
+  study.optimize(lambda trial: safe_objective(args, trial, study), n_trials=n_trials, gc_after_trial=True, timeout=37800) #change
 
   print("Len trials:", len(study.trials))
   print("Best params:", study.best_params)
