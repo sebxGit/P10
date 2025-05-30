@@ -475,31 +475,23 @@ class SDUDataModule(L.LightningDataModule):
       # self.y_test = np.array(self.y_test)
 
   def train_dataloader(self):
-    train_dataset = TimeSeriesDataset(
-        self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+    train_dataset = TimeSeriesDataset(self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
     sampler = BootstrapSampler(len(train_dataset), random_state=SEED)
-    train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler,
-                              shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
-    # train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    if args.individual == 'False':
+      train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
+    else:
+      train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return train_loader
-
-  # def predict_dataloader(self):
-  #   test_dataset = TimeSeriesDataset(self.X_test, self.y_test, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-  #   test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
-  #   return test_loader
-
+  
   def predict_dataloader(self):
-    val_dataset = TimeSeriesDataset(
-        self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-    val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False,
-                            num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    val_dataset = TimeSeriesDataset(self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+    val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return val_loader
-
+  
   def sklearn_setup(self, set_name: str = "train"):
     if set_name == "train":
       if args.individual == 'False':
-        X, y = resample(self.X_train, self.y_train, replace=True,
-                        n_samples=len(self.X_train), random_state=SEED)
+        X, y = resample(self.X_train, self.y_train, replace=True, n_samples=len(self.X_train), random_state=SEED)
       else:
         X, y = self.X_train, self.y_train
     elif set_name == "val":
@@ -521,7 +513,7 @@ class SDUDataModule(L.LightningDataModule):
     # Unpack results
     X_window, y_target = zip(*results)
     return np.array(X_window), np.array(y_target)
-
+  
 class CustomWriter(BasePredictionWriter):
   def __init__(self, output_dir, write_interval, combined_name, model_name):
     super().__init__(write_interval)
@@ -830,7 +822,7 @@ def tune_model_with_optuna(args, n_trials):
     print("Starting a new tuning.")
     study = optuna.create_study(direction="maximize", study_name=study_name)
 
-  study.optimize(lambda trial: objective(args, trial, study), n_trials=n_trials, gc_after_trial=True, timeout=37800) #change
+  study.optimize(lambda trial: safe_objective(args, trial, study), n_trials=n_trials, gc_after_trial=True, timeout=37800) #change
 
   print("Len trials:", len(study.trials))
   print("Best params:", study.best_params)
