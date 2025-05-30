@@ -1015,4 +1015,4 @@ if __name__ == '__main__':
   parser.add_argument("--individual", type=str, default="False")
   args = parser.parse_args()
 
-  best_params = tune_model_with_optuna(args, n_trials=10)
+  best_params = tune_model_with_optuna(args, n_trials=1)
