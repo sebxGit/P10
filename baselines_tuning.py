@@ -955,7 +955,6 @@ def objective(args, trial):
       plt.xlabel('Time')
       plt.ylabel('Energy Consumption')
       plt.legend()
-      plt.savefig(f"sdu_testplot")
       plt.show()
       plt.savefig(f"sdu_testplot_{args.model}.png")
       plt.close()
