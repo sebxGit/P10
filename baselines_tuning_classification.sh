@@ -8,4 +8,4 @@
 #SBATCH --cpus-per-task=128
 #SBATCH --mem=192G
 
-singularity exec --nv energycontainerblackbox.sif python3 baselines_tuning_classification.py --dataset Colorado --pred_len 24  --model DPAD --individual False
+singularity exec --nv energycontainerblackbox.sif python3 baselines_tuning_classification.py --dataset Colorado --pred_len 24  --model GradientBoosting --individual False
