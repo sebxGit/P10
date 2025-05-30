@@ -38,7 +38,7 @@ from lightning.pytorch import seed_everything
 from joblib import Parallel, delayed
 
 # tensorboard --logdir=Predictions/MLP-GRU-LSTM
-SEED = 20
+SEED = 42
 seed_everything(SEED, workers=True)
 
 def convert_Colorado_to_hourly(data):
