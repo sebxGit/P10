@@ -559,8 +559,6 @@ def objective(args, trial, all_subsets, study):
   selected_subset_as_string = trial.suggest_categorical("model_subsets", all_subsets_as_strings)
   selected_subset = ast.literal_eval(selected_subset_as_string)
 
-  # bagging_models = [model_initializers[model]() for model in selected_subset if model in model_initializers]
-
   for model_name in selected_subset:
     print(f"-----Training {model_name} model-----")
     if model_name in model_initializers:

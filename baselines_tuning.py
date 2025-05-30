@@ -787,7 +787,7 @@ def objective(args, trial):
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
         #'max_epochs': trial.suggest_int('max_epochs', 1000, 5000, step=100), ###CHANGE
-        'max_epochs': 1000,
+        'max_epochs': 2000,
         #'num_workers': trial.suggest_int('num_workers', 5, 12) if args.model != "DPAD" else 2, ###CHANGE
         'num_workers': 11,
         'is_persistent': True
