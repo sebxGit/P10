@@ -627,7 +627,6 @@ def objective(args, trial, study):
         # 'num_workers': 0,
         'is_persistent': True #change
         # 'is_persistent': False
-
     }
 
     if args.dataset == "Colorado":
@@ -829,6 +828,10 @@ def tune_model_with_optuna(args, n_trials):
   print("Best validation loss:", study.best_value)
 
   if study.best_value != float('inf'):
+    if not os.path.exists(f'Tunings'):
+      os.makedirs(f'Tunings', exist_ok=True)
+      
+    joblib.dump(study, path_pkl)
     try:
       df_tuning = pd.read_csv(path_csv, delimiter=',')
     except Exception:
@@ -838,6 +841,8 @@ def tune_model_with_optuna(args, n_trials):
     new_row_df = pd.DataFrame([new_row]).dropna(axis=1, how='all')
     df_tuning = pd.concat([df_tuning, new_row_df], ignore_index=True)
     df_tuning = df_tuning.sort_values(by=['model', 'val_loss'], ascending=True).reset_index(drop=True)
+
+    df_tuning.to_csv(path_csv, index=False)
 
     baseload, predictions, actuals = best_list[0]['baseload'], best_list[0]['predictions'], best_list[0]['actuals']
 
@@ -863,11 +868,6 @@ def tune_model_with_optuna(args, n_trials):
     plt.show()
     plt.clf()
 
-    if not os.path.exists(f'Tunings'):
-      os.makedirs(f'Tunings', exist_ok=True)
-
-    df_tuning.to_csv(path_csv, index=False)
-    joblib.dump(study, path_pkl)
     return study.best_params
 
 if __name__ == '__main__':
