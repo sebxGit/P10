@@ -801,39 +801,38 @@ if __name__ == "__main__":
 
   study.optimize(lambda trial: objective(args, trial, all_subsets, study), n_trials=args.trials, gc_after_trial=True, timeout=37800)
 
-  if study.best_value != float('inf'):
-    joblib.dump(study, f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_architecture_tuning_classification.pkl')
+  joblib.dump(study, f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_architecture_tuning_classification.pkl')
 
-    unique_results = []
-    for d in tuning_results:
-      if d not in unique_results:
-        unique_results.append(d)
-    sorted_trials = sorted(tuning_results, key=lambda x: x.get('rec', float('inf')))
-    top_10_tunings = sorted_trials[:10]
-    df_top_10 = pd.DataFrame(top_10_tunings)
-    df_top_10.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning_classification.csv', index=False)
-    
-    baseload, predictions, actuals = best_list[0]['baseload'], best_list[0]['predictions'], best_list[0]['actuals']
+  unique_results = []
+  for d in tuning_results:
+    if d not in unique_results:
+      unique_results.append(d)
+  sorted_trials = sorted(tuning_results, key=lambda x: x.get('rec', float('inf')))
+  top_10_tunings = sorted_trials[:10]
+  df_top_10 = pd.DataFrame(top_10_tunings)
+  df_top_10.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning_classification.csv', index=False)
+  
+  baseload, predictions, actuals = best_list[0]['baseload'], best_list[0]['predictions'], best_list[0]['actuals']
 
-    #baseload plot
-    plt.figure(figsize=(15, 4))
-    plt.plot(baseload, label='Baseload')
-    plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
-    plt.xlabel('Samples')
-    plt.ylabel('Electricity Consumption (kW)')
-    plt.legend()
-    plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_classification_baseload_plot.png')
-    plt.show()
-    plt.clf()
+  #baseload plot
+  plt.figure(figsize=(15, 4))
+  plt.plot(baseload, label='Baseload')
+  plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
+  plt.xlabel('Samples')
+  plt.ylabel('Electricity Consumption (kW)')
+  plt.legend()
+  plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_classification_baseload_plot.png')
+  plt.show()
+  plt.clf()
 
-    # pred and act plot
-    plt.figure(figsize=(15, 4))
-    plt.plot(actuals, label='Actuals+baseload')
-    plt.plot(predictions, label=f'model+baseload')
-    plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
-    plt.xlabel('Samples')
-    plt.ylabel('Electricity Consumption (kW)')
-    plt.legend()
-    plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_classification_predact_plot.png')
-    plt.show()
-    plt.clf()
+  # pred and act plot
+  plt.figure(figsize=(15, 4))
+  plt.plot(actuals, label='Actuals+baseload')
+  plt.plot(predictions, label=f'model+baseload')
+  plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
+  plt.xlabel('Samples')
+  plt.ylabel('Electricity Consumption (kW)')
+  plt.legend()
+  plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_classification_predact_plot.png')
+  plt.show()
+  plt.clf()
