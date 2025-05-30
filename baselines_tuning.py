@@ -446,7 +446,7 @@ class SDUDataModule(L.LightningDataModule):
     # Mask zero away the zero values
     # df['Aggregated charging load'] = df['Aggregated charging load'].mask(df['Aggregated charging load'] == 0, np.nan)
     # print(f"Number of zero values: {df['Aggregated charging load'].isna().sum()} out of {len(df)}")
-    #df = df[df["Aggregated charging load"] != 0.0]
+    df = df[df["Aggregated charging load"] != 0.0]
 
     # print(f"Number of Masked values: {df['Aggregated charging load'].isna().sum()} out of {len(df)}")
     df.set_index('Timestamp', inplace=True) 
@@ -919,17 +919,6 @@ def objective(args, trial):
       # print(f"Predictions: min={pred.min()}, max={pred.max()}, mean={pred.mean()}")
       # print(f"Actuals: min={act.min()}, max={act.max()}, mean={act.mean()}")
 
-      plt.figure(figsize=(10, 5))
-      plt.plot(act, label='Actuals', color='blue')
-      plt.plot(pred, label='Predictions', color='orange')
-      plt.title(f'Actuals vs Predictions for {args.model} model')
-      plt.xlabel('Time')
-      plt.ylabel('Energy Consumption') 
-      plt.legend()
-      plt.savefig(f"Tunings/SDU_PLOT{args.model}_{trial.number}.png")
-      plt.show()
-      plt.close()
-
       train_loss = mean_absolute_error(act, pred)
 
     elif isinstance(model, BaseEstimator):
@@ -948,19 +937,18 @@ def objective(args, trial):
       # pred = np.expm1(pred)  # Inverse log1p transformation
       # act = np.expm1(act)  # Inverse log1p transformation
 
-      plt.figure(figsize=(10, 5))
-      plt.plot(act, label='Actuals', color='blue')
-      plt.plot(pred, label='Predictions', color='orange')
-      plt.title(f'Actuals vs Predictions for {args.model} model')
-      plt.xlabel('Time')
-      plt.ylabel('Energy Consumption')
-      plt.legend()
-      plt.show()
-      plt.savefig(f"sdu_testplot_{args.model}.png")
-      plt.close()
-
       train_loss = mean_absolute_error(act, pred)
 
+    plt.figure(figsize=(10, 5))
+    plt.plot(act, label='Actuals', color='blue')
+    plt.plot(pred, label='Predictions', color='orange')
+    plt.title(f'Actuals vs Predictions for {args.model} model')
+    plt.xlabel('Time')
+    plt.ylabel('Energy Consumption')
+    plt.legend()
+    plt.show()
+    plt.savefig(f"sdu_testplot_{args.model}.png")
+    plt.close()
     return train_loss
 
 def safe_objective(args, trial):
