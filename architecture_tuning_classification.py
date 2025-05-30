@@ -699,6 +699,8 @@ def objective(args, trial, all_subsets, study):
 
   total_recall_score = np.mean(recall_scores) if len(recall_scores) > 0 else 0
 
+  mae = mean_absolute_error(actuals, predictions)
+
   tuning_results.append({'combined_name': combined_name, 'rec': total_recall_score, 'parameters': trial.params})
 
   if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials) and study.best_value != None and total_recall_score >= study.best_value:
@@ -707,7 +709,7 @@ def objective(args, trial, all_subsets, study):
 
   if os.path.exists(f"Tunings/{combined_name}"):
     shutil.rmtree(f"Tunings/{combined_name}")
-  return total_recall_score
+  return total_recall_score, mae
 
 parser = ArgumentParser()
 parser.add_argument("--criterion", type=str, default="MAELoss")
@@ -787,10 +789,10 @@ if __name__ == "__main__":
       print("Loaded an old study:")
     except Exception as e:
       print("No previous tuning found. Starting a new tuning.", e)
-      study = optuna.create_study(direction="maximize", study_name=f"Bagging-{combined_name}")
+      study = optuna.create_study(directions=["maximize", "minimize"], study_name=f"Bagging-{combined_name}")
   else:
     print("Starting a new tuning.")
-    study = optuna.create_study(direction="maximize", study_name=f"Bagging-{combined_name}")
+    study = optuna.create_study(directions=["maximize", "minimize"], study_name=f"Bagging-{combined_name}")
 
   tuning_results = []
   best_list = []
