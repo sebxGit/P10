@@ -42,21 +42,6 @@ SEED = 42
 seed_everything(SEED, workers=True)
 
 
-class QuantileLoss(nn.Module):
-    def __init__(self, quantile: float):
-        super().__init__()
-        assert 0 < quantile < 1, "Quantile must be between 0 and 1"
-        self.quantile = quantile
-
-    def forward(self, y_pred: torch.Tensor, y_true: torch.Tensor) -> torch.Tensor:
-        error = y_true - y_pred
-        loss = torch.where(
-            error >= 0,
-            self.quantile * error,
-            (self.quantile - 1) * error
-        )
-        return loss.mean()
-
 def convert_Colorado_to_hourly(data):
 
     # Remove unnecessary columns
@@ -792,14 +777,15 @@ def objective(args, trial):
         'pred_len': args.pred_len,
         'seq_len': 24*7,
         'stride': args.pred_len,
-        'batch_size': trial.suggest_int('batch_size', 32, 128, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
-        'criterion': QuantileLoss(quantile=0.8), ###CHANGE
+        'batch_size': 24, 
+        # 'batch_size': trial.suggest_int('batch_size', 32, 128, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
+        'criterion': torch.nn.HuberLoss(), ###CHANGE
         'optimizer': torch.optim.Adam,
         'scaler': MinMaxScaler(), ###CHANGE
         'learning_rate': trial.suggest_float('learning_rate', 1e-5, 1e-3, log=True),
         'seed': 42,
         #'max_epochs': trial.suggest_int('max_epochs', 1000, 5000, step=100), ###CHANGE
-        'max_epochs': 2000,
+        'max_epochs': 1000,
         #'num_workers': trial.suggest_int('num_workers', 5, 12) if args.model != "DPAD" else 2, ###CHANGE
         'num_workers': 12,
         'is_persistent': True
@@ -935,7 +921,7 @@ def objective(args, trial):
       pred_tensor = torch.tensor(pred, dtype=torch.float32)
 
       # train_loss = torch.nn.HuberLoss(act_tensor, pred_tensor) ## Changed
-      criterion = QuantileLoss(quantile=0.8)  # Changed to QuantileLoss
+      criterion = torch.nn.HuberLoss()
       train_loss = criterion(pred_tensor, act_tensor)
 
     elif isinstance(model, BaseEstimator):
@@ -958,7 +944,7 @@ def objective(args, trial):
       pred_tensor = torch.tensor(pred, dtype=torch.float32)
 
       # train_loss = torch.nn.HuberLoss(act_tensor, pred_tensor) ## Changed 
-      criterion = QuantileLoss(quantile=0.8)  # Changed to QuantileLoss
+      criterion = torch.nn.HuberLoss()
       train_loss = criterion(pred_tensor, act_tensor)
 
     plt.figure(figsize=(10, 5))
