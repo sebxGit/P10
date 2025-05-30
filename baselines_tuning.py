@@ -504,7 +504,7 @@ class SDUDataModule(L.LightningDataModule):
 
     df = df.dropna()
 
-    print("final", df.columns.tolist())
+    # print("final", df.columns.tolist())
 
     df = filter_data(start_date, end_date, df)
 
@@ -556,139 +556,6 @@ class SDUDataModule(L.LightningDataModule):
                             num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return val_loader
   
-  def sklearn_setup(self, set_name: str = "train"):
-    if set_name == "train":
-      if args.individual == 'False':
-        X, y = resample(self.X_train, self.y_train, replace=True,
-                        n_samples=len(self.X_train), random_state=SEED)
-      else:
-        X, y = self.X_train, self.y_train
-    elif set_name == "val":
-        X, y = self.X_val, self.y_val
-    elif set_name == "test":
-        X, y = self.X_test, self.y_test
-    else:
-        raise ValueError(
-            "Invalid set name. Choose from 'train', 'val', or 'test'.")
-
-    seq_len, pred_len, stride = self.seq_len, self.pred_len, self.stride
-    max_start = len(X) - (seq_len + pred_len) + 1
-
-    # Parallelize the loop
-    results = Parallel(n_jobs=-1)(
-        delayed(process_window)(i, X, y, seq_len, pred_len) for i in range(0, max_start, stride)
-    )
-
-    # Unpack results
-    X_window, y_target = zip(*results)
-    return np.array(X_window), np.array(y_target)
-
-
-class SDUDataModule2(L.LightningDataModule):
-  def __init__(self, data_dir: str, scaler: int, seq_len: int, pred_len: int, stride: int, batch_size: int, num_workers: int, is_persistent: bool):
-    super().__init__()
-    self.data_dir = data_dir
-    self.scaler = scaler
-    self.seq_len = seq_len
-    self.pred_len = pred_len
-    self.stride = stride
-    self.batch_size = batch_size
-    self.num_workers = num_workers
-    self.is_persistent = is_persistent
-    self.X_train = None
-    self.y_train = None
-    self.X_val = None
-    self.y_val = None
-    self.X_test = None
-    self.y_test = None
-    self.X_train_val = None
-    self.y_train_val = None
-
-  def setup(self, stage: str):
-    # Define the start and end dates
-    start_date = pd.to_datetime('2027-01-01')
-    end_date = pd.to_datetime('2028-07-01')
-
-    # Load the CSV
-    df = pd.read_csv(self.data_dir, skipinitialspace=True)
-
-    # Convert 'Timestamp' to datetime with exact format
-    df['Timestamp'] = pd.to_datetime(df['Timestamp'], format="%b %d, %Y, %I:%M:%S %p")
-
-    # df = df[['Timestamp', 'Aggregated charging load',
-    #          'Total number of EVs', 'Number of charging EVs',
-    #          'Number of driving EVs', 'Overload duration [min]']]
-
-    # Keep only relevant columns
-    df = df[['Timestamp', 'Aggregated charging load',
-            'Total number of EVs', 'Number of charging EVs',
-             'Number of driving EVs', 'Overload duration [min]']]
-
-    # Ensure numeric columns are correctly parsed
-    numeric_cols = [
-        'Aggregated charging load', 'Total number of EVs', 'Number of charging EVs',
-        'Number of driving EVs', 'Overload duration [min]'
-    ]
-    df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric, errors='coerce')
-
-
-    # Use lowercase 'h' to avoid deprecation warning
-    df['Timestamp'] = df['Timestamp'].dt.floor('h')
-
-    # Optional: Aggregate if multiple entries exist for the same hour
-    df = df.groupby('Timestamp')[numeric_cols].sum().reset_index()
-
-    df = df[['Timestamp', 'Aggregated charging load',
-        'Total number of EVs', 'Number of charging EVs',
-          'Number of driving EVs']]
-    
-    #df = add_featuresSDU(df)
-
-    df = df.set_index('Timestamp')
-
-    df = filter_data(start_date, end_date, df)
-
-    df = df.dropna()
-
-    X = df.copy()
-
-    y = X.pop('Aggregated charging load')
-
-    # 60/20/20 split
-    self.X_train_val, self.X_test, self.y_train_val, self.y_test = train_test_split( X, y, test_size=0.2, shuffle=False)
-    self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(self.X_train_val, self.y_train_val, test_size=0.25, shuffle=False)
-
-    preprocessing = self.scaler
-    preprocessing.fit(self.X_train)  # should only fit to training data
-
-    if stage == "fit" or stage is None:
-      self.X_train = preprocessing.transform(self.X_train)
-      self.y_train = np.array(self.y_train)
-
-      # self.X_val = preprocessing.transform(self.X_val)
-      # self.y_val = np.array(self.y_val)
-
-    if stage == "test" or "predict" or stage is None:
-      self.X_val = preprocessing.transform(self.X_val)
-      self.y_val = np.array(self.y_val)
-
-      # self.X_test = preprocessing.transform(self.X_test)
-      # self.y_test = np.array(self.y_test)
-
-  def train_dataloader(self):
-    train_dataset = TimeSeriesDataset(self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-    # sampler = BootstrapSampler(len(train_dataset), random_state=SEED)
-    # train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
-    train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
-    return train_loader
-
-  def predict_dataloader(self):
-    val_dataset = TimeSeriesDataset(
-        self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-    val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False,
-                            num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
-    return val_loader
-
   def sklearn_setup(self, set_name: str = "train"):
     if set_name == "train":
       if args.individual == 'False':
@@ -784,7 +651,7 @@ def objective(args, trial):
         'scaler': MinMaxScaler(), ###CHANGE
         'learning_rate': trial.suggest_float('learning_rate', 1e-5, 1e-2, log=True),
         'seed': 42,
-        'max_epochs': trial.suggest_int('max_epochs', 3000, 5000, step=100), ###CHANGE
+        'max_epochs': trial.suggest_int('max_epochs', 2000, 7000, step=100), ###CHANGE
         # 'max_epochs': 1000,
         'num_workers': trial.suggest_int('num_workers', 5, 20) if args.model != "DPAD" else 2, ###CHANGE
         # 'num_workers': 12,
@@ -805,19 +672,19 @@ def objective(args, trial):
     if args.model == "LSTM":
       _params = {
         'hidden_size': trial.suggest_int('hidden_size', 50, 200),
-        # 'num_layers': trial.suggest_int('num_layers', 1, 10), ### CHANGE 
-        'num_layers': 5,
-        #'dropout': trial.suggest_float('dropout', 0.0, 1),
-        'dropout': 0.001,
+        'num_layers': trial.suggest_int('num_layers', 1, 10), ### CHANGE 
+        # 'num_layers': 5,
+        'dropout': trial.suggest_float('dropout', 0.0, 0.5),
+        # 'dropout': 0.001,
       }
       model = LSTM(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "GRU":
       _params = {
         'hidden_size': trial.suggest_int('hidden_size', 50, 200),
-        # 'num_layers': trial.suggest_int('num_layers', 1, 10), ### CHANGE
-        'num_layers': 5,
-        # 'dropout': trial.suggest_float('dropout', 0.0, 1),
-        'dropout': 0.001,
+        'num_layers': trial.suggest_int('num_layers', 1, 10), ### CHANGE
+        # 'num_layers': 5,
+        'dropout': trial.suggest_float('dropout', 0.0, 0.5),
+        # 'dropout': 0.001,
       }
       model = GRU(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "MLP":
@@ -879,8 +746,8 @@ def objective(args, trial):
         "seq_len": params['seq_len'],               # Context window (lookback length)
         "pred_len": params['pred_len'],
         "batch_size": params['batch_size'],
-        "patch_len": trial.suggest_int("patch_len", 4, 32, step=4),  # Patch size  
-        "stride": trial.suggest_int("stride", 1, 16, step=1),  # Stride for patching 
+        "patch_len": trial.suggest_int("patch_len", 2, 124, step=2),  # Patch size  
+        "stride": trial.suggest_int("stride", 2, 124, step=2),  # Stride for patching 
         "mixer_kernel_size": trial.suggest_int("mixer_kernel_size", 2, 16, step=2),  # Kernel size for the PatchMixer layer
         "d_model": trial.suggest_int("d_model", 128, 1024, step=64),  # Dimension of the model
         "dropout": trial.suggest_float("dropout", 0.0, 0.5, step=0.05),  # Dropout rate for the model
@@ -921,8 +788,7 @@ def objective(args, trial):
       pred_tensor = torch.tensor(pred, dtype=torch.float32)
 
       # train_loss = torch.nn.HuberLoss(act_tensor, pred_tensor) ## Changed
-      criterion = torch.nn.HuberLoss()
-      train_loss = criterion(pred_tensor, act_tensor)
+      train_loss = params['criterion'](pred_tensor, act_tensor)
 
     elif isinstance(model, BaseEstimator):
       name = model.__class__.__name__
@@ -944,8 +810,7 @@ def objective(args, trial):
       pred_tensor = torch.tensor(pred, dtype=torch.float32)
 
       # train_loss = torch.nn.HuberLoss(act_tensor, pred_tensor) ## Changed 
-      criterion = torch.nn.HuberLoss()
-      train_loss = criterion(pred_tensor, act_tensor)
+      train_loss = params['criterion'](pred_tensor, act_tensor)
 
     plt.figure(figsize=(10, 5))
     plt.plot(act, label='Actuals', color='blue')

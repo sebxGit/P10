@@ -1,9 +1,0 @@
-model,trials,val_loss,parameters
-AdaBoostRegressor,150,35.156246696199204,"{'batch_size': 80, 'learning_rate': 0.00038447146958356235, 'max_epochs': 1700, 'num_workers': 7, 'n_estimators': 192, 'learning_rate_model': 0.9086937394259514}"
-GradientBoostingRegressor,150,33.52995387324805,"{'batch_size': 64, 'learning_rate': 0.0020191407249157915, 'max_epochs': 1200, 'num_workers': 8, 'n_estimators': 168, 'max_depth': 6, 'min_samples_split': 9, 'min_samples_leaf': 7, 'max_features': 0.6314095347930494, 'learning_rate_model': 0.9824744670074015}"
-GRU,150,18.03297328260732,"{'batch_size': 32, 'learning_rate': 0.002912641518534785, 'max_epochs': 1800, 'num_workers': 5, 'hidden_size': 167, 'num_layers': 1, 'dropout': 0.769502303286073}"
-RandomForestRegressor,150,34.39778714794212,"{'batch_size': 80, 'learning_rate': 0.0011001869333703911, 'max_epochs': 1300, 'num_workers': 10, 'n_estimators': 77, 'max_depth': 1, 'min_samples_split': 18, 'min_samples_leaf': 13, 'max_features': 0.19205221562906205}"
-xPatch,150,15.510318176516352,"{'batch_size': 112, 'learning_rate': 0.002083822895529472, 'max_epochs': 1600, 'num_workers': 8, 'patch_len': 36, 'stride': 12, 'padding_patch': 'end', 'revin': 0, 'ma_type': 'reg', 'alpha': 0.392669408769825, 'beta': 0.8843580689769104}"
-LSTM,150,17.354301462050017,"{'batch_size': 32, 'learning_rate': 0.003182056084282108, 'max_epochs': 2000, 'num_workers': 12, 'hidden_size': 84, 'num_layers': 1, 'dropout': 0.026034044349608355}"
-DPAD,150,16.730587347834046,"{'batch_size': 48, 'learning_rate': 0.0011778208000740617, 'max_epochs': 1600, 'enc_hidden': 108, 'dec_hidden': 204, 'num_levels': 2, 'K_IMP': 4, 'RIN': 0}"
-PatchMixer,88,31.528498494353066,"{'batch_size': 64, 'learning_rate': 0.0011539154228569256, 'max_epochs': 1400, 'num_workers': 5, 'patch_len': 4, 'stride': 14, 'mixer_kernel_size': 12, 'd_model': 832, 'dropout': 0.05, 'head_dropout': 0.0, 'e_layers': 4}"
