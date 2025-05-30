@@ -821,54 +821,53 @@ def tune_model_with_optuna(args, n_trials):
     print("Starting a new tuning.")
     study = optuna.create_study(direction="maximize", study_name=study_name)
 
-  study.optimize(lambda trial: safe_objective(args, trial, study), n_trials=n_trials, gc_after_trial=True, timeout=37800) #change
+  study.optimize(lambda trial: objective(args, trial, study), n_trials=n_trials, gc_after_trial=True, timeout=37800) #change
 
   print("Len trials:", len(study.trials))
   print("Best params:", study.best_params)
   print("Best validation loss:", study.best_value)
 
-  if study.best_value != float('inf'):
-    if not os.path.exists(f'Tunings'):
-      os.makedirs(f'Tunings', exist_ok=True)
+  if not os.path.exists(f'Tunings'):
+    os.makedirs(f'Tunings', exist_ok=True)
 
-    joblib.dump(study, path_pkl)
-    try:
-      df_tuning = pd.read_csv(path_csv, delimiter=',')
-    except Exception:
-      df_tuning = pd.DataFrame(columns=['model', 'trials', 'val_loss', 'parameters'])
+  joblib.dump(study, path_pkl)
+  try:
+    df_tuning = pd.read_csv(path_csv, delimiter=',')
+  except Exception:
+    df_tuning = pd.DataFrame(columns=['model', 'trials', 'val_loss', 'parameters'])
 
-    new_row = {'model': args.model, 'trials': len(study.trials), 'val_loss': study.best_value, 'parameters': study.best_params}
-    new_row_df = pd.DataFrame([new_row]).dropna(axis=1, how='all')
-    df_tuning = pd.concat([df_tuning, new_row_df], ignore_index=True)
-    df_tuning = df_tuning.sort_values(by=['model', 'val_loss'], ascending=True).reset_index(drop=True)
+  new_row = {'model': args.model, 'trials': len(study.trials), 'val_loss': study.best_value, 'parameters': study.best_params}
+  new_row_df = pd.DataFrame([new_row]).dropna(axis=1, how='all')
+  df_tuning = pd.concat([df_tuning, new_row_df], ignore_index=True)
+  df_tuning = df_tuning.sort_values(by=['model', 'val_loss'], ascending=True).reset_index(drop=True)
 
-    df_tuning.to_csv(path_csv, index=False)
+  df_tuning.to_csv(path_csv, index=False)
 
-    baseload, predictions, actuals = best_list[0]['baseload'], best_list[0]['predictions'], best_list[0]['actuals']
+  baseload, predictions, actuals = best_list[0]['baseload'], best_list[0]['predictions'], best_list[0]['actuals']
 
-    #baseload plot
-    plt.figure(figsize=(15, 4))
-    plt.plot(baseload, label='Baseload')
-    plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
-    plt.xlabel('Samples')
-    plt.ylabel('Electricity Consumption (kW)')
-    plt.legend()
-    plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_classification_baseload_plot.png')
-    plt.show()
-    plt.clf()
+  #baseload plot
+  plt.figure(figsize=(15, 4))
+  plt.plot(baseload, label='Baseload')
+  plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
+  plt.xlabel('Samples')
+  plt.ylabel('Electricity Consumption (kW)')
+  plt.legend()
+  plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_classification_baseload_plot.png')
+  plt.show()
+  plt.clf()
 
-    # pred and act plot
-    plt.figure(figsize=(15, 4))
-    plt.plot(actuals, label='Actuals')
-    plt.plot(predictions, label=f'predictions')
-    plt.xlabel('Samples')
-    plt.ylabel('Electricity Consumption (kW)')
-    plt.legend()
-    plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_classification_predact_plot.png')
-    plt.show()
-    plt.clf()
+  # pred and act plot
+  plt.figure(figsize=(15, 4))
+  plt.plot(actuals, label='Actuals')
+  plt.plot(predictions, label=f'predictions')
+  plt.xlabel('Samples')
+  plt.ylabel('Electricity Consumption (kW)')
+  plt.legend()
+  plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_classification_predact_plot.png')
+  plt.show()
+  plt.clf()
 
-    return study.best_params
+  return study.best_params
 
 if __name__ == '__main__':
   parser = ArgumentParser()
