@@ -703,9 +703,11 @@ def objective(args, trial, all_subsets, study):
 
   tuning_results.append({'combined_name': combined_name, 'rec': total_recall_score, 'parameters': trial.params})
 
-  if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials) and study.best_value != None and total_recall_score >= study.best_value:
-    best_list.clear()
-    best_list.append({'baseload': baseload, 'predictions': predictions, 'actuals': actuals})
+  if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials) and study.best_trials:
+    for best_trial in study.best_trials:
+      if total_recall_score >= best_trial.values[0]:
+        best_list.clear()
+        best_list.append({'baseload': baseload, 'predictions': predictions, 'actuals': actuals})
 
   if os.path.exists(f"Tunings/{combined_name}"):
     shutil.rmtree(f"Tunings/{combined_name}")
