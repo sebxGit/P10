@@ -770,9 +770,7 @@ def get_actuals_and_prediction_flattened(colmod, prediction):
 
   return predictions_flattened, actuals_flattened
 
-
 def objective(args, trial):
-    
     params = {  
         'input_size': 22 if args.dataset == "Colorado" else 13,
         'pred_len': args.pred_len,

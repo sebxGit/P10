@@ -623,7 +623,7 @@ def objective(args, trial, all_subsets, study):
   # rank top 10 baggings save in trial.set_user_attr
   tuning_results.append({'combined_name': combined_name, 'mse': mse.item(), 'mae': mae.item(), 'parameters': trial.params})
 
-  if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials) and study.best_value != None and mae >= study.best_value:
+  if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials) and study.best_value != None and mae <= study.best_value:
     best_list.clear()
     best_list.append({'predictions': y_val_tensor[-len(y_pred_tensor):].tolist(), 'actuals': y_pred_tensor.tolist()})
 

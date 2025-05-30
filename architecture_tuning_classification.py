@@ -803,8 +803,6 @@ if __name__ == "__main__":
   if study.best_value != float('inf'):
     joblib.dump(study, f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_architecture_tuning_classification.pkl')
 
-    baseload, predictions, actuals = best_list[0]['baseload'], best_list[0]['predictions'], best_list[0]['actuals']
-
     unique_results = []
     for d in tuning_results:
       if d not in unique_results:
@@ -814,6 +812,8 @@ if __name__ == "__main__":
     df_top_10 = pd.DataFrame(top_10_tunings)
     df_top_10.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning_classification.csv', index=False)
     
+    baseload, predictions, actuals = best_list[0]['baseload'], best_list[0]['predictions'], best_list[0]['actuals']
+
     #baseload plot
     plt.figure(figsize=(15, 4))
     plt.plot(baseload, label='Baseload')
