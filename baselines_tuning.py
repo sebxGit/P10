@@ -778,7 +778,7 @@ def objective(args, trial):
         'seq_len': 24*7,
         'stride': args.pred_len,
         # 'batch_size': 24, 
-        'batch_size': trial.suggest_int('batch_size', 32, 128, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
+        'batch_size': trial.suggest_int('batch_size', 16, 128, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
         'criterion': torch.nn.HuberLoss(), ###CHANGE
         'optimizer': torch.optim.Adam,
         'scaler': MinMaxScaler(), ###CHANGE
