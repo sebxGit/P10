@@ -490,7 +490,7 @@ class SDUDataModule(L.LightningDataModule):
 
     # df['lag12h'] = df['Aggregated charging load'].shift(12)
     df['lag24h'] = df['Aggregated charging load'].shift(24)  # 1 day
-    df['lag24h'] = df['Aggregated charging load'].shift(48)  # 1 day
+    df['lag48h'] = df['Aggregated charging load'].shift(48)  # 1 day
     # df['lag1w'] = df['Aggregated charging load'].shift(24*7)  # 1 week
 
     # df['roll_std_24h'] = df['Aggregated charging load'].rolling(window=24).std()
