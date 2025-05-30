@@ -614,6 +614,7 @@ def objective(args, trial, all_subsets, study):
   all_subsets_as_strings = [str(subset) for subset in all_subsets]
   selected_subset_as_string = trial.suggest_categorical("model_subsets", all_subsets_as_strings)
   selected_subset = ast.literal_eval(selected_subset_as_string)
+  selected_subset = ['GradientBoostingRegressor', 'AdaBoostRegressor', 'LSTM', 'xPatch']
 
   # bagging_models = [model_initializers[model]() for model in selected_subset if model in model_initializers]
 
@@ -722,7 +723,7 @@ parser.add_argument("--seq_len", type=int, default=24*7)
 parser.add_argument("--optimizer", type=str, default="Adam")
 parser.add_argument("--scaler", type=str, default="MinMaxScaler")
 parser.add_argument("--load", type=str, default='False')
-parser.add_argument("--trials", type=int, default=100)
+parser.add_argument("--trials", type=int, default=1)#change
 parser.add_argument("--threshold", type=float, default=500)
 parser.add_argument("--downscaling", type=int, default=13)
 parser.add_argument("--multiplier", type=int, default=2)
