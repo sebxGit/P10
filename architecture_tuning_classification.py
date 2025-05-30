@@ -789,10 +789,10 @@ if __name__ == "__main__":
       print("Loaded an old study:")
     except Exception as e:
       print("No previous tuning found. Starting a new tuning.", e)
-      study = optuna.create_study(direction="minimize", study_name=f"Bagging-{combined_name}")
+      study = optuna.create_study(direction="maximize", study_name=f"Bagging-{combined_name}")
   else:
     print("Starting a new tuning.")
-    study = optuna.create_study(direction="minimize", study_name=f"Bagging-{combined_name}")
+    study = optuna.create_study(direction="maximize", study_name=f"Bagging-{combined_name}")
 
   tuning_results = []
   best_list = []
