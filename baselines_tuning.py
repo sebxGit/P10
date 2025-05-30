@@ -1,6 +1,8 @@
 import argparse
+import calendar
 import os
 import gc
+from typing import Any
 import joblib
 import numpy as np
 import pandas as pd
@@ -8,6 +10,7 @@ import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 import holidays
 import optuna
+from sklearn.discriminant_analysis import StandardScaler
 from models.LSTM import LSTM
 from models.GRU import GRU
 from models.MLP import MLP
@@ -16,7 +19,7 @@ from models.xPatch import xPatch
 from models.PatchMixer import PatchMixer
 
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler, RobustScaler
+from sklearn.preprocessing import MinMaxScaler, PowerTransformer, RobustScaler
 from sklearn.ensemble import RandomForestRegressor, AdaBoostRegressor, GradientBoostingRegressor
 from sklearn.multioutput import MultiOutputRegressor
 from sklearn.base import BaseEstimator
@@ -259,7 +262,7 @@ class TimeSeriesDataset(Dataset):
 
   def __len__(self):
     return (len(self.X) - (self.seq_len + self.pred_len - 1)) // self.stride + 1
-
+  
   def __getitem__(self, index):
     start_idx = index * self.stride
     x_window = self.X[start_idx: start_idx + self.seq_len]
@@ -267,7 +270,30 @@ class TimeSeriesDataset(Dataset):
     return x_window, y_target
 
 
+# class TimeSeriesDataset(Dataset):
+    def __init__(self, X: np.ndarray, y: np.ndarray, seq_len: int = 1, pred_len: int = 1, stride = 1):
+        self.seq_len = seq_len
+        self.pred_len = pred_len  # will be 1 for classical
+        self.stride = stride          # always 1 for classical
 
+        if isinstance(X, pd.DataFrame):
+            X = X.to_numpy()
+        if isinstance(y, pd.Series):
+            y = y.to_numpy()
+
+        X = np.asarray(X, dtype=np.float32)
+        y = np.asarray(y, dtype=np.float32)
+
+        self.X = torch.tensor(X).float()
+        self.y = torch.tensor(y).float()
+
+    def __len__(self):
+        return len(self.X) - self.seq_len
+
+    def __getitem__(self, index):
+        x_window = self.X[index: index + self.seq_len]
+        y_target = self.y[index + self.seq_len]  # single step ahead
+        return x_window, y_target
 
 class BootstrapSampler:
     def __init__(self, dataset_size, random_state=None):
@@ -391,7 +417,7 @@ class ColoradoDataModule(L.LightningDataModule):
     return np.array(X_window), np.array(y_target)
 
 class SDUDataModule(L.LightningDataModule):
-  def __init__(self, data_dir: str, scaler: int, seq_len: int, pred_len: int, stride: int, batch_size: int, num_workers: int, is_persistent: bool):
+  def __init__(self, data_dir: str, scaler: Any, seq_len: int, pred_len: int, stride: int, batch_size: int, num_workers: int, is_persistent: bool):
     super().__init__()
     self.data_dir = data_dir
     self.scaler = scaler
@@ -418,91 +444,78 @@ class SDUDataModule(L.LightningDataModule):
     df['Timestamp'] = df['Timestamp'].dt.floor('h')
     df = df[['Timestamp', 'Aggregated charging load', 'Day', 'Month', 'Year', 'Hour']]
 
-    if 'Timestamp' not in df.columns:
-        print("The 'Timestamp' column is missing from the CSV file.")
-
-    print(df.head())
-
-    print("CSV Columns:", df.columns.tolist())
-    #df.set_index('Timestamp', inplace=True)
 
     # Mask zero away the zero values
-    # df['Aggregated charging load'] = df['Aggregated charging load'].mask(df['Aggregated charging load'] == 0, np.nan)
-    #print(f"Number of zero values: {df['Aggregated charging load'].isna().sum()} out of {len(df)}")
-    df = df[df["Aggregated charging load"] != 0.0]
+    df['Aggregated charging load'] = df['Aggregated charging load'].mask(df['Aggregated charging load'] == 0, np.nan)
+    # print(f"Number of zero values: {df['Aggregated charging load'].isna().sum()} out of {len(df)}")
+    #df = df[df["Aggregated charging load"] != 0.0]
 
     # print(f"Number of Masked values: {df['Aggregated charging load'].isna().sum()} out of {len(df)}")
-
-    print("CSV Columns before reset:", df.columns.tolist())
-    print(df.info())
-
-    if 'Timestamp' in df.columns and not df.empty:
-      df.set_index('Timestamp', inplace=True)
-    else:
-        print("Warning: Timestamp missing or df is empty")
+    df.set_index('Timestamp', inplace=True) 
 
     df['hour'] = df.index.hour
     df['dayofweek'] = df.index.dayofweek
     df['month'] = df.index.month
 
-    print("CSV Columns:", df.columns.tolist())
+    # print("CSV Columns:", df.columns.tolist())
 
 
-    print(df.head())
+    #print(df.head())
 
     # df['Aggregated charging load'] = df['Aggregated charging load'].interpolate(method='time')
-    #df['lag_1h'] = df['Aggregated charging load'].shift(1)
+    df['Aggregated charging load'] = df['Aggregated charging load'].interpolate(method='linear')
+    # df['Aggregated charging load'] = df['Aggregated charging load'].interpolate(method='pchip')
+
+    df['hour_sin'] = np.sin(2 * np.pi * df['Hour'] / 24)
+    df['hour_cos'] = np.cos(2 * np.pi * df['Hour'] / 24)
+
+    df['month_sin'] = np.sin(2 * np.pi * df['Month'] / 12)
+    df['month_cos'] = np.cos(2 * np.pi * df['Month'] / 12)
+
+    # df['days_in_month'] = df.apply(lambda row: calendar.monthrange(row['Year'], row['Month'])[1], axis=1)
+    # df['day_sin'] = np.sin(2 * np.pi * df['Day'] / df['days_in_month'])
+    # df['day_cos'] = np.cos(2 * np.pi * df['Day'] / df['days_in_month'])
+
+    # df['dayofweek'] = df.index.dayofweek
+    # df['dayofweek_sin'] = np.sin(2 * np.pi * df['dayofweek'] / 7)
+    # df['dayofweek_cos'] = np.cos(2 * np.pi * df['dayofweek'] / 7)
+
+    #remove  
+    df = df.drop(columns=['month', 'Year', 'hour', 'Month', 'Hour', 'Day'])
     
-    print(df.head())
+    # Add Logp1 transformation to the target variable 
+    df['Aggregated charging load'] = np.log1p(df['Aggregated charging load'])
 
-    print(df.info())
+    ### features 
+    df['lag1h'] = df['Aggregated charging load'].shift(1)
+    df['lag3h'] = df['Aggregated charging load'].shift(3)
+    df['lag6h'] = df['Aggregated charging load'].shift(6)
 
-    df.to_csv('sdu_test.csv')
+    df['lag12h'] = df['Aggregated charging load'].shift(12)
+    df['lag24h'] = df['Aggregated charging load'].shift(24)  # 1 day
+    df['lag1w'] = df['Aggregated charging load'].shift(24*7)  # 1 week
 
-    #exit()
+    # df['roll_std_24h'] = df['Aggregated charging load'].rolling(window=24).std()
+    # df['roll_min_24h'] = df['Aggregated charging load'].rolling(window=24).min()
+ 
 
-
-
-
-    # df['Aggregated_charging_load_6h'] = df['Aggregated charging load'].shift(6)
-    # df['Rolling_Max_12h'] = df['Aggregated charging load'].rolling(window=6).max()
-
-    # df['hour_sin'] = np.sin(2 * np.pi * df['Hour'] / 24)
-    # df['hour_cos'] = np.cos(2 * np.pi * df['Hour'] / 24)
-
-    # df['day_sin'] = np.sin(2 * np.pi * df['Day'] / 31)
-    # df['day_cos'] = np.cos(2 * np.pi * df['Day'] / 31)
-
-    # df['month_sin'] = np.sin(2 * np.pi * df['Month'] / 12)
-    # df['month_cos'] = np.cos(2 * np.pi * df['Month'] / 12)
-   
-    # df['Aggregated_charging_load_1h'] = df['Aggregated charging load'].shift(1)
-    # df['Aggregated_charging_load_3h'] = df['Aggregated charging load'].shift(3)
-    # df['Aggregated_charging_load_6h'] = df['Aggregated charging load'].shift(6)
-    # df['Aggregated_charging_load_12h'] = df['Aggregated charging load'].shift(12)
-    # df['Aggregated_charging_load_36h'] = df['Aggregated charging load'].shift(36)
-    # df['Aggregated_charging_load_60h'] = df['Aggregated charging load'].shift(60)
-
-    # df['Rolling_Mean_6h'] = df['Aggregated charging load'].rolling(window=6).mean()
-    # df['Rolling_Max_6h'] = df['Aggregated charging load'].rolling(window=6).max()
-    # df['Rolling_Mean_12h'] = df['Aggregated charging load'].rolling(window=6).mean()
-    # df['Rolling_Max_12h'] = df['Aggregated charging load'].rolling(window=6).max()
-
-    # cols_to_log = [
-    #     'Aggregated charging load', 'Aggregated_charging_load_1h', 'Aggregated_charging_load_3h', 
-    #     'Aggregated_charging_load_6h', 'Aggregated_charging_load_12h', 'Aggregated_charging_load_36h', 
-    #     'Aggregated_charging_load_60h', 'Rolling_Mean_6h', 'Rolling_Max_6h', 'Rolling_Mean_12h', 
-    #     'Rolling_Max_12h'
-    # ]
-
-    # df[cols_to_log] = df[cols_to_log].apply(lambda x: np.log1p(x))
+    # df['rolling1h'] = df['Aggregated charging load'].rolling(window=2).mean()  # 1 hour rolling mean
+    df['rolling3h'] = df['Aggregated charging load'].rolling(window=3).mean()  # 3 hour rolling mean
+    # df['rolling6h'] = df['Aggregated charging load'].rolling(window=6).mean()  # 6 hour rolling mean
+    df['rolling12h'] = df['Aggregated charging load'].rolling(window=12).mean()  # 12 hour rolling mean
+    df['roll_max_24h'] = df['Aggregated charging load'].rolling(window=24).max()
 
 
-    #df = df.set_index('Timestamp')
-    
+
+    df = df.dropna()
+
+    print("final", df.columns.tolist())
+
     df = filter_data(start_date, end_date, df)
 
     df.to_csv('sdu_test.csv')
+
+    # exit()
 
     X = df.copy()
     y = X.pop('Aggregated charging load')
@@ -510,26 +523,35 @@ class SDUDataModule(L.LightningDataModule):
     self.X_train_val, self.X_test, self.y_train_val, self.y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
     self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(self.X_train_val, self.y_train_val, test_size=0.25, shuffle=False)
 
+    # Start and end dates for the dataset
+    # print(self.X_train.index[1], self.X_train.index[-1])
+    # print(self.X_val.index[1], self.X_val.index[-1])
+    # print(self.X_test.index[1], self.X_test.index[-1])
+    
+    # exit()
+
     preprocessing = self.scaler
     preprocessing.fit(self.X_train)
+
 
     if stage == "fit" or stage is None:
       self.X_train = preprocessing.transform(self.X_train)
       self.y_train = np.array(self.y_train)
 
     if stage == "test" or "predict" or stage is None:
-      self.X_val = preprocessing.transform(self.X_val)
-      self.y_val = np.array(self.y_val)
+      self.X_val = preprocessing.transform(self.X_val)  
+      self.y_val = np.array(self.y_val) 
+
 
   def train_dataloader(self):
     train_dataset = TimeSeriesDataset(
         self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+    
     sampler = BootstrapSampler(len(train_dataset), random_state=SEED)
     if args.individual == 'False':
       train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
     else:
-      train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False,
-                                num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+      train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return train_loader
 
   def predict_dataloader(self):
@@ -758,20 +780,20 @@ def get_actuals_and_prediction_flattened(colmod, prediction):
 def objective(args, trial):
     
     params = {  
-        'input_size': 22 if args.dataset == "Colorado" else 7,
+        'input_size': 22 if args.dataset == "Colorado" else 14,
         'pred_len': args.pred_len,
         'seq_len': 24*7,
         'stride': args.pred_len,
         'batch_size': trial.suggest_int('batch_size', 32, 128, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
-        'criterion': nn.MSELoss(),
+        'criterion': torch.nn.L1Loss(),
         'optimizer': torch.optim.Adam,
-        'scaler': MinMaxScaler(),
+        'scaler': MinMaxScaler(), ###CHANGE
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
-        'max_epochs': trial.suggest_int('max_epochs', 1000, 5000, step=100), ###CHANGE
-        # 'max_epochs': 1000,
-        'num_workers': trial.suggest_int('num_workers', 5, 15) if args.model != "DPAD" else 2,
-        # 'num_workers': 10,
+        #'max_epochs': trial.suggest_int('max_epochs', 1000, 5000, step=100), ###CHANGE
+        'max_epochs': 1000,
+        #'num_workers': trial.suggest_int('num_workers', 5, 12) if args.model != "DPAD" else 2, ###CHANGE
+        'num_workers': 11,
         'is_persistent': True
     }
 
@@ -789,16 +811,19 @@ def objective(args, trial):
     if args.model == "LSTM":
       _params = {
         'hidden_size': trial.suggest_int('hidden_size', 50, 200),
-         'num_layers': trial.suggest_int('num_layers', 1, 10), ###CHANGE
-        #'num_layers': 5,
+        # 'num_layers': trial.suggest_int('num_layers', 1, 10), ### CHANGE 
+        'num_layers': 5,
         'dropout': trial.suggest_float('dropout', 0.0, 1),
       }
       model = LSTM(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "GRU":
       _params = {
         'hidden_size': trial.suggest_int('hidden_size', 50, 200),
-        'num_layers': trial.suggest_int('num_layers', 1, 10),        
-        'dropout': trial.suggest_float('dropout', 0.0, 1),
+        # 'num_layers': trial.suggest_int('num_layers', 1, 10), ### CHANGE
+        'num_layers': 5,
+        # 'dropout': trial.suggest_float('dropout', 0.0, 1),
+        'dropout': 0.001,
+
       }
       model = GRU(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "MLP":
@@ -877,8 +902,8 @@ def objective(args, trial):
       tuned_model = LightningModel(model=model, criterion=params['criterion'], optimizer=params['optimizer'], learning_rate=params['learning_rate'])
 
       # Trainer for fitting using DDP - Multi GPU
-      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')  ###CHANGE
-      # trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False)
+      # trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')  ###CHANGE
+      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=1, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False)
 
       trainer.fit(tuned_model, colmod)
 
@@ -887,16 +912,16 @@ def objective(args, trial):
 
       predictions = trainer.predict(tuned_model, colmod, return_predictions=True)
 
-      print(predictions)
-
       pred, act = get_actuals_and_prediction_flattened(colmod, predictions)
 
+      pred = np.expm1(pred)  # Inverse log1p transformation
+      act = np.expm1(act)  # Inverse log1p transformation
 
-      # pred = np.expm1(pred)
-      # act = np.expm1(act)
+      print(f"Predictions: {pred[:30]}")
+      print(f"Actuals: {act[:30]}")
 
-      print(f"Predictions: {pred[:10]}")
-      print(f"Actuals: {act[:10]}")
+      print(f"Predictions: min={pred.min()}, max={pred.max()}, mean={pred.mean()}")
+      print(f"Actuals: min={act.min()}, max={act.max()}, mean={act.mean()}")
 
       plt.figure(figsize=(10, 5))
       plt.plot(act, label='Actuals', color='blue')
@@ -922,9 +947,12 @@ def objective(args, trial):
       model.fit(X_train, y_train)
 
       y_pred = model.predict(X_val)
-
+      
       act = y_val.reshape(-1)
       pred = y_pred.reshape(-1)
+
+      pred = np.expm1(pred)  # Inverse log1p transformation
+      act = np.expm1(act)  # Inverse log1p transformation
 
       plt.figure(figsize=(10, 5))
       plt.plot(act, label='Actuals', color='blue')
@@ -938,7 +966,7 @@ def objective(args, trial):
       plt.savefig(f"sdu_testplot_{args.model}.png")
       plt.close()
 
-      train_loss = mean_absolute_error(y_val, y_pred)
+      train_loss = mean_absolute_error(act, pred)
 
     return train_loss
 
@@ -1007,4 +1035,4 @@ if __name__ == '__main__':
   parser.add_argument("--individual", type=str, default="False")
   args = parser.parse_args()
 
-  best_params = tune_model_with_optuna(args, n_trials=5)
+  best_params = tune_model_with_optuna(args, n_trials=1)
