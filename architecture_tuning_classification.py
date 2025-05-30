@@ -703,7 +703,7 @@ def objective(args, trial, all_subsets, study):
 
   if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials) and study.best_value != None and total_recall_score >= study.best_value:
     best_list.clear()
-    best_list.append({'baseload': baseload, 'predictions': y_pred, 'actuals': actuals_flat})
+    best_list.append({'baseload': baseload, 'predictions': predictions, 'actuals': actuals})
 
   if os.path.exists(f"Tunings/{combined_name}"):
     shutil.rmtree(f"Tunings/{combined_name}")
@@ -814,7 +814,7 @@ if __name__ == "__main__":
     #baseload plot
     plt.figure(figsize=(15, 4))
     plt.plot(baseload, label='Baseload')
-    plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
+    plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
     plt.xlabel('Samples')
     plt.ylabel('Electricity Consumption (kW)')
     plt.legend()
@@ -826,7 +826,7 @@ if __name__ == "__main__":
     plt.figure(figsize=(15, 4))
     plt.plot(actuals, label='Actuals+baseload')
     plt.plot(predictions, label=f'model+baseload')
-    plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
+    plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
     plt.xlabel('Samples')
     plt.ylabel('Electricity Consumption (kW)')
     plt.legend()

@@ -852,7 +852,7 @@ def tune_model_with_optuna(args, n_trials):
     #baseload plot
     plt.figure(figsize=(15, 4))
     plt.plot(baseload, label='Baseload')
-    plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
+    plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
     plt.xlabel('Samples')
     plt.ylabel('Electricity Consumption (kW)')
     plt.legend()

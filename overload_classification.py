@@ -741,7 +741,7 @@ if __name__ == "__main__":
       #baseload plot
       plt.figure(figsize=(15, 4))
       plt.plot(baseload, label='Baseload')
-      plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
+      plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
       plt.xlabel('Samples')
       plt.ylabel('Electricity Consumption (kW)')
       plt.legend()
@@ -753,7 +753,7 @@ if __name__ == "__main__":
       plt.figure(figsize=(15, 4))
       plt.plot(actuals, label='Actuals+baseload')
       plt.plot(predictions, label=f'{combined_name}+baseload')
-      plt.axhline(y=args.threshold, color='red', linestyle='--', label='Transformer threshold')
+      plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
       plt.xlabel('Samples')
       plt.ylabel('Electricity Consumption (kW)')
       plt.legend()
