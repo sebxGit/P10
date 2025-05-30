@@ -234,7 +234,6 @@ def add_featuresSDU(df):
 
     return df
 
-
 def filter_data(start_date, end_date, data):
     ####################### FILTER DATASET  #######################
     data = data[(data.index >= start_date) & (data.index <= end_date)].copy()
@@ -307,7 +306,6 @@ class BootstrapSampler:
 
     def __len__(self):
         return self.dataset_size
-
 
 def process_window(i, X, y, seq_len, pred_len):
   X_win = X[i:i + seq_len]
@@ -437,8 +435,8 @@ class SDUDataModule(L.LightningDataModule):
     self.y_train_val = None
 
   def setup(self, stage: str):
-    start_date = pd.to_datetime('2031-01-01')
-    end_date = pd.to_datetime('2031-12-31')
+    start_date = pd.to_datetime('2030-01-01')
+    end_date = pd.to_datetime('2032-01-01')
     df = pd.read_csv(self.data_dir, skipinitialspace=True)
     df['Timestamp'] = pd.to_datetime(df['Timestamp'], format="%b %d, %Y, %I:%M:%S %p")
     df['Timestamp'] = df['Timestamp'].dt.floor('h')
@@ -446,16 +444,16 @@ class SDUDataModule(L.LightningDataModule):
 
 
     # Mask zero away the zero values
-    df['Aggregated charging load'] = df['Aggregated charging load'].mask(df['Aggregated charging load'] == 0, np.nan)
+    # df['Aggregated charging load'] = df['Aggregated charging load'].mask(df['Aggregated charging load'] == 0, np.nan)
     # print(f"Number of zero values: {df['Aggregated charging load'].isna().sum()} out of {len(df)}")
     #df = df[df["Aggregated charging load"] != 0.0]
 
     # print(f"Number of Masked values: {df['Aggregated charging load'].isna().sum()} out of {len(df)}")
     df.set_index('Timestamp', inplace=True) 
 
-    df['hour'] = df.index.hour
-    df['dayofweek'] = df.index.dayofweek
-    df['month'] = df.index.month
+    # df['hour'] = df.index.hour
+    # df['dayofweek'] = df.index.dayofweek
+    # df['month'] = df.index.month
 
     # print("CSV Columns:", df.columns.tolist())
 
@@ -463,7 +461,7 @@ class SDUDataModule(L.LightningDataModule):
     #print(df.head())
 
     # df['Aggregated charging load'] = df['Aggregated charging load'].interpolate(method='time')
-    df['Aggregated charging load'] = df['Aggregated charging load'].interpolate(method='linear')
+    # df['Aggregated charging load'] = df['Aggregated charging load'].interpolate(method='linear')
     # df['Aggregated charging load'] = df['Aggregated charging load'].interpolate(method='pchip')
 
     df['hour_sin'] = np.sin(2 * np.pi * df['Hour'] / 24)
@@ -481,31 +479,29 @@ class SDUDataModule(L.LightningDataModule):
     # df['dayofweek_cos'] = np.cos(2 * np.pi * df['dayofweek'] / 7)
 
     #remove  
-    df = df.drop(columns=['month', 'Year', 'hour', 'Month', 'Hour', 'Day'])
+    # df = df.drop(columns=['month', 'Year', 'hour', 'Month', 'Hour', 'Day'])
     
     # Add Logp1 transformation to the target variable 
-    df['Aggregated charging load'] = np.log1p(df['Aggregated charging load'])
+    # df['Aggregated charging load'] = np.log1p(df['Aggregated charging load'])
 
     ### features 
     df['lag1h'] = df['Aggregated charging load'].shift(1)
-    df['lag3h'] = df['Aggregated charging load'].shift(3)
-    df['lag6h'] = df['Aggregated charging load'].shift(6)
+    # df['lag3h'] = df['Aggregated charging load'].shift(3)
+    # df['lag6h'] = df['Aggregated charging load'].shift(6)
 
-    df['lag12h'] = df['Aggregated charging load'].shift(12)
+    # df['lag12h'] = df['Aggregated charging load'].shift(12)
     df['lag24h'] = df['Aggregated charging load'].shift(24)  # 1 day
-    df['lag1w'] = df['Aggregated charging load'].shift(24*7)  # 1 week
+    # df['lag1w'] = df['Aggregated charging load'].shift(24*7)  # 1 week
 
     # df['roll_std_24h'] = df['Aggregated charging load'].rolling(window=24).std()
     # df['roll_min_24h'] = df['Aggregated charging load'].rolling(window=24).min()
  
 
     # df['rolling1h'] = df['Aggregated charging load'].rolling(window=2).mean()  # 1 hour rolling mean
-    df['rolling3h'] = df['Aggregated charging load'].rolling(window=3).mean()  # 3 hour rolling mean
+    # df['rolling3h'] = df['Aggregated charging load'].rolling(window=3).mean()  # 3 hour rolling mean
     # df['rolling6h'] = df['Aggregated charging load'].rolling(window=6).mean()  # 6 hour rolling mean
-    df['rolling12h'] = df['Aggregated charging load'].rolling(window=12).mean()  # 12 hour rolling mean
-    df['roll_max_24h'] = df['Aggregated charging load'].rolling(window=24).max()
-
-
+    # df['rolling12h'] = df['Aggregated charging load'].rolling(window=12).mean()  # 12 hour rolling mean
+    # df['roll_max_24h'] = df['Aggregated charging load'].rolling(window=24).max()
 
     df = df.dropna()
 
@@ -914,14 +910,14 @@ def objective(args, trial):
 
       pred, act = get_actuals_and_prediction_flattened(colmod, predictions)
 
-      pred = np.expm1(pred)  # Inverse log1p transformation
-      act = np.expm1(act)  # Inverse log1p transformation
+      # pred = np.expm1(pred)  # Inverse log1p transformation
+      # act = np.expm1(act)  # Inverse log1p transformation
 
-      print(f"Predictions: {pred[:30]}")
-      print(f"Actuals: {act[:30]}")
+      # print(f"Predictions: {pred[:30]}")
+      # print(f"Actuals: {act[:30]}")
 
-      print(f"Predictions: min={pred.min()}, max={pred.max()}, mean={pred.mean()}")
-      print(f"Actuals: min={act.min()}, max={act.max()}, mean={act.mean()}")
+      # print(f"Predictions: min={pred.min()}, max={pred.max()}, mean={pred.mean()}")
+      # print(f"Actuals: min={act.min()}, max={act.max()}, mean={act.mean()}")
 
       plt.figure(figsize=(10, 5))
       plt.plot(act, label='Actuals', color='blue')
@@ -933,8 +929,6 @@ def objective(args, trial):
       plt.savefig(f"Tunings/SDU_PLOT{args.model}_{trial.number}.png")
       plt.show()
       plt.close()
-
-      
 
       train_loss = mean_absolute_error(act, pred)
 
