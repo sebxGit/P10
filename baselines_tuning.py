@@ -509,7 +509,7 @@ class SDUDataModule(L.LightningDataModule):
 
     df = filter_data(start_date, end_date, df)
 
-    df.to_csv('sdu_test.csv')
+    # df.to_csv('sdu_test.csv')
 
     # exit()
 
