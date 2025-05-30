@@ -776,7 +776,7 @@ def get_actuals_and_prediction_flattened(colmod, prediction):
 def objective(args, trial):
     
     params = {  
-        'input_size': 22 if args.dataset == "Colorado" else 14,
+        'input_size': 22 if args.dataset == "Colorado" else 10,
         'pred_len': args.pred_len,
         'seq_len': 24*7,
         'stride': args.pred_len,
@@ -898,8 +898,8 @@ def objective(args, trial):
       tuned_model = LightningModel(model=model, criterion=params['criterion'], optimizer=params['optimizer'], learning_rate=params['learning_rate'])
 
       # Trainer for fitting using DDP - Multi GPU
-      # trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')  ###CHANGE
-      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=1, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False)
+      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')  ###CHANGE
+      # trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=1, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False)
 
       trainer.fit(tuned_model, colmod)
 
