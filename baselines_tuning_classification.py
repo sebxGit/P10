@@ -877,7 +877,7 @@ if __name__ == '__main__':
   parser.add_argument("--model", type=str, default="AdaBoost")
   parser.add_argument("--load", type=str, default='False') #change
   parser.add_argument("--mixed", type=str, default='True')
-  parser.add_argument("--individual", type=str, default="True")
+  parser.add_argument("--individual", type=str, default="False")
   parser.add_argument("--threshold", type=float, default=500)
   parser.add_argument("--downscaling", type=int, default=13)
   parser.add_argument("--multiplier", type=int, default=2)
