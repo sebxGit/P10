@@ -629,7 +629,7 @@ def objective(args, trial, all_subsets, study):
 
   if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials) and study.best_value != None and mae >= study.best_value:
     best_list.clear()
-    best_list.append({'predictions': y_pred, 'actuals': actuals_flattened})
+    best_list.append({'predictions': y_val_tensor[-len(y_pred_tensor):].tolist(), 'actuals': y_pred_tensor.tolist()})
 
   if os.path.exists(f"Tunings/{combined_name}"):
     shutil.rmtree(f"Tunings/{combined_name}")
