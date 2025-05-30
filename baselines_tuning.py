@@ -945,8 +945,8 @@ def objective(args, trial):
       act = y_val.reshape(-1)
       pred = y_pred.reshape(-1)
 
-      pred = np.expm1(pred)  # Inverse log1p transformation
-      act = np.expm1(act)  # Inverse log1p transformation
+      # pred = np.expm1(pred)  # Inverse log1p transformation
+      # act = np.expm1(act)  # Inverse log1p transformation
 
       plt.figure(figsize=(10, 5))
       plt.plot(act, label='Actuals', color='blue')

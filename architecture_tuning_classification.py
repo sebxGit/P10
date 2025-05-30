@@ -704,7 +704,7 @@ def objective(args, trial, all_subsets, study):
 
   tuning_results.append({'combined_name': combined_name, 'rec': total_recall_score, 'parameters': trial.params})
 
-  if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials) and study.best_value != None and total_recall_score >= study.best_value:
+  if len(study.trials) > 0 and study.best_value != None and total_recall_score >= study.best_value:
     best_list.clear()
     best_list.append({'predictions': y_pred, 'actuals': actuals_flat})
 
