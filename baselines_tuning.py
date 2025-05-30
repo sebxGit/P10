@@ -490,7 +490,6 @@ class SDUDataModule(L.LightningDataModule):
 
     # df['lag12h'] = df['Aggregated charging load'].shift(12)
     df['lag24h'] = df['Aggregated charging load'].shift(24)  # 1 day
-    df['lag48h'] = df['Aggregated charging load'].shift(48)  # 1 day
     # df['lag1w'] = df['Aggregated charging load'].shift(24*7)  # 1 week
 
     # df['roll_std_24h'] = df['Aggregated charging load'].rolling(window=24).std()
@@ -774,21 +773,21 @@ def get_actuals_and_prediction_flattened(colmod, prediction):
 
 def objective(args, trial):
     params = {  
-        'input_size': 22 if args.dataset == "Colorado" else 14,
+        'input_size': 22 if args.dataset == "Colorado" else 13,
         'pred_len': args.pred_len,
         'seq_len': 24*7,
         'stride': args.pred_len,
-        'batch_size': 24, 
-        # 'batch_size': trial.suggest_int('batch_size', 32, 128, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
+        # 'batch_size': 24, 
+        'batch_size': trial.suggest_int('batch_size', 32, 128, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
         'criterion': torch.nn.HuberLoss(), ###CHANGE
         'optimizer': torch.optim.Adam,
         'scaler': MinMaxScaler(), ###CHANGE
-        'learning_rate': trial.suggest_float('learning_rate', 1e-5, 1e-3, log=True),
+        'learning_rate': trial.suggest_float('learning_rate', 1e-5, 1e-2, log=True),
         'seed': 42,
-        #'max_epochs': trial.suggest_int('max_epochs', 1000, 5000, step=100), ###CHANGE
-        'max_epochs': 1000,
-        #'num_workers': trial.suggest_int('num_workers', 5, 12) if args.model != "DPAD" else 2, ###CHANGE
-        'num_workers': 12,
+        'max_epochs': trial.suggest_int('max_epochs', 1000, 5000, step=100), ###CHANGE
+        # 'max_epochs': 1000,
+        'num_workers': trial.suggest_int('num_workers', 5, 20) if args.model != "DPAD" else 2, ###CHANGE
+        # 'num_workers': 12,
         'is_persistent': True
     }
 
@@ -819,7 +818,6 @@ def objective(args, trial):
         'num_layers': 5,
         # 'dropout': trial.suggest_float('dropout', 0.0, 1),
         'dropout': 0.001,
-
       }
       model = GRU(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "MLP":
