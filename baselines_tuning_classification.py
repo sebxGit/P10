@@ -741,11 +741,6 @@ def objective(args, trial, study):
       y_pred = trainer.predict(tuned_model, colmod, return_predictions=True)
       y_pred = [value.item() for tensor in y_pred for value in tensor.flatten()]
 
-      act = []
-      for batch in colmod.predict_dataloader():
-        x, y = batch
-        act.extend(y.numpy())
-
     elif isinstance(model, BaseEstimator):
       name = model.__class__.__name__
       print(f"-----Training {type(model.estimator).__name__ if name == 'MultiOutputRegressor' else name} model-----")
@@ -753,7 +748,12 @@ def objective(args, trial, study):
       X_val, y_val = colmod.sklearn_setup("val")
       
       model.fit(X_train, y_train)
-      y_pred, act = model.predict(X_val).reshape(-1), y_val
+      y_pred = model.predict(X_val).reshape(-1)
+
+      act = []
+      for batch in colmod.predict_dataloader():
+        x, y = batch
+        act.extend(y.numpy())
 
     baseloads, dfs = get_baseloads_and_parts(colmod, y_pred, act)
 
@@ -830,7 +830,7 @@ def tune_model_with_optuna(args, n_trials):
   if study.best_value != float('inf'):
     if not os.path.exists(f'Tunings'):
       os.makedirs(f'Tunings', exist_ok=True)
-      
+
     joblib.dump(study, path_pkl)
     try:
       df_tuning = pd.read_csv(path_csv, delimiter=',')
