@@ -918,7 +918,7 @@ def objective(args, trial):
       # print(f"Predictions: min={pred.min()}, max={pred.max()}, mean={pred.mean()}")
       # print(f"Actuals: min={act.min()}, max={act.max()}, mean={act.mean()}")
 
-      train_loss = nn.torch.HuberLoss(act, pred)
+      train_loss = torch.nn.HuberLoss(act, pred)
 
     elif isinstance(model, BaseEstimator):
       name = model.__class__.__name__
@@ -936,7 +936,7 @@ def objective(args, trial):
       # pred = np.expm1(pred)  # Inverse log1p transformation
       # act = np.expm1(act)  # Inverse log1p transformation
 
-      train_loss = nn.torch.HuberLoss(act, pred)
+      train_loss = torch.nn.HuberLoss(act, pred)
 
     plt.figure(figsize=(10, 5))
     plt.plot(act, label='Actuals', color='blue')
