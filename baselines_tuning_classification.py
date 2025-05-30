@@ -750,10 +750,10 @@ def objective(args, trial, study):
       model.fit(X_train, y_train)
       y_pred = model.predict(X_val).reshape(-1)
 
-      act = []
-      for batch in colmod.predict_dataloader():
-        x, y = batch
-        act.extend(y.numpy())
+    act = []
+    for batch in colmod.predict_dataloader():
+      x, y = batch
+      act.extend(y.numpy())
 
     baseloads, dfs = get_baseloads_and_parts(colmod, y_pred, act)
 
