@@ -781,7 +781,7 @@ def objective(args, trial):
         'seq_len': 24*7,
         'stride': args.pred_len,
         'batch_size': trial.suggest_int('batch_size', 32, 128, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
-        'criterion': torch.nn.L1Loss(),
+        'criterion': torch.nn.MSELoss(),
         'optimizer': torch.optim.Adam,
         'scaler': MinMaxScaler(), ###CHANGE
         'learning_rate': trial.suggest_float('learning_rate', 1e-5, 1e-3, log=True),
@@ -919,7 +919,7 @@ def objective(args, trial):
       # print(f"Predictions: min={pred.min()}, max={pred.max()}, mean={pred.mean()}")
       # print(f"Actuals: min={act.min()}, max={act.max()}, mean={act.mean()}")
 
-      train_loss = mean_absolute_error(act, pred)
+      train_loss = mean_squared_error(act, pred)
 
     elif isinstance(model, BaseEstimator):
       name = model.__class__.__name__
@@ -937,7 +937,7 @@ def objective(args, trial):
       # pred = np.expm1(pred)  # Inverse log1p transformation
       # act = np.expm1(act)  # Inverse log1p transformation
 
-      train_loss = mean_absolute_error(act, pred)
+      train_loss = mean_squared_error(act, pred)
 
     plt.figure(figsize=(10, 5))
     plt.plot(act, label='Actuals', color='blue')
