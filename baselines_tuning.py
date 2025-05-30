@@ -435,7 +435,7 @@ class SDUDataModule(L.LightningDataModule):
     self.y_train_val = None
 
   def setup(self, stage: str):
-    start_date = pd.to_datetime('2030-01-01')
+    start_date = pd.to_datetime('2029-01-01')
     end_date = pd.to_datetime('2032-01-01')
     df = pd.read_csv(self.data_dir, skipinitialspace=True)
     df['Timestamp'] = pd.to_datetime(df['Timestamp'], format="%b %d, %Y, %I:%M:%S %p")
