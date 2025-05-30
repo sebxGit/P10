@@ -474,9 +474,9 @@ class SDUDataModule(L.LightningDataModule):
     # df['day_sin'] = np.sin(2 * np.pi * df['Day'] / df['days_in_month'])
     # df['day_cos'] = np.cos(2 * np.pi * df['Day'] / df['days_in_month'])
 
-    # df['dayofweek'] = df.index.dayofweek
-    # df['dayofweek_sin'] = np.sin(2 * np.pi * df['dayofweek'] / 7)
-    # df['dayofweek_cos'] = np.cos(2 * np.pi * df['dayofweek'] / 7)
+    df['dayofweek'] = df.index.dayofweek
+    df['dayofweek_sin'] = np.sin(2 * np.pi * df['dayofweek'] / 7)
+    df['dayofweek_cos'] = np.cos(2 * np.pi * df['dayofweek'] / 7)
 
     #remove  
     # df = df.drop(columns=['month', 'Year', 'hour', 'Month', 'Hour', 'Day'])
@@ -776,15 +776,15 @@ def get_actuals_and_prediction_flattened(colmod, prediction):
 def objective(args, trial):
     
     params = {  
-        'input_size': 22 if args.dataset == "Colorado" else 10,
+        'input_size': 22 if args.dataset == "Colorado" else 13,
         'pred_len': args.pred_len,
         'seq_len': 24*7,
         'stride': args.pred_len,
         'batch_size': trial.suggest_int('batch_size', 32, 128, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
         'criterion': torch.nn.L1Loss(),
         'optimizer': torch.optim.Adam,
-        'scaler': RobustScaler(), ###CHANGE
-        'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
+        'scaler': MinMaxScaler(), ###CHANGE
+        'learning_rate': trial.suggest_float('learning_rate', 1e-5, 1e-3, log=True),
         'seed': 42,
         #'max_epochs': trial.suggest_int('max_epochs', 1000, 5000, step=100), ###CHANGE
         'max_epochs': 2000,
