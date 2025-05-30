@@ -617,8 +617,6 @@ def objective(args, trial, all_subsets, study):
     x, y = batch
     actuals.extend(y.numpy())
 
-  actuals_flattened = [item for sublist in actuals for item in sublist]
-
   trial.set_user_attr('mse', mse.item())
   trial.set_user_attr('mae', mae.item())
   
@@ -643,8 +641,8 @@ parser.add_argument("--stride", type=int, default=24)
 parser.add_argument("--seq_len", type=int, default=24*7)
 parser.add_argument("--optimizer", type=str, default="Adam")
 parser.add_argument("--scaler", type=str, default="MinMaxScaler")
-parser.add_argument("--load", type=str, default="False")
-parser.add_argument("--trials", type=int, default=3)
+parser.add_argument("--load", type=str, default="True")
+parser.add_argument("--trials", type=int, default=150)
 
 criterion_map = { 
                   "MSELoss": nn.MSELoss, 
