@@ -345,7 +345,6 @@ class ColoradoDataModule(L.LightningDataModule):
     df = df.dropna()
 
     df.to_csv('colorado_test.csv')
-    exit()
 
     X = df.copy()
 
@@ -918,7 +917,10 @@ def objective(args, trial):
       # print(f"Predictions: min={pred.min()}, max={pred.max()}, mean={pred.mean()}")
       # print(f"Actuals: min={act.min()}, max={act.max()}, mean={act.mean()}")
 
-      train_loss = torch.nn.HuberLoss(act, pred)
+      act_tensor = torch.tensor(act, dtype=torch.float32)
+      pred_tensor = torch.tensor(pred, dtype=torch.float32)
+
+      train_loss = torch.nn.HuberLoss(act_tensor, pred_tensor)
 
     elif isinstance(model, BaseEstimator):
       name = model.__class__.__name__
@@ -936,7 +938,10 @@ def objective(args, trial):
       # pred = np.expm1(pred)  # Inverse log1p transformation
       # act = np.expm1(act)  # Inverse log1p transformation
 
-      train_loss = torch.nn.HuberLoss(act, pred)
+      act_tensor = torch.tensor(act, dtype=torch.float32)
+      pred_tensor = torch.tensor(pred, dtype=torch.float32)
+
+      train_loss = torch.nn.HuberLoss(act_tensor, pred_tensor)
 
     plt.figure(figsize=(10, 5))
     plt.plot(act, label='Actuals', color='blue')
