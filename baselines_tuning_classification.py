@@ -822,7 +822,7 @@ def tune_model_with_optuna(args, n_trials):
     print("Starting a new tuning.")
     study = optuna.create_study(direction="maximize", study_name=study_name)
 
-  study.optimize(lambda trial: objective(args, trial, study), n_trials=n_trials, gc_after_trial=True, timeout=37800) #change
+  study.optimize(lambda trial: safe_objective(args, trial, study), n_trials=n_trials, gc_after_trial=True, timeout=37800) #change
 
   print("Len trials:", len(study.trials))
   print("Best params:", study.best_params)
@@ -881,7 +881,7 @@ if __name__ == '__main__':
   parser.add_argument("--threshold", type=float, default=500)
   parser.add_argument("--downscaling", type=int, default=13)
   parser.add_argument("--multiplier", type=int, default=2)
-  parser.add_argument("--trials", type=int, default=1) #change
+  parser.add_argument("--trials", type=int, default=150) #change
 
   args = parser.parse_args()
   
