@@ -646,7 +646,7 @@ def objective(args, trial):
         'stride': args.pred_len,
         # 'batch_size': 24, 
         'batch_size': trial.suggest_int('batch_size', 16, 128, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
-        'criterion': torch.nn.HuberLoss(delta=trial.suggest_float('delta_huber_loss', 0.0, 1.0)), ###CHANGE
+        'criterion': torch.nn.HuberLoss(delta=trial.suggest_float('delta_huber_loss', 0.0, 1, step=0.05)), ###CHANGE
         'optimizer': torch.optim.Adam,
         'scaler': MinMaxScaler(), ###CHANGE
         'learning_rate': trial.suggest_float('learning_rate', 1e-5, 1e-2, log=True),
@@ -889,4 +889,4 @@ if __name__ == '__main__':
   parser.add_argument("--individual", type=str, default="False")
   args = parser.parse_args()
 
-  best_params = tune_model_with_optuna(args, n_trials=1)
+  best_params = tune_model_with_optuna(args, n_trials=150)
