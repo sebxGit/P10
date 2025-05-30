@@ -442,9 +442,8 @@ class SDUDataModule(L.LightningDataModule):
     df['Timestamp'] = df['Timestamp'].dt.floor('h')
     df = df[['Timestamp', 'Aggregated charging load', 'Day', 'Month', 'Year', 'Hour']]
 
-
     # Mask zero away the zero values
-    # df['Aggregated charging load'] = df['Aggregated charging load'].mask(df['Aggregated charging load'] == 0, np.nan)
+    df['Aggregated charging load'] = df['Aggregated charging load'].mask(df['Aggregated charging load'] == 0, np.nan)
     # print(f"Number of zero values: {df['Aggregated charging load'].isna().sum()} out of {len(df)}")
     # df = df[df["Aggregated charging load"] != 0.0]
 
