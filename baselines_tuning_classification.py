@@ -803,13 +803,13 @@ def safe_objective(args, trial, study):
     torch.cuda.empty_cache()
   
 def tune_model_with_optuna(args, n_trials):
-  if args.individual:
+  if args.individual == "True":
     path_pkl = f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_classification_individual_tuning.pkl'
     path_csv = f'Tunings/{args.dataset}_{args.pred_len}h_classification_individual_tuning.csv'
   else:
     path_pkl = f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_classification_tuning.pkl'
     path_csv = f'Tunings/{args.dataset}_{args.pred_len}h_classification_tuning.csv'
-  study_name = f'{args.dataset}_{args.pred_len}h_{args.model}_{"Individual" if args.individual else "BootstrapSampling"}_classification_tuning'
+  study_name = f'{args.dataset}_{args.pred_len}h_{args.model}_{"Individual" if args.individual == "True" else "BootstrapSampling"}_classification_tuning'
 
   if args.load == 'True':
     try:
