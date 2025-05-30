@@ -778,7 +778,6 @@ if __name__ == "__main__":
   selected_models = ast.literal_eval(args.models)
   combined_name = "-".join([m for m in selected_models])
 
-
   all_subsets = []
   for r in range(1, len(selected_models) + 1):
     all_subsets.extend(combinations(selected_models, r))
