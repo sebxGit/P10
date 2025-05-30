@@ -896,13 +896,13 @@ def objective(args, trial):
       tuned_model = LightningModel(model=model, criterion=params['criterion'], optimizer=params['optimizer'], learning_rate=params['learning_rate'])
 
       # Trainer for fitting using DDP - Multi GPU
-      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')  ###CHANGE
+      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, callbacks=[EarlyStopping(monitor="train_loss", mode="min")], precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')  ###CHANGE
       # trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=1, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False)
 
       trainer.fit(tuned_model, colmod)
 
       # New Trainer for inference on one GPU
-      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, devices=1)  ###CHANGE
+      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, callbacks=[EarlyStopping(monitor="train_loss", mode="min")], precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, devices=1)  ###CHANGE
 
       predictions = trainer.predict(tuned_model, colmod, return_predictions=True)
 
