@@ -918,7 +918,9 @@ def objective(args, trial):
       act_tensor = torch.tensor(act, dtype=torch.float32)
       pred_tensor = torch.tensor(pred, dtype=torch.float32)
 
-      train_loss = torch.nn.HuberLoss(act_tensor, pred_tensor)
+      # train_loss = torch.nn.HuberLoss(act_tensor, pred_tensor) ## Changed
+      criterion = torch.nn.HuberLoss()
+      train_loss = criterion(pred_tensor, act_tensor)
 
     elif isinstance(model, BaseEstimator):
       name = model.__class__.__name__
@@ -939,7 +941,9 @@ def objective(args, trial):
       act_tensor = torch.tensor(act, dtype=torch.float32)
       pred_tensor = torch.tensor(pred, dtype=torch.float32)
 
-      train_loss = torch.nn.HuberLoss(act_tensor, pred_tensor)
+      # train_loss = torch.nn.HuberLoss(act_tensor, pred_tensor) ## Changed 
+      criterion = torch.nn.HuberLoss()
+      train_loss = criterion(pred_tensor, act_tensor)
 
     plt.figure(figsize=(10, 5))
     plt.plot(act, label='Actuals', color='blue')
@@ -948,8 +952,8 @@ def objective(args, trial):
     plt.xlabel('Time')
     plt.ylabel('Energy Consumption')
     plt.legend()
-    plt.show()
     plt.savefig(f"sdu_testplot_{args.model}.png")
+    plt.show()
     plt.close()
     return train_loss
 
