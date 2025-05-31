@@ -645,23 +645,15 @@ def objective(args, trial):
         'seq_len': 24*7,
         'stride': args.pred_len,
         'batch_size': trial.suggest_int('batch_size', 16, 128, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
-        # 'batch_size': 112, ###CHANGE
-        # 'criterion': torch.nn.HuberLoss(delta=trial.suggest_float('delta_huber_loss', 0.05, 1, step=0.05)), ###CHANGE
-        'criterion': torch.nn.HuberLoss(delta=0.05), ###CHANGE
+        'criterion': torch.nn.HuberLoss(), ###CHANGE
         'optimizer': torch.optim.Adam,
         'scaler': MinMaxScaler(), ###CHANGE
-        # 'learning_rate': trial.suggest_float('learning_rate', 1e-5, 1e-2, log=True),
-        'learning_rate': 0.003657814250420118, ###CHANGE
+        'learning_rate': trial.suggest_float('learning_rate', 1e-5, 1e-2, log=True),
         'seed': 42,
-        # 'max_epochs': trial.suggest_int('max_epochs', 2000, 7000, step=100), ###CHANGE
-        'max_epochs': 1000,
+        'max_epochs': trial.suggest_int('max_epochs', 2000, 7000, step=100), ###CHANGE
         'num_workers': trial.suggest_int('num_workers', 5, 20) if args.model != "DPAD" else 2, ###CHANGE
-        # 'num_workers': 12,
         'is_persistent': True
     }
-      #{'batch_size': 112, 'delta_huber_loss': 0.05, 'learning_rate': 0.003657814250420118, 'max_epochs': 5900, 'num_workers': 18, 'n_estimators': 72, 'max_depth': 1, 'min_samples_split': 5, 'min_samples_leaf': 18, 'max_features': 0.9986152542798088}
-
-
     if args.dataset == "Colorado":
       colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=params['scaler'], seq_len=params['seq_len'], pred_len=params['pred_len'], stride=params['stride'], batch_size=params['batch_size'], num_workers=params['num_workers'], is_persistent=params['is_persistent'])
     elif args.dataset == "SDU":
@@ -700,19 +692,12 @@ def objective(args, trial):
       }
       model = MultiOutputRegressor(AdaBoostRegressor(n_estimators=_params['n_estimators'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "RandomForest":
-      # _params = {
-      #   'n_estimators': trial.suggest_int('n_estimators', 50, 200),
-      #   'max_depth': trial.suggest_int('max_depth', 1, 20),
-      #   'min_samples_split': trial.suggest_int('min_samples_split', 2, 20),
-      #   'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 20),
-      #   'max_features': trial.suggest_float('max_features', 0.1, 1.0),
-      # }
       _params = {
-        'n_estimators': 72,
-        'max_depth': 1,
-        'min_samples_split': 5,
-        'min_samples_leaf': 18,
-        'max_features': 0.9986152542798088,
+        'n_estimators': trial.suggest_int('n_estimators', 50, 200),
+        'max_depth': trial.suggest_int('max_depth', 1, 20),
+        'min_samples_split': trial.suggest_int('min_samples_split', 2, 20),
+        'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 20),
+        'max_features': trial.suggest_float('max_features', 0.1, 1.0),
       }
       model =  MultiOutputRegressor(RandomForestRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], min_samples_leaf=_params['min_samples_leaf'], max_features=_params['max_features'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "GradientBoosting":
@@ -798,7 +783,6 @@ def objective(args, trial):
       act_tensor = torch.tensor(act, dtype=torch.float32)
       pred_tensor = torch.tensor(pred, dtype=torch.float32)
 
-      # train_loss = torch.nn.HuberLoss(act_tensor, pred_tensor) ## Changed
       train_loss = params['criterion'](pred_tensor, act_tensor)
 
     elif isinstance(model, BaseEstimator):
@@ -820,7 +804,6 @@ def objective(args, trial):
       act_tensor = torch.tensor(act, dtype=torch.float32)
       pred_tensor = torch.tensor(pred, dtype=torch.float32)
 
-      # train_loss = torch.nn.HuberLoss(act_tensor, pred_tensor) ## Changed 
       train_loss = params['criterion'](pred_tensor, act_tensor)
 
     plt.figure(figsize=(10, 5))
@@ -900,4 +883,4 @@ if __name__ == '__main__':
   parser.add_argument("--individual", type=str, default="False")
   args = parser.parse_args()
 
-  best_params = tune_model_with_optuna(args, n_trials=1)
+  best_params = tune_model_with_optuna(args, n_trials=150)
