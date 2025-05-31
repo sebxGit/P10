@@ -460,7 +460,7 @@ class SDUDataModule(L.LightningDataModule):
     #print(df.head())
 
     # df['Aggregated charging load'] = df['Aggregated charging load'].interpolate(method='time')
-    # df['Aggregated charging load'] = df['Aggregated charging load'].interpolate(method='linear')
+    df['Aggregated charging load'] = df['Aggregated charging load'].interpolate(method='linear')
     # df['Aggregated charging load'] = df['Aggregated charging load'].interpolate(method='pchip')
 
     df['hour_sin'] = np.sin(2 * np.pi * df['Hour'] / 24)
