@@ -861,6 +861,7 @@ def tune_model_with_optuna(args, n_trials):
   plt.figure(figsize=(15, 4))
   plt.plot(actuals, label='Actuals')
   plt.plot(predictions, label=f'predictions')
+  plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
   plt.xlabel('Samples')
   plt.ylabel('Electricity Consumption (kW)')
   plt.legend()
