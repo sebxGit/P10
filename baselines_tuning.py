@@ -1,8 +1,6 @@
 import argparse
-import calendar
 import os
 import gc
-from typing import Any
 import joblib
 import numpy as np
 import pandas as pd
@@ -10,7 +8,6 @@ import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 import holidays
 import optuna
-from sklearn.discriminant_analysis import StandardScaler
 from models.LSTM import LSTM
 from models.GRU import GRU
 from models.MLP import MLP
@@ -19,7 +16,7 @@ from models.xPatch import xPatch
 from models.PatchMixer import PatchMixer
 
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler, PowerTransformer, RobustScaler
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.ensemble import RandomForestRegressor, AdaBoostRegressor, GradientBoostingRegressor
 from sklearn.multioutput import MultiOutputRegressor
 from sklearn.base import BaseEstimator
@@ -40,7 +37,6 @@ from joblib import Parallel, delayed
 # tensorboard --logdir=Predictions/MLP-GRU-LSTM
 SEED = 42
 seed_everything(SEED, workers=True)
-
 
 def convert_Colorado_to_hourly(data):
 
@@ -235,6 +231,7 @@ def add_featuresSDU(df):
 
     return df
 
+
 def filter_data(start_date, end_date, data):
     ####################### FILTER DATASET  #######################
     data = data[(data.index >= start_date) & (data.index <= end_date)].copy()
@@ -262,38 +259,12 @@ class TimeSeriesDataset(Dataset):
 
   def __len__(self):
     return (len(self.X) - (self.seq_len + self.pred_len - 1)) // self.stride + 1
-  
+
   def __getitem__(self, index):
     start_idx = index * self.stride
     x_window = self.X[start_idx: start_idx + self.seq_len]
     y_target = self.y[start_idx + self.seq_len: start_idx + self.seq_len + self.pred_len]
     return x_window, y_target
-
-
-# class TimeSeriesDataset(Dataset):
-    def __init__(self, X: np.ndarray, y: np.ndarray, seq_len: int = 1, pred_len: int = 1, stride = 1):
-        self.seq_len = seq_len
-        self.pred_len = pred_len  # will be 1 for classical
-        self.stride = stride          # always 1 for classical
-
-        if isinstance(X, pd.DataFrame):
-            X = X.to_numpy()
-        if isinstance(y, pd.Series):
-            y = y.to_numpy()
-
-        X = np.asarray(X, dtype=np.float32)
-        y = np.asarray(y, dtype=np.float32)
-
-        self.X = torch.tensor(X).float()
-        self.y = torch.tensor(y).float()
-
-    def __len__(self):
-        return len(self.X) - self.seq_len
-
-    def __getitem__(self, index):
-        x_window = self.X[index: index + self.seq_len]
-        y_target = self.y[index + self.seq_len]  # single step ahead
-        return x_window, y_target
 
 class BootstrapSampler:
     def __init__(self, dataset_size, random_state=None):
@@ -307,6 +278,7 @@ class BootstrapSampler:
 
     def __len__(self):
         return self.dataset_size
+
 
 def process_window(i, X, y, seq_len, pred_len):
   X_win = X[i:i + seq_len]
@@ -345,13 +317,9 @@ class ColoradoDataModule(L.LightningDataModule):
 
     df = df.dropna()
 
-    df.to_csv('colorado_test.csv')
-
     X = df.copy()
 
     y = X.pop('Energy_Consumption')
-
-
 
     # 60/20/20 split
     X_tv, self.X_test, y_tv, self.y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
@@ -413,9 +381,10 @@ class ColoradoDataModule(L.LightningDataModule):
     # Unpack results
     X_window, y_target = zip(*results)
     return np.array(X_window), np.array(y_target)
+  
 
 class SDUDataModule(L.LightningDataModule):
-  def __init__(self, data_dir: str, scaler: Any, seq_len: int, pred_len: int, stride: int, batch_size: int, num_workers: int, is_persistent: bool):
+  def __init__(self, data_dir: str, scaler: int, seq_len: int, pred_len: int, stride: int, batch_size: int, num_workers: int, is_persistent: bool):
     super().__init__()
     self.data_dir = data_dir
     self.scaler = scaler
@@ -435,20 +404,39 @@ class SDUDataModule(L.LightningDataModule):
     self.y_train_val = None
 
   def setup(self, stage: str):
-    start_date = pd.to_datetime('2029-01-01')
-    end_date = pd.to_datetime('2032-01-01')
+    # Define the start and end dates
+    start_date = pd.to_datetime('2024-12-31')
+    end_date = pd.to_datetime('2032-12-31')
+
+    # Load the CSV
     df = pd.read_csv(self.data_dir, skipinitialspace=True)
-    df['Timestamp'] = pd.to_datetime(df['Timestamp'], format="%b %d, %Y, %I:%M:%S %p")
+
+    # Convert 'Timestamp' to datetime with exact format
+    df['Timestamp'] = pd.to_datetime(
+        df['Timestamp'], format="%b %d, %Y, %I:%M:%S %p")
+
+    # Keep only relevant columns
+    df = df[['Timestamp', 'Aggregated charging load',
+            'Total number of EVs', 'Number of charging EVs',
+             'Number of driving EVs', 'Overload duration [min]']]
+
+    # Ensure numeric columns are correctly parsed
+    numeric_cols = [
+        'Aggregated charging load',
+        'Total number of EVs',
+        'Number of driving EVs',
+        'Number of charging EVs',
+        'Overload duration [min]'
+    ]
+    df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric, errors='coerce')
+
+    # Use lowercase 'h' to avoid deprecation warning
     df['Timestamp'] = df['Timestamp'].dt.floor('h')
-    df = df[['Timestamp', 'Aggregated charging load', 'Day', 'Month', 'Year', 'Hour']]
 
-    # Mask zero away the zero values
-    # df['Aggregated charging load'] = df['Aggregated charging load'].mask(df['Aggregated charging load'] == 0, np.nan)
-    # print(f"Number of zero values: {df['Aggregated charging load'].isna().sum()} out of {len(df)}")
-    # df = df[df["Aggregated charging load"] != 0.0]
+    # Optional: Aggregate if multiple entries exist for the same hour
+    df = df.groupby('Timestamp')[numeric_cols].sum().reset_index()
 
-    # print(f"Number of Masked values: {df['Aggregated charging load'].isna().sum()} out of {len(df)}")
-    df.set_index('Timestamp', inplace=True) 
+    df = add_featuresSDU(df)
 
     # df['hour'] = df.index.hour
     # df['dayofweek'] = df.index.dayofweek
@@ -508,46 +496,46 @@ class SDUDataModule(L.LightningDataModule):
 
     df = filter_data(start_date, end_date, df)
 
-    # df.to_csv('sdu_test.csv')
-
-    # exit()
+    df = df.dropna()
 
     X = df.copy()
+
     y = X.pop('Aggregated charging load')
 
-    self.X_train_val, self.X_test, self.y_train_val, self.y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
+    # 60/20/20 split
+    self.X_train_val, self.X_test, self.y_train_val, self.y_test = train_test_split( X, y, test_size=0.2, shuffle=False)
     self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(self.X_train_val, self.y_train_val, test_size=0.25, shuffle=False)
 
-    # Start and end dates for the dataset
-    # print(self.X_train.index[1], self.X_train.index[-1])
-    # print(self.X_val.index[1], self.X_val.index[-1])
-    # print(self.X_test.index[1], self.X_test.index[-1])
-    
-    # exit()
-
     preprocessing = self.scaler
-    preprocessing.fit(self.X_train)
-
+    preprocessing.fit(self.X_train)  # should only fit to training data
 
     if stage == "fit" or stage is None:
       self.X_train = preprocessing.transform(self.X_train)
       self.y_train = np.array(self.y_train)
 
-    if stage == "test" or "predict" or stage is None:
-      self.X_val = preprocessing.transform(self.X_val)  
-      self.y_val = np.array(self.y_val) 
+      # self.X_val = preprocessing.transform(self.X_val)
+      # self.y_val = np.array(self.y_val)
 
+    if stage == "test" or "predict" or stage is None:
+      self.X_val = preprocessing.transform(self.X_val)
+      self.y_val = np.array(self.y_val)
+
+      # self.X_test = preprocessing.transform(self.X_test)
+      # self.y_test = np.array(self.y_test)
 
   def train_dataloader(self):
     train_dataset = TimeSeriesDataset(
         self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-    
     sampler = BootstrapSampler(len(train_dataset), random_state=SEED)
-    if args.individual == 'False':
-      train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
-    else:
-      train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler,
+                              shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
+    # train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return train_loader
+
+  # def predict_dataloader(self):
+  #   test_dataset = TimeSeriesDataset(self.X_test, self.y_test, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+  #   test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+  #   return test_loader
 
   def predict_dataloader(self):
     val_dataset = TimeSeriesDataset(
@@ -555,7 +543,7 @@ class SDUDataModule(L.LightningDataModule):
     val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False,
                             num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return val_loader
-  
+
   def sklearn_setup(self, set_name: str = "train"):
     if set_name == "train":
       if args.individual == 'False':
@@ -582,6 +570,7 @@ class SDUDataModule(L.LightningDataModule):
     # Unpack results
     X_window, y_target = zip(*results)
     return np.array(X_window), np.array(y_target)
+
 
 class CustomWriter(BasePredictionWriter):
   def __init__(self, output_dir, write_interval, combined_name, model_name):
@@ -639,21 +628,23 @@ def get_actuals_and_prediction_flattened(colmod, prediction):
   return predictions_flattened, actuals_flattened
 
 def objective(args, trial):
-    params = {  
-        'input_size': 22 if args.dataset == "Colorado" else 13,
+    
+    params = {
+        'input_size': 22 if args.dataset == "Colorado" else 24,
         'pred_len': args.pred_len,
         'seq_len': 24*7,
         'stride': args.pred_len,
-        'batch_size': trial.suggest_int('batch_size', 16, 128, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
-        'criterion': torch.nn.HuberLoss(), ###CHANGE
+        'batch_size': trial.suggest_int('batch_size', 32, 128, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
+        'criterion': torch.nn.L1Loss(),
         'optimizer': torch.optim.Adam,
-        'scaler': MinMaxScaler(), ###CHANGE
-        'learning_rate': trial.suggest_float('learning_rate', 1e-5, 1e-2, log=True),
+        'scaler': MinMaxScaler(),
+        'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
         'max_epochs': trial.suggest_int('max_epochs', 1000, 2500, step=100), ###CHANGE
         'num_workers': trial.suggest_int('num_workers', 5, 20) if args.model != "DPAD" else 2, ###CHANGE
         'is_persistent': True
     }
+
     if args.dataset == "Colorado":
       colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=params['scaler'], seq_len=params['seq_len'], pred_len=params['pred_len'], stride=params['stride'], batch_size=params['batch_size'], num_workers=params['num_workers'], is_persistent=params['is_persistent'])
     elif args.dataset == "SDU":
@@ -668,19 +659,15 @@ def objective(args, trial):
     if args.model == "LSTM":
       _params = {
         'hidden_size': trial.suggest_int('hidden_size', 50, 200),
-        'num_layers': trial.suggest_int('num_layers', 1, 10), ### CHANGE 
-        # 'num_layers': 5,
-        'dropout': trial.suggest_float('dropout', 0.0, 0.5),
-        # 'dropout': 0.001,
+        'num_layers': trial.suggest_int('num_layers', 1, 10),
+        'dropout': trial.suggest_float('dropout', 0.0, 1),
       }
       model = LSTM(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "GRU":
       _params = {
         'hidden_size': trial.suggest_int('hidden_size', 50, 200),
-        'num_layers': trial.suggest_int('num_layers', 1, 10), ### CHANGE
-        # 'num_layers': 5,
-        'dropout': trial.suggest_float('dropout', 0.0, 0.5),
-        # 'dropout': 0.001,
+        'num_layers': trial.suggest_int('num_layers', 1, 10),
+        'dropout': trial.suggest_float('dropout', 0.0, 1),
       }
       model = GRU(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "MLP":
@@ -759,31 +746,19 @@ def objective(args, trial):
       tuned_model = LightningModel(model=model, criterion=params['criterion'], optimizer=params['optimizer'], learning_rate=params['learning_rate'])
 
       # Trainer for fitting using DDP - Multi GPU
-      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')  ###CHANGE
-      # trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=1, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False)
+      #trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
+      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
 
       trainer.fit(tuned_model, colmod)
 
       # New Trainer for inference on one GPU
-      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, devices=1)  ###CHANGE
+      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, devices=1)
 
       predictions = trainer.predict(tuned_model, colmod, return_predictions=True)
 
       pred, act = get_actuals_and_prediction_flattened(colmod, predictions)
 
-      # pred = np.expm1(pred)  # Inverse log1p transformation
-      # act = np.expm1(act)  # Inverse log1p transformation
-
-      # print(f"Predictions: {pred[:30]}")
-      # print(f"Actuals: {act[:30]}")
-
-      # print(f"Predictions: min={pred.min()}, max={pred.max()}, mean={pred.mean()}")
-      # print(f"Actuals: min={act.min()}, max={act.max()}, mean={act.mean()}")
-
-      act_tensor = torch.tensor(act, dtype=torch.float32)
-      pred_tensor = torch.tensor(pred, dtype=torch.float32)
-
-      train_loss = params['criterion'](pred_tensor, act_tensor)
+      train_loss = mean_absolute_error(act, pred)
 
     elif isinstance(model, BaseEstimator):
       name = model.__class__.__name__
@@ -792,30 +767,8 @@ def objective(args, trial):
       X_val, y_val = colmod.sklearn_setup("val")
       
       model.fit(X_train, y_train)
+      train_loss = mean_absolute_error(y_val, model.predict(X_val))
 
-      y_pred = model.predict(X_val)
-      
-      act = y_val.reshape(-1)
-      pred = y_pred.reshape(-1)
-
-      # pred = np.expm1(pred)  # Inverse log1p transformation
-      # act = np.expm1(act)  # Inverse log1p transformation
-
-      act_tensor = torch.tensor(act, dtype=torch.float32)
-      pred_tensor = torch.tensor(pred, dtype=torch.float32)
-
-      train_loss = params['criterion'](pred_tensor, act_tensor)
-
-    plt.figure(figsize=(10, 5))
-    plt.plot(act, label='Actuals', color='blue')
-    plt.plot(pred, label='Predictions', color='orange')
-    plt.title(f'Actuals vs Predictions for {args.model} model')
-    plt.xlabel('Time')
-    plt.ylabel('Energy Consumption')
-    plt.legend()
-    plt.savefig(f"sdu_testplot_{args.model}.png")
-    plt.show()
-    plt.close()
     return train_loss
 
 def safe_objective(args, trial):
@@ -831,10 +784,7 @@ def safe_objective(args, trial):
 def tune_model_with_optuna(args, n_trials):
   if args.load == 'True':
     try:
-      if args.individual:
-        study = joblib.load(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_individual_tuning.pkl')
-      else:
-        study = joblib.load(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_tuning.pkl')
+      study = joblib.load(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_tuning.pkl')
       print("Loaded an old study:")
     except Exception as e:
       print("No previous tuning found. Starting a new tuning.", e) 
@@ -851,10 +801,7 @@ def tune_model_with_optuna(args, n_trials):
 
   if study.best_value != float('inf'):
     try:
-      if args.individual:
-        df_tuning = pd.read_csv(f'Tunings/{args.dataset}_{args.pred_len}h_individual_tuning.csv', delimiter=',')
-      else:
-        df_tuning = pd.read_csv(f'Tunings/{args.dataset}_{args.pred_len}h_tuning.csv', delimiter=',')
+      df_tuning = pd.read_csv(f'Tunings/{args.dataset}_{args.pred_len}h_tuning.csv', delimiter=',')
     except Exception:
       df_tuning = pd.DataFrame(columns=['model', 'trials', 'val_loss', 'parameters'])
 
@@ -877,7 +824,7 @@ if __name__ == '__main__':
   parser = ArgumentParser()
   parser.add_argument("--dataset", type=str, default="SDU")
   parser.add_argument("--pred_len", type=int, default=24)
-  parser.add_argument("--model", type=str, default="xPatch")
+  parser.add_argument("--model", type=str, default="LSTM")
   parser.add_argument("--load", type=str, default='False')
   parser.add_argument("--mixed", type=str, default='True')
   parser.add_argument("--individual", type=str, default="False")
