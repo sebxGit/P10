@@ -726,7 +726,7 @@ def objective(args, trial):
         seq_len = params['seq_len'],
         pred_len = params['pred_len'],
         enc_in = params['input_size'],
-        patch_len = trial.suggest_int('patch_len', 2, 124, step=2),
+        patch_len = trial.suggest_int('patch_len', 124, 248, step=31),
         stride=trial.suggest_int('stride', 2, 32, step=2),
         # padding_patch = trial.suggest_categorical('padding_patch', ['end', 'None']),
         padding_patch = 'end',
@@ -744,13 +744,13 @@ def objective(args, trial):
         "seq_len": params['seq_len'],               # Context window (lookback length)
         "pred_len": params['pred_len'],
         "batch_size": params['batch_size'],
-        "patch_len": trial.suggest_int("patch_len", 4, 64, step=4),  # Patch size  
-        "stride": trial.suggest_int("stride", 4, 32, step=2),  # Stride for patching 
+        "patch_len": trial.suggest_int("patch_len", 124, 248, step=31),  # Patch size  
+        "stride": trial.suggest_int("stride", 2, 32, step=2),  # Stride for patching 
         "mixer_kernel_size": trial.suggest_int("mixer_kernel_size", 2, 64, step=2),  # Kernel size for the PatchMixer layer
         "d_model": trial.suggest_int("d_model", 512, 1024, step=64),  # Dimension of the model
         "dropout": trial.suggest_float("dropout", 0.0, 0.2, step=0.05),  # Dropout rate for the model
         "head_dropout": trial.suggest_float("head_dropout", 0.0, 0.2, step=0.05),  # Dropout rate for the head layers
-        "e_layers": trial.suggest_int("e_layers", 6, 8),  # Number of PatchMixer layers (depth)
+        "e_layers": trial.suggest_int("e_layers", 15, 30),  # Number of PatchMixer layers (depth)
       })
       model = PatchMixer(_params)
     else:
