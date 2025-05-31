@@ -672,6 +672,7 @@ def objective(args, trial, all_subsets, study):
   baseloads, dfs = get_baseloads_and_parts(colmod, y_pred, act)
 
   recall_scores = []
+  mae_scores = []
 
   for i, (baseload, df) in enumerate(zip(baseloads, dfs)):
     if args.dataset == "Colorado":
@@ -696,10 +697,10 @@ def objective(args, trial, all_subsets, study):
     FN = np.sum((pred_class == 0) & (actual_class == 1))
 
     recall_scores.append(recall_score(TP, FN))
+    mae_scores.append(mean_absolute_error(actuals, predictions))
 
   total_recall_score = np.mean(recall_scores) if len(recall_scores) > 0 else 0
-
-  mae = mean_absolute_error(actuals, predictions)
+  total_mae_score = np.mean(mae_scores) if len(mae_scores) > 0 else float('inf')
 
   tuning_results.append({'combined_name': combined_name, 'rec': total_recall_score, 'parameters': trial.params})
 
@@ -711,7 +712,7 @@ def objective(args, trial, all_subsets, study):
 
   if os.path.exists(f"Tunings/{combined_name}"):
     shutil.rmtree(f"Tunings/{combined_name}")
-  return total_recall_score, mae
+  return total_recall_score, total_mae_score
 
 parser = ArgumentParser()
 parser.add_argument("--criterion", type=str, default="MAELoss")

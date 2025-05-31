@@ -758,6 +758,7 @@ def objective(args, trial, study):
     baseloads, dfs = get_baseloads_and_parts(colmod, y_pred, act)
 
     recall_scores = []
+    mae_scores = []
 
     for i, (baseload, df) in enumerate(zip(baseloads, dfs)):
       if args.dataset == "Colorado":
@@ -782,14 +783,18 @@ def objective(args, trial, study):
       FN = np.sum((pred_class == 0) & (actual_class == 1))
       
       recall_scores.append(recall_score(TP, FN))
+      mae_scores.append(mean_absolute_error(actuals, predictions))
       
-    score = np.mean(recall_scores) if len(recall_scores) > 0 else 0
+    total_recall_score = np.mean(recall_scores) if len(recall_scores) > 0 else 0
+    total_mae_score = np.mean(mae_scores) if len(mae_scores) > 0 else float('inf')
 
-    if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials):
-      if score > study.best_value:
-        best_list.clear()
-        best_list.append({'baseload': baseload, 'predictions': predictions, 'actuals': actuals})
-    return score
+    if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials) and study.best_trials:
+      for best_trial in study.best_trials:
+        if total_recall_score >= best_trial.values[0]:
+          best_list.clear()
+          best_list.append({'baseload': baseload, 'predictions': predictions, 'actuals': actuals})
+
+    return total_recall_score, total_mae_score
 
 def safe_objective(args, trial, study):
   try:
@@ -816,32 +821,28 @@ def tune_model_with_optuna(args, n_trials):
       study = joblib.load(path_pkl)
     except Exception as e:
       print("No previous tuning found. Starting a new tuning.", e) 
-      study = optuna.create_study(direction="maximize", study_name=study_name)
+      study = optuna.create_study(directions=["maximize", "minimize"], study_name=study_name)
   else:
     print("Starting a new tuning.")
-    study = optuna.create_study(direction="maximize", study_name=study_name)
+    study = optuna.create_study(directions=["maximize", "minimize"], study_name=study_name)
 
   study.optimize(lambda trial: safe_objective(args, trial, study), n_trials=n_trials, gc_after_trial=True, timeout=37800) #change
-
-  print("Len trials:", len(study.trials))
-  print("Best params:", study.best_params)
-  print("Best validation loss:", study.best_value)
 
   if not os.path.exists(f'Tunings'):
     os.makedirs(f'Tunings', exist_ok=True)
 
   joblib.dump(study, path_pkl)
-  try:
-    df_tuning = pd.read_csv(path_csv, delimiter=',')
-  except Exception:
-    df_tuning = pd.DataFrame(columns=['model', 'trials', 'val_loss', 'parameters'])
+  # try:
+  #   df_tuning = pd.read_csv(path_csv, delimiter=',')
+  # except Exception:
+  #   df_tuning = pd.DataFrame(columns=['model', 'trials', 'val_loss', 'parameters'])
 
-  new_row = {'model': args.model, 'trials': len(study.trials), 'val_loss': study.best_value, 'parameters': study.best_params}
-  new_row_df = pd.DataFrame([new_row]).dropna(axis=1, how='all')
-  df_tuning = pd.concat([df_tuning, new_row_df], ignore_index=True)
-  df_tuning = df_tuning.sort_values(by=['model', 'val_loss'], ascending=True).reset_index(drop=True)
+  # new_row = {'model': args.model, 'trials': len(study.trials), 'val_loss': study.best_value, 'parameters': study.best_params}
+  # new_row_df = pd.DataFrame([new_row]).dropna(axis=1, how='all')
+  # df_tuning = pd.concat([df_tuning, new_row_df], ignore_index=True)
+  # df_tuning = df_tuning.sort_values(by=['model', 'val_loss'], ascending=True).reset_index(drop=True)
 
-  df_tuning.to_csv(path_csv, index=False)
+  # df_tuning.to_csv(path_csv, index=False)
 
   baseload, predictions, actuals = best_list[0]['baseload'], best_list[0]['predictions'], best_list[0]['actuals']
 
@@ -866,8 +867,6 @@ def tune_model_with_optuna(args, n_trials):
   plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_classification_predact_plot.png')
   plt.show()
   plt.clf()
-
-  return study.best_params
 
 if __name__ == '__main__':
   parser = ArgumentParser()
