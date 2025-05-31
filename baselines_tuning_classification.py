@@ -406,6 +406,7 @@ class SDUDataModule(L.LightningDataModule):
     self.val_dates = []
 
 
+
   def setup(self, stage: str):
     # Define the start and end dates
     start_date = pd.to_datetime('2024-12-31')
@@ -588,14 +589,23 @@ def get_baseloads_and_parts(colmod, y_pred, actuals):
     actuals_flat = [item for sublist in actuals for item in sublist]
 
     test_start_date = pd.to_datetime('2029-10-19 05:00:00')
-    test_end_date = pd.to_datetime('2031-05-26 14:00:00')
+    val_start_date = pd.to_datetime('2029-10-19 05:00:00')
+    val_end_date = pd.to_datetime('2031-05-26 14:00:00')
+
+    # Validation Dates:
+    # First: 2029-10-19 05:00:00
+    # Last: 2031-05-26 14:00:00
+
+    # Test Dates:
+    # First: 2031-05-26 15: 00: 00
+    # Last: 2032-12-31 00: 00: 00
 
     df = pd.read_csv('SDU Dataset/DumbCharging_2020_to_2032/Measurements.csv', skipinitialspace=True)
 
     df['Timestamp'] = pd.to_datetime(df['Timestamp'], format="%b %d, %Y, %I:%M:%S %p")
     df.set_index('Timestamp', inplace=True)
 
-    df = df[(df.index >= test_start_date) & (df.index <= test_end_date)]
+    df = df[(df.index >= val_start_date) & (df.index <= val_end_date)]
     
     df = df.iloc[:len(actuals_flat)]
 
@@ -871,13 +881,13 @@ def tune_model_with_optuna(args, n_trials):
 
 if __name__ == '__main__':
   parser = ArgumentParser()
-  parser.add_argument("--dataset", type=str, default="Colorado")
+  parser.add_argument("--dataset", type=str, default="SDU")
   parser.add_argument("--pred_len", type=int, default=24)
-  parser.add_argument("--model", type=str, default="AdaBoost") #change
+  parser.add_argument("--model", type=str, default="LSTM") #change
   parser.add_argument("--load", type=str, default='False') #change
   parser.add_argument("--mixed", type=str, default='True')
   parser.add_argument("--individual", type=str, default="False")
-  parser.add_argument("--threshold", type=float, default=500)
+  parser.add_argument("--threshold", type=float, default=250)
   parser.add_argument("--downscaling", type=int, default=13)
   parser.add_argument("--multiplier", type=int, default=2)
   parser.add_argument("--trials", type=int, default=150) #change
