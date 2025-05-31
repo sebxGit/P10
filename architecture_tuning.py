@@ -339,8 +339,8 @@ class ColoradoDataModule(L.LightningDataModule):
       self.y_train = np.array(self.y_train)
 
     if stage == "test" or "predict" or stage is None:
-      self.X_test = preprocessing.transform(self.X_test)
-      self.y_test = np.array(self.y_test)
+      self.X_val = preprocessing.transform(self.X_val)
+      self.y_val = np.array(self.y_val)
 
   def train_dataloader(self):
     train_dataset = TimeSeriesDataset(self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
@@ -450,8 +450,8 @@ class SDUDataModule(L.LightningDataModule):
       self.y_train = np.array(self.y_train)
 
     if stage == "test" or "predict" or stage is None:
-      self.X_test = preprocessing.transform(self.X_test)
-      self.y_test = np.array(self.y_test)
+      self.X_val = preprocessing.transform(self.X_val)
+      self.y_val = np.array(self.y_val)
 
   def train_dataloader(self):
     train_dataset = TimeSeriesDataset(self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
@@ -570,8 +570,6 @@ def objective(args, trial, all_subsets, study):
     if model_name == 'DPAD':
       _hparams['dropout'] = 0.5
       _hparams['num_workers'] = 2
-
-    print("Hyperparameters: ", _hparams)
 
     if args.dataset == "Colorado":
       colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=scaler_map.get(args.scaler)(), seq_len=args.seq_len, batch_size=_hparams['batch_size'], pred_len=args.pred_len, stride=args.stride, num_workers=_hparams['num_workers'], is_persistent=True if _hparams['num_workers'] > 0 else False)
