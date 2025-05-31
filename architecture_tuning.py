@@ -633,15 +633,15 @@ def objective(args, trial, all_subsets, study):
 
 parser = ArgumentParser()
 parser.add_argument("--criterion", type=str, default="MAELoss")
-parser.add_argument("--models", type=str, default="['RandomForestRegressor', 'GradientBoostingRegressor', 'AdaBoostRegressor', 'LSTM', 'GRU', 'PatchMixer', 'xPatch', 'DPAD']")
-parser.add_argument("--dataset", type=str, default="Colorado")
-parser.add_argument("--input_size", type=int, default=22)
+parser.add_argument("--models", type=str, default="['RandomForestRegressor', 'GradientBoostingRegressor', 'AdaBoostRegressor', 'LSTM', 'GRU', 'PatchMixer', 'xPatch']")
+parser.add_argument("--dataset", type=str, default="SDU")
+parser.add_argument("--input_size", type=int, default=24)
 parser.add_argument("--pred_len", type=int, default=24)
 parser.add_argument("--stride", type=int, default=24)
 parser.add_argument("--seq_len", type=int, default=24*7)
 parser.add_argument("--optimizer", type=str, default="Adam")
 parser.add_argument("--scaler", type=str, default="MinMaxScaler")
-parser.add_argument("--load", type=str, default="True")
+parser.add_argument("--load", type=str, default="False")
 parser.add_argument("--trials", type=int, default=150)
 
 criterion_map = { 
