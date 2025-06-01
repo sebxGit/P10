@@ -253,9 +253,9 @@ class TimeSeriesDataset(Dataset):
     self.stride = stride
 
     if isinstance(X, pd.DataFrame):
-            X = X.to_numpy()
+      X = X.to_numpy()
     if isinstance(y, pd.Series):
-        y = y.to_numpy()
+      y = y.to_numpy()
 
     # Ensure data is numeric and handle non-numeric values
     X = np.asarray(X, dtype=np.float32)
