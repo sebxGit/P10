@@ -583,7 +583,7 @@ if __name__ == "__main__":
   else:
     selected_models = [args.models]
     combined_name = args.models
-    file_path = f'Tunings/{args.dataset}_{args.pred_len}h_tuning.csv'
+    file_path = f'Tunings/{args.dataset}_{args.pred_len}h_individual_tuning.csv'
 
   os.makedirs('Predictions/', exist_ok=True)
   
