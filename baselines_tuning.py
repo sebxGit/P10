@@ -640,7 +640,7 @@ def objective(args, trial):
         'scaler': MinMaxScaler(),
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
-        'max_epochs': trial.suggest_int('max_epochs', 1000, 2500, step=100), ###CHANGE
+        'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100),
         'num_workers': trial.suggest_int('num_workers', 5, 20) if args.model != "DPAD" else 2, ###CHANGE
         'is_persistent': True
     }
