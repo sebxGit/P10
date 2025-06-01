@@ -1,0 +1,11 @@
+combined_name,mse,mae,parameters
+RandomForestRegressor-GradientBoostingRegressor-AdaBoostRegressor-LSTM-GRU-PatchMixer-xPatch,78.667236328125,6.439489364624023,"{'model_subsets': ""['RandomForestRegressor', 'GradientBoostingRegressor', 'GRU', 'PatchMixer', 'xPatch']""}"
+RandomForestRegressor-GradientBoostingRegressor-AdaBoostRegressor-LSTM-GRU-PatchMixer-xPatch,84.01933288574219,6.580902576446533,"{'model_subsets': ""['GradientBoostingRegressor', 'GRU', 'PatchMixer', 'xPatch']""}"
+RandomForestRegressor-GradientBoostingRegressor-AdaBoostRegressor-LSTM-GRU-PatchMixer-xPatch,82.92697143554688,6.632047653198242,"{'model_subsets': ""['RandomForestRegressor', 'LSTM', 'GRU', 'PatchMixer']""}"
+RandomForestRegressor-GradientBoostingRegressor-AdaBoostRegressor-LSTM-GRU-PatchMixer-xPatch,89.41339111328125,6.754622936248779,"{'model_subsets': ""['LSTM', 'PatchMixer', 'xPatch']""}"
+RandomForestRegressor-GradientBoostingRegressor-AdaBoostRegressor-LSTM-GRU-PatchMixer-xPatch,89.499267578125,6.758614540100098,"{'model_subsets': ""['LSTM', 'PatchMixer', 'xPatch']""}"
+RandomForestRegressor-GradientBoostingRegressor-AdaBoostRegressor-LSTM-GRU-PatchMixer-xPatch,89.27220916748047,6.791614055633545,"{'model_subsets': ""['LSTM', 'GRU', 'PatchMixer']""}"
+RandomForestRegressor-GradientBoostingRegressor-AdaBoostRegressor-LSTM-GRU-PatchMixer-xPatch,86.00118255615234,6.813623905181885,"{'model_subsets': ""['RandomForestRegressor', 'AdaBoostRegressor', 'GRU']""}"
+RandomForestRegressor-GradientBoostingRegressor-AdaBoostRegressor-LSTM-GRU-PatchMixer-xPatch,90.66251373291016,6.868884563446045,"{'model_subsets': ""['GradientBoostingRegressor', 'GRU', 'PatchMixer', 'xPatch']""}"
+RandomForestRegressor-GradientBoostingRegressor-AdaBoostRegressor-LSTM-GRU-PatchMixer-xPatch,90.66251373291016,6.868884563446045,"{'model_subsets': ""['RandomForestRegressor', 'PatchMixer', 'xPatch']""}"
+RandomForestRegressor-GradientBoostingRegressor-AdaBoostRegressor-LSTM-GRU-PatchMixer-xPatch,86.74698638916016,6.881636142730713,"{'model_subsets': ""['GradientBoostingRegressor', 'LSTM', 'GRU']""}"
