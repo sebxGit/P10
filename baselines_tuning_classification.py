@@ -617,17 +617,6 @@ def get_baseloads_and_parts(colmod, y_pred, actuals):
     baseloads = [df]
     dfs = [df_pred_act]
 
-    plt.plot(df, label='Baseload')
-    plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
-    plt.xlabel('Timestamp (Hour Ending)')
-    plt.ylabel('Electricity Consumption (kW)')
-    plt.legend()
-    plt.show()
-    plt.clf()
-
-    exit()
-
-
   return baseloads, dfs
 
 def objective(args, trial, study):
