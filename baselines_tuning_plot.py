@@ -797,6 +797,7 @@ def objective(args, trial):
     plt.xlabel('Samples')
     plt.ylabel('Electricity Consumption (kW)')
     plt.legend()
+    plt.savefig(f'Figures/{args.dataset}_{args.pred_len}h_{args.model}_tuning.png')
     plt.show()
     plt.clf()
 
