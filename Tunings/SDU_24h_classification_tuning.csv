@@ -4,4 +4,3 @@ GradientBoostingRegressor,150,0.0,45.991634150274095,"{'batch_size': 48, 'learni
 xPatch,150,0.7911392405063291,26.320019726805572,"{'batch_size': 112, 'learning_rate': 0.004184980536856851, 'max_epochs': 1600, 'num_workers': 12, 'patch_len': 42, 'stride': 12, 'padding_patch': 'None', 'revin': 0, 'ma_type': 'reg', 'alpha': 0.9061549132621475, 'beta': 0.5081699207171225}"
 xPatch,150,0.6376582278481012,17.402854985718367,"{'batch_size': 112, 'learning_rate': 0.006997999323148409, 'max_epochs': 1200, 'num_workers': 6, 'patch_len': 48, 'stride': 12, 'padding_patch': 'None', 'revin': 0, 'ma_type': 'reg', 'alpha': 0.9061549132621475, 'beta': 0.39807523377873855}"
 LSTM,150,0.0,18.446556343337072,"{'batch_size': 48, 'learning_rate': 0.003825784148780952, 'max_epochs': 1800, 'num_workers': 7, 'hidden_size': 58, 'num_layers': 1, 'dropout': 0.4813712275215375}"
-LSTM,150,
