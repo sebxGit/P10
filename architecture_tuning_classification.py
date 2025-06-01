@@ -630,8 +630,6 @@ def objective(args, trial, all_subsets, study):
       _hparams['dropout'] = 0.5
       _hparams['num_workers'] = 2
 
-    print("Hyperparameters: ", _hparams)
-
     if args.dataset == "Colorado":
       colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=scaler_map.get(args.scaler)(), seq_len=args.seq_len, batch_size=_hparams['batch_size'], pred_len=args.pred_len, stride=args.stride, num_workers=_hparams['num_workers'], is_persistent=True if _hparams['num_workers'] > 0 else False)
     else: 
@@ -716,7 +714,7 @@ def objective(args, trial, all_subsets, study):
 
 parser = ArgumentParser()
 parser.add_argument("--criterion", type=str, default="MAELoss")
-parser.add_argument("--models", type=str, default="['RandomForestRegressor', 'GradientBoostingRegressor', 'AdaBoostRegressor', 'LSTM', 'GRU', 'PatchMixer', 'xPatch', 'DPAD']")
+parser.add_argument("--models", type=str, default="['RandomForestRegressor', 'GradientBoostingRegressor', 'AdaBoostRegressor', 'LSTM', 'GRU', 'PatchMixer', 'xPatch']")
 parser.add_argument("--dataset", type=str, default="Colorado")
 parser.add_argument("--input_size", type=int, default=22)
 parser.add_argument("--pred_len", type=int, default=24)
@@ -725,7 +723,7 @@ parser.add_argument("--seq_len", type=int, default=24*7)
 parser.add_argument("--optimizer", type=str, default="Adam")
 parser.add_argument("--scaler", type=str, default="MinMaxScaler")
 parser.add_argument("--load", type=str, default='False')
-parser.add_argument("--trials", type=int, default=3)#change
+parser.add_argument("--trials", type=int, default=100)
 parser.add_argument("--threshold", type=float, default=500)
 parser.add_argument("--downscaling", type=int, default=13)
 parser.add_argument("--multiplier", type=int, default=2)
@@ -749,7 +747,7 @@ model_initializers = {
   "RandomForestRegressor": lambda: MultiOutputRegressor(RandomForestRegressor(n_estimators=rf_params['n_estimators'], max_depth=rf_params['max_depth'], min_samples_split=rf_params['min_samples_split'], min_samples_leaf=rf_params['min_samples_leaf'], max_features=rf_params['max_features'], random_state=SEED), n_jobs=-1),
   "GradientBoostingRegressor": lambda: MultiOutputRegressor(GradientBoostingRegressor(n_estimators=gb_params['n_estimators'], max_depth=gb_params['max_depth'], min_samples_split=gb_params['min_samples_split'], min_samples_leaf=gb_params['min_samples_leaf'], learning_rate=gb_params['learning_rate_model'], random_state=SEED), n_jobs=-1),
   "AdaBoostRegressor": lambda: MultiOutputRegressor(AdaBoostRegressor(n_estimators=ada_params['n_estimators'], learning_rate=ada_params['learning_rate'], random_state=SEED), n_jobs=-1),
-  "DPAD": lambda: DPAD_GCN(input_len=args.seq_len, output_len=args.pred_len, input_dim=args.input_size, enc_hidden=dpad_params['enc_hidden'], dec_hidden=dpad_params['dec_hidden'], dropout=dpad_params['dropout'], num_levels=dpad_params['num_levels'], K_IMP=dpad_params['K_IMP'], RIN=dpad_params['RIN'])
+  # "DPAD": lambda: DPAD_GCN(input_len=args.seq_len, output_len=args.pred_len, input_dim=args.input_size, enc_hidden=dpad_params['enc_hidden'], dec_hidden=dpad_params['dec_hidden'], dropout=dpad_params['dropout'], num_levels=dpad_params['num_levels'], K_IMP=dpad_params['K_IMP'], RIN=dpad_params['RIN'])
 }
 
 def safe_objective(args, trial, all_subsets, study):
@@ -768,13 +766,10 @@ if __name__ == "__main__":
   gru_params = ast.literal_eval(hparams[hparams['model'] == 'GRU']['parameters'].values[0])
   xpatch_params = Configs({**ast.literal_eval(hparams[hparams['model'] == 'xPatch']['parameters'].values[0]), "enc_in": args.input_size, "pred_len": args.pred_len, 'seq_len': args.seq_len })
   patchmixer_params = Configs({**ast.literal_eval(hparams[hparams['model'] == 'PatchMixer']['parameters'].values[0]), "enc_in": args.input_size, "pred_len": args.pred_len, "seq_len": args.seq_len })
-  dpad_params = ast.literal_eval(hparams[hparams['model'] == 'DPAD']['parameters'].values[0])
+  # dpad_params = ast.literal_eval(hparams[hparams['model'] == 'DPAD']['parameters'].values[0])
   rf_params = ast.literal_eval(hparams[hparams['model'] == 'RandomForestRegressor']['parameters'].values[0])
   ada_params = ast.literal_eval(hparams[hparams['model'] == 'AdaBoostRegressor']['parameters'].values[0])
   gb_params = ast.literal_eval(hparams[hparams['model'] == 'GradientBoostingRegressor']['parameters'].values[0])
-
-  dpad_params['dropout'] = 0.5
-  dpad_params['num_workers'] = 2
 
   selected_models = ast.literal_eval(args.models)
   combined_name = "-".join([m for m in selected_models])
