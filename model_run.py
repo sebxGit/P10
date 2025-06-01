@@ -560,7 +560,8 @@ def initialize_model(model_name, hyperparameters):
   return model_dict[model_name]()
 
 parser = ArgumentParser()
-parser.add_argument("--models", type=str, default="LSTM") #['LSTM', 'GRU', 'PatchMixer', 'xPatch'] #['LSTM', 'GRU', 'PatchMixer', 'xPatch']
+# ['LSTM', 'GRU', 'PatchMixer', 'xPatch'] #['LSTM', 'GRU', 'PatchMixer', 'xPatch']
+parser.add_argument("--models", type=str, default="LSTM")
 # parser.add_argument("--models", type=str, default="['RandomForestRegressor', 'GradientBoostingRegressor', 'GRU', 'PatchMixer', 'xPatch']")
 parser.add_argument("--individual", type=str, default="True")
 parser.add_argument("--input_size", type=int, default=22)
