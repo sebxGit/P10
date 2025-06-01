@@ -883,7 +883,7 @@ if __name__ == '__main__':
   parser = ArgumentParser()
   parser.add_argument("--dataset", type=str, default="SDU")
   parser.add_argument("--pred_len", type=int, default=24)
-  parser.add_argument("--model", type=str, default="RandomForest")
+  parser.add_argument("--model", type=str, default="AdaBoost")
   parser.add_argument("--load", type=str, default='True') #change
   parser.add_argument("--mixed", type=str, default='True')
   parser.add_argument("--individual", type=str, default="False")
