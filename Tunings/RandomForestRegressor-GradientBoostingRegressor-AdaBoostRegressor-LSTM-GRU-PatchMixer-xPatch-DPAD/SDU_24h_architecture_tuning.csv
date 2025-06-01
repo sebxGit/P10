@@ -1,0 +1,11 @@
+combined_name,mse,mae,parameters
+RandomForestRegressor-GradientBoostingRegressor-AdaBoostRegressor-LSTM-GRU-PatchMixer-xPatch,4362.380859375,51.631439208984375,"{'model_subsets': ""['RandomForestRegressor', 'GradientBoostingRegressor', 'AdaBoostRegressor']""}"
+RandomForestRegressor-GradientBoostingRegressor-AdaBoostRegressor-LSTM-GRU-PatchMixer-xPatch,5407.5888671875,53.309146881103516,"{'model_subsets': ""['RandomForestRegressor', 'AdaBoostRegressor', 'xPatch']""}"
+RandomForestRegressor-GradientBoostingRegressor-AdaBoostRegressor-LSTM-GRU-PatchMixer-xPatch,5011.216796875,53.755313873291016,"{'model_subsets': ""['RandomForestRegressor', 'GradientBoostingRegressor', 'xPatch']""}"
+RandomForestRegressor-GradientBoostingRegressor-AdaBoostRegressor-LSTM-GRU-PatchMixer-xPatch,5485.177734375,54.584861755371094,"{'model_subsets': ""['RandomForestRegressor', 'AdaBoostRegressor', 'PatchMixer']""}"
+RandomForestRegressor-GradientBoostingRegressor-AdaBoostRegressor-LSTM-GRU-PatchMixer-xPatch,5303.01025390625,54.907955169677734,"{'model_subsets': ""['RandomForestRegressor', 'GradientBoostingRegressor', 'AdaBoostRegressor', 'PatchMixer', 'xPatch']""}"
+RandomForestRegressor-GradientBoostingRegressor-AdaBoostRegressor-LSTM-GRU-PatchMixer-xPatch,5041.46337890625,55.467350006103516,"{'model_subsets': ""['GradientBoostingRegressor', 'AdaBoostRegressor', 'PatchMixer']""}"
+RandomForestRegressor-GradientBoostingRegressor-AdaBoostRegressor-LSTM-GRU-PatchMixer-xPatch,5514.0224609375,55.666847229003906,"{'model_subsets': ""['RandomForestRegressor', 'GradientBoostingRegressor', 'PatchMixer', 'xPatch']""}"
+RandomForestRegressor-GradientBoostingRegressor-AdaBoostRegressor-LSTM-GRU-PatchMixer-xPatch,4993.10400390625,55.955387115478516,"{'model_subsets': ""['RandomForestRegressor', 'GradientBoostingRegressor', 'AdaBoostRegressor', 'GRU']""}"
+RandomForestRegressor-GradientBoostingRegressor-AdaBoostRegressor-LSTM-GRU-PatchMixer-xPatch,5358.48291015625,56.5797004699707,"{'model_subsets': ""['RandomForestRegressor', 'GradientBoostingRegressor', 'AdaBoostRegressor', 'GRU', 'xPatch']""}"
+RandomForestRegressor-GradientBoostingRegressor-AdaBoostRegressor-LSTM-GRU-PatchMixer-xPatch,5574.19482421875,56.634395599365234,"{'model_subsets': ""['GradientBoostingRegressor', 'AdaBoostRegressor', 'PatchMixer', 'xPatch']""}"
