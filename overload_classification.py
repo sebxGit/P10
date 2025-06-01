@@ -557,13 +557,13 @@ def initialize_model(model_name, hyperparameters):
   return model_dict[model_name]()
 
 parser = ArgumentParser()
-parser.add_argument("--models", type=str, default="['LSTM', 'GRU', 'PatchMixer', 'xPatch']")
-parser.add_argument("--individual", type=str, default="False")
-parser.add_argument("--input_size", type=int, default=24)
+parser.add_argument("--models", type=str, default="LSTM")
+parser.add_argument("--individual", type=str, default="True")
+parser.add_argument("--input_size", type=int, default=22)
 parser.add_argument("--pred_len", type=int, default=24)
 parser.add_argument("--seq_len", type=int, default=24*7)
 parser.add_argument("--stride", type=int, default=24)
-parser.add_argument("--dataset", type=str, default="SDU")
+parser.add_argument("--dataset", type=str, default="Colorado")
 parser.add_argument("--threshold", type=int, default=500)
 parser.add_argument("--multiplier", type=int, default=2)
 parser.add_argument("--downscaling", type=int, default=13)
@@ -591,9 +591,9 @@ if __name__ == "__main__":
     print(f"-----Training {model_name} model-----")
 
     if args.individual == "False":
-      hparams = pd.read_csv(f'./Tunings/{args.dataset}_{args.pred_len}h_tuning.csv')
+      hparams = pd.read_csv(f'./Tunings/{args.dataset}_{args.pred_len}h_classification_tuning.csv')
     else:
-      hparams = pd.read_csv(f'./Tunings/{args.dataset}_{args.pred_len}h_individual_tuning.csv')
+      hparams = pd.read_csv(f'./Tunings/{args.dataset}_{args.pred_len}h_classification_individual_tuning.csv')
 
     hyperparameters = ast.literal_eval(hparams[hparams['model'] == model_name].iloc[0].values[3])
     if model_name == "DPAD": 
