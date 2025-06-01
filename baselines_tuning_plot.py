@@ -231,6 +231,7 @@ def add_featuresSDU(df):
 
     return df
 
+
 def filter_data(start_date, end_date, data):
     ####################### FILTER DATASET  #######################
     data = data[(data.index >= start_date) & (data.index <= end_date)].copy()
@@ -278,6 +279,7 @@ class BootstrapSampler:
     def __len__(self):
         return self.dataset_size
 
+
 def process_window(i, X, y, seq_len, pred_len):
   X_win = X[i:i + seq_len]
   y_tar = y[i + seq_len:i + seq_len + pred_len]
@@ -302,8 +304,6 @@ class ColoradoDataModule(L.LightningDataModule):
     self.y_val = None
     self.X_test = None
     self.y_test = None
-    self.val_dates = []
-
 
   def setup(self, stage: str):
     start_date = pd.to_datetime('2021-05-30')
@@ -324,8 +324,6 @@ class ColoradoDataModule(L.LightningDataModule):
     # 60/20/20 split
     X_tv, self.X_test, y_tv, self.y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
     self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(X_tv, y_tv, test_size=0.25, shuffle=False)
-
-    self.val_dates = self.X_val.index.tolist()
 
     preprocessing = self.scaler
     preprocessing.fit(self.X_train)  # should only fit to training data
@@ -384,6 +382,7 @@ class ColoradoDataModule(L.LightningDataModule):
     X_window, y_target = zip(*results)
     return np.array(X_window), np.array(y_target)
   
+
 class SDUDataModule(L.LightningDataModule):
   def __init__(self, data_dir: str, scaler: int, seq_len: int, pred_len: int, stride: int, batch_size: int, num_workers: int, is_persistent: bool):
     super().__init__()
@@ -403,9 +402,6 @@ class SDUDataModule(L.LightningDataModule):
     self.y_test = None
     self.X_train_val = None
     self.y_train_val = None
-    self.val_dates = []
-
-
 
   def setup(self, stage: str):
     # Define the start and end dates
@@ -442,7 +438,61 @@ class SDUDataModule(L.LightningDataModule):
 
     df = add_featuresSDU(df)
 
-    df = df.set_index('Timestamp')
+    # df['hour'] = df.index.hour
+    # df['dayofweek'] = df.index.dayofweek
+    # df['month'] = df.index.month
+
+    # print("CSV Columns:", df.columns.tolist())
+
+
+    #print(df.head())
+
+    # df['Aggregated charging load'] = df['Aggregated charging load'].interpolate(method='time')
+    df['Aggregated charging load'] = df['Aggregated charging load'].interpolate(method='linear')
+    # df['Aggregated charging load'] = df['Aggregated charging load'].interpolate(method='pchip')
+
+    df['hour_sin'] = np.sin(2 * np.pi * df['Hour'] / 24)
+    df['hour_cos'] = np.cos(2 * np.pi * df['Hour'] / 24)
+
+    df['month_sin'] = np.sin(2 * np.pi * df['Month'] / 12)
+    df['month_cos'] = np.cos(2 * np.pi * df['Month'] / 12)
+
+    # df['days_in_month'] = df.apply(lambda row: calendar.monthrange(row['Year'], row['Month'])[1], axis=1)
+    # df['day_sin'] = np.sin(2 * np.pi * df['Day'] / df['days_in_month'])
+    # df['day_cos'] = np.cos(2 * np.pi * df['Day'] / df['days_in_month'])
+
+    df['dayofweek'] = df.index.dayofweek
+    df['dayofweek_sin'] = np.sin(2 * np.pi * df['dayofweek'] / 7)
+    df['dayofweek_cos'] = np.cos(2 * np.pi * df['dayofweek'] / 7)
+
+    #remove  
+    # df = df.drop(columns=['month', 'Year', 'hour', 'Month', 'Hour', 'Day'])
+    
+    # Add Logp1 transformation to the target variable 
+    # df['Aggregated charging load'] = np.log1p(df['Aggregated charging load'])
+
+    ### features 
+    df['lag1h'] = df['Aggregated charging load'].shift(1)
+    # df['lag3h'] = df['Aggregated charging load'].shift(3)
+    # df['lag6h'] = df['Aggregated charging load'].shift(6)
+
+    # df['lag12h'] = df['Aggregated charging load'].shift(12)
+    df['lag24h'] = df['Aggregated charging load'].shift(24)  # 1 day
+    # df['lag1w'] = df['Aggregated charging load'].shift(24*7)  # 1 week
+
+    # df['roll_std_24h'] = df['Aggregated charging load'].rolling(window=24).std()
+    # df['roll_min_24h'] = df['Aggregated charging load'].rolling(window=24).min()
+ 
+
+    # df['rolling1h'] = df['Aggregated charging load'].rolling(window=2).mean()  # 1 hour rolling mean
+    # df['rolling3h'] = df['Aggregated charging load'].rolling(window=3).mean()  # 3 hour rolling mean
+    # df['rolling6h'] = df['Aggregated charging load'].rolling(window=6).mean()  # 6 hour rolling mean
+    # df['rolling12h'] = df['Aggregated charging load'].rolling(window=12).mean()  # 12 hour rolling mean
+    # df['roll_max_24h'] = df['Aggregated charging load'].rolling(window=24).max()
+
+    df = df.dropna()
+
+    # print("final", df.columns.tolist())
 
     df = filter_data(start_date, end_date, df)
 
@@ -455,8 +505,6 @@ class SDUDataModule(L.LightningDataModule):
     # 60/20/20 split
     self.X_train_val, self.X_test, self.y_train_val, self.y_test = train_test_split( X, y, test_size=0.2, shuffle=False)
     self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(self.X_train_val, self.y_train_val, test_size=0.25, shuffle=False)
-
-    self.val_dates = self.X_val.index.tolist()
 
     preprocessing = self.scaler
     preprocessing.fit(self.X_train)  # should only fit to training data
@@ -476,23 +524,31 @@ class SDUDataModule(L.LightningDataModule):
       # self.y_test = np.array(self.y_test)
 
   def train_dataloader(self):
-    train_dataset = TimeSeriesDataset(self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+    train_dataset = TimeSeriesDataset(
+        self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
     sampler = BootstrapSampler(len(train_dataset), random_state=SEED)
-    if args.individual == 'False':
-      train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
-    else:
-      train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler,
+                              shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
+    # train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return train_loader
-  
+
+  # def predict_dataloader(self):
+  #   test_dataset = TimeSeriesDataset(self.X_test, self.y_test, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+  #   test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+  #   return test_loader
+
   def predict_dataloader(self):
-    val_dataset = TimeSeriesDataset(self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-    val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    val_dataset = TimeSeriesDataset(
+        self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+    val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False,
+                            num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return val_loader
-  
+
   def sklearn_setup(self, set_name: str = "train"):
     if set_name == "train":
       if args.individual == 'False':
-        X, y = resample(self.X_train, self.y_train, replace=True, n_samples=len(self.X_train), random_state=SEED)
+        X, y = resample(self.X_train, self.y_train, replace=True,
+                        n_samples=len(self.X_train), random_state=SEED)
       else:
         X, y = self.X_train, self.y_train
     elif set_name == "val":
@@ -514,7 +570,8 @@ class SDUDataModule(L.LightningDataModule):
     # Unpack results
     X_window, y_target = zip(*results)
     return np.array(X_window), np.array(y_target)
-  
+
+
 class CustomWriter(BasePredictionWriter):
   def __init__(self, output_dir, write_interval, combined_name, model_name):
     super().__init__(write_interval)
@@ -558,96 +615,38 @@ class Configs:
     for key, value in config_dict.items():
       setattr(self, key, value)
 
-def recall_score(TP, FN):
-  return TP / (TP + FN)
+def get_actuals_and_prediction_flattened(colmod, prediction):
+  actuals = []
+  for batch in colmod.predict_dataloader():
+    x, y = batch
+    actuals.extend(y.numpy())
 
-def get_baseloads_and_parts(colmod, y_pred, actuals):
-  if args.dataset == "Colorado":
-    y_pred = [pred * args.multiplier for pred in y_pred]
-    actuals_flat = [item * args.multiplier for sublist in actuals for item in sublist]
-    baseload1 = pd.read_csv('Colorado/ElectricityDemandColorado/ColoradoDemand_val.csv')
-    baseload1['Timestamp (Hour Ending)'] = pd.to_datetime(baseload1['Timestamp (Hour Ending)'])
+  actuals_flattened = [item for sublist in actuals for item in sublist]
+  predictions_flattened = [value.item() for tensor in prediction for value in tensor.flatten()]
+  predictions_flattened = predictions_flattened[-len(actuals_flattened):]
 
-    range1_start = pd.Timestamp('2022-08-11 00:00')
-    range1_end = pd.Timestamp('2023-01-03 23:00')
+  return predictions_flattened, actuals_flattened
 
-    range1_start = pd.to_datetime(range1_start)
-    range1_end = pd.to_datetime(range1_end)
-
-    df_pred_act = pd.DataFrame({'y_pred': y_pred, 'actuals_flat': actuals_flat})
-    df_pred_act.index = colmod.val_dates[:len(actuals_flat)]
-
-    df_part1 = df_pred_act[(df_pred_act.index >= range1_start) & (df_pred_act.index <= range1_end)]
-    baseload1 = baseload1[(baseload1['Timestamp (Hour Ending)'] >= range1_start) & (baseload1['Timestamp (Hour Ending)'] <= range1_end)]
-    baseload1 = baseload1[:len(actuals_flat)]
-
-    baseloads = [baseload1]
-    dfs = [df_part1]
-
-  elif args.dataset == "SDU":
-    y_pred = [pred for pred in y_pred]
-    actuals_flat = [item for sublist in actuals for item in sublist]
-
-    test_start_date = pd.to_datetime('2029-10-19 05:00:00')
-    val_start_date = pd.to_datetime('2029-10-19 05:00:00')
-    val_end_date = pd.to_datetime('2031-05-26 14:00:00')
-
-    # Validation Dates:
-    # First: 2029-10-19 05:00:00
-    # Last: 2031-05-26 14:00:00
-
-    # Test Dates:
-    # First: 2031-05-26 15: 00: 00
-    # Last: 2032-12-31 00: 00: 00
-
-    df = pd.read_csv('SDU Dataset/DumbCharging_2020_to_2032/Measurements.csv', skipinitialspace=True)
-
-    df['Timestamp'] = pd.to_datetime(df['Timestamp'], format="%b %d, %Y, %I:%M:%S %p")
-    df.set_index('Timestamp', inplace=True)
-
-    df = df[(df.index >= val_start_date) & (df.index <= val_end_date)]
+def objective(args, trial):
     
-    df = df.iloc[:len(actuals_flat)]
-
-    df = df[['Aggregated base load']]
-
-    df_pred_act = pd.DataFrame({'y_pred': y_pred, 'actuals_flat': actuals_flat})
-    df_pred_act.index = colmod.val_dates[:len(actuals_flat)]
-
-    baseloads = [df]
-    dfs = [df_pred_act]
-
-    plt.plot(df, label='Baseload')
-    plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
-    plt.xlabel('Timestamp (Hour Ending)')
-    plt.ylabel('Electricity Consumption (kW)')
-    plt.legend()
-    plt.show()
-    plt.clf()
-
-    exit()
-
-
-  return baseloads, dfs
-
-def objective(args, trial, study):
     params = {
         'input_size': 22 if args.dataset == "Colorado" else 24,
         'pred_len': args.pred_len,
         'seq_len': 24*7,
         'stride': args.pred_len,
-        'batch_size': trial.suggest_int('batch_size', 32, 128, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
+        # 'batch_size': trial.suggest_int('batch_size', 32, 128, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
+        'batch_size': 48,  # Fixed for all trials
         'criterion': torch.nn.L1Loss(),
         'optimizer': torch.optim.Adam,
         'scaler': MinMaxScaler(),
-        'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
+        # 'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
+        'learning_rate': 0.00021128018387968383,  # Fixed for all trials
         'seed': 42,
-        'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100), #change
-        # 'max_epochs': 1,
-        'num_workers': trial.suggest_int('num_workers', 5, 12) if args.model != "DPAD" else 2, #change
-        # 'num_workers': 0,
-        'is_persistent': True #change
-        # 'is_persistent': False
+        # 'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100),
+        'max_epochs': 1200,  # Fixed for all trials
+        # 'num_workers': trial.suggest_int('num_workers', 5, 20) if args.model != "DPAD" else 2, ###CHANGE
+        'num_workers': 8,  
+        'is_persistent': True
     }
 
     if args.dataset == "Colorado":
@@ -718,8 +717,8 @@ def objective(args, trial, study):
         seq_len = params['seq_len'],
         pred_len = params['pred_len'],
         enc_in = params['input_size'],
-        patch_len = trial.suggest_int('patch_len', 12, 48, step=6),
-        stride=trial.suggest_int('stride', 12, 48, step=6),
+        patch_len = trial.suggest_int('patch_len', 2, 16, step=2),
+        stride=trial.suggest_int('stride', 1, 8, step=2),
         padding_patch = trial.suggest_categorical('padding_patch', ['end', 'None']),
         revin = trial.suggest_int('revin', 0, 1),
         ma_type = trial.suggest_categorical('ma_type', ['reg', 'ema']),
@@ -729,18 +728,31 @@ def objective(args, trial, study):
       )
       model = xPatch(params_xpatch)
     elif args.model == "PatchMixer":
+      # _params = Configs({
+      #   "enc_in": params['input_size'],                # Number of input channels
+      #   "seq_len": params['seq_len'],               # Context window (lookback length)
+      #   "pred_len": params['pred_len'],
+      #   "batch_size": params['batch_size'],
+      #   "patch_len": trial.suggest_int("patch_len", 2, 16, step=2),  # Patch size  
+      #   "stride": trial.suggest_int("stride", 1, 8, step=1),  # Stride for patching 
+      #   "mixer_kernel_size": trial.suggest_int("mixer_kernel_size", 2, 64, step=2),  # Kernel size for the PatchMixer layer
+      #   "d_model": trial.suggest_int("d_model", 256, 1024, step=64),  # Dimension of the model
+      #   "dropout": trial.suggest_float("dropout", 0.0, 0.2, step=0.05),  # Dropout rate for the model
+      #   "head_dropout": trial.suggest_float("head_dropout", 0.0, 0.2, step=0.05),  # Dropout rate for the head layers
+      #   "e_layers": trial.suggest_int("e_layers", 1, 5),  # Number of PatchMixer layers (depth)
+      # })
       _params = Configs({
         "enc_in": params['input_size'],                # Number of input channels
         "seq_len": params['seq_len'],               # Context window (lookback length)
         "pred_len": params['pred_len'],
         "batch_size": params['batch_size'],
-        "patch_len": trial.suggest_int("patch_len", 4, 32, step=4),  # Patch size
-        "stride": trial.suggest_int("stride", 1, 16, step=1),  # Stride for patching
-        "mixer_kernel_size": trial.suggest_int("mixer_kernel_size", 2, 16, step=2),  # Kernel size for the PatchMixer layer
-        "d_model": trial.suggest_int("d_model", 128, 1024, step=64),  # Dimension of the model
-        "dropout": trial.suggest_float("dropout", 0.0, 0.5, step=0.05),  # Dropout rate for the model
-        "head_dropout": trial.suggest_float("head_dropout", 0.0, 0.5, step=0.05),  # Dropout rate for the head layers
-        "e_layers": trial.suggest_int("e_layers", 1, 4),  # Number of PatchMixer layers (depth)
+        "patch_len": 32,  # Patch size  
+        "stride": 9,  # Stride for patching 
+        "mixer_kernel_size": 2,  # Kernel size for the PatchMixer layer
+        "d_model": 128,  # Dimension of the model
+        "dropout": 0.35000000000000003,  # Dropout rate for the model
+        "head_dropout": 0.0,  # Dropout rate for the head layers
+        "e_layers": 1,  # Number of PatchMixer layers (depth)
       })
       model = PatchMixer(_params)
     else:
@@ -751,16 +763,19 @@ def objective(args, trial, study):
       tuned_model = LightningModel(model=model, criterion=params['criterion'], optimizer=params['optimizer'], learning_rate=params['learning_rate'])
 
       # Trainer for fitting using DDP - Multi GPU
-      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, strategy='ddp_find_unused_parameters_true') #change
-      # trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False)
+      # trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
+      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False)
 
       trainer.fit(tuned_model, colmod)
 
       # New Trainer for inference on one GPU
       trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, devices=1)
 
-      y_pred = trainer.predict(tuned_model, colmod, return_predictions=True)
-      y_pred = [value.item() for tensor in y_pred for value in tensor.flatten()]
+      predictions = trainer.predict(tuned_model, colmod, return_predictions=True)
+
+      pred, act = get_actuals_and_prediction_flattened(colmod, predictions)
+
+      train_loss = mean_absolute_error(act, pred)
 
     elif isinstance(model, BaseEstimator):
       name = model.__class__.__name__
@@ -769,57 +784,30 @@ def objective(args, trial, study):
       X_val, y_val = colmod.sklearn_setup("val")
       
       model.fit(X_train, y_train)
-      y_pred = model.predict(X_val).reshape(-1)
-
-    act = []
-    for batch in colmod.predict_dataloader():
-      x, y = batch
-      act.extend(y.numpy())
-
-    baseloads, dfs = get_baseloads_and_parts(colmod, y_pred, act)
-
-    recall_scores = []
-    mae_scores = []
-
-    for i, (baseload, df) in enumerate(zip(baseloads, dfs)):
-      if args.dataset == "Colorado":
-        y_pred = df['y_pred'].values
-        actuals_flat = df['actuals_flat'].values
-        baseload = baseload['Demand (MWh)'].values / args.downscaling
-
-      elif args.dataset == "SDU":
-        y_pred = df['y_pred'].values
-        actuals_flat = df['actuals_flat'].values
-        baseload = baseload['Aggregated base load'].values
-
-      actuals = np.array(actuals_flat) + baseload
-      predictions = np.array(y_pred) + baseload
+      y_pred = model.predict(X_val)
       
-      actual_class = np.where(actuals > args.threshold, 1, 0)
-      pred_class = np.where(predictions > args.threshold, 1, 0)
-
-      TP = np.sum((pred_class == 1) & (actual_class == 1))
-      TN = np.sum((pred_class == 0) & (actual_class == 0))
-      FP = np.sum((pred_class == 1) & (actual_class == 0))
-      FN = np.sum((pred_class == 0) & (actual_class == 1))
+      act = y_val.reshape(-1)
+      pred = y_pred.reshape(-1)
       
-      recall_scores.append(recall_score(TP, FN))
-      mae_scores.append(mean_absolute_error(actuals, predictions))
-      
-    total_recall_score = np.mean(recall_scores) if len(recall_scores) > 0 else 0
-    total_mae_score = np.mean(mae_scores) if len(mae_scores) > 0 else float('inf')
+      train_loss = mean_absolute_error(y_val, y_pred)
 
-    if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials) and study.best_trials:
-      for best_trial in study.best_trials:
-        if total_recall_score >= best_trial.values[0]:
-          best_list.clear()
-          best_list.append({'baseload': baseload, 'predictions': predictions, 'actuals': actuals})
+    plt.figure(figsize=(15, 4))
+    plt.plot(act, label='Actuals')
+    plt.plot(pred, label=f'{train_loss} Predictions')
+    plt.xlabel('Samples')
+    plt.ylabel('Electricity Consumption (kW)')
+    plt.legend()
+    plt.show()
+    plt.clf()
 
-    return total_recall_score, total_mae_score
+    exit()
 
-def safe_objective(args, trial, study):
+
+    return train_loss
+
+def safe_objective(args, trial):
   try:
-    return objective(args, trial, study)
+    return objective(args, trial)
   except Exception as e:
     print(f"Failed trial: {e}. Skipped this trial.")
     return float('inf')
@@ -828,83 +816,57 @@ def safe_objective(args, trial, study):
     torch.cuda.empty_cache()
   
 def tune_model_with_optuna(args, n_trials):
-  if args.individual == "True":
-    path_pkl = f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_classification_individual_tuning.pkl'
-    path_csv = f'Tunings/{args.dataset}_{args.pred_len}h_classification_individual_tuning.csv'
-  else:
-    path_pkl = f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_classification_tuning.pkl'
-    path_csv = f'Tunings/{args.dataset}_{args.pred_len}h_classification_tuning.csv'
-  study_name = f'{args.dataset}_{args.pred_len}h_{args.model}_{"Individual" if args.individual == "True" else "BootstrapSampling"}_classification_tuning'
-
   if args.load == 'True':
     try:
+      study = joblib.load(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_tuning.pkl')
       print("Loaded an old study:")
-      study = joblib.load(path_pkl)
     except Exception as e:
       print("No previous tuning found. Starting a new tuning.", e) 
-      study = optuna.create_study(directions=["maximize", "minimize"], study_name=study_name)
+      study = optuna.create_study(direction="minimize")
   else:
     print("Starting a new tuning.")
-    study = optuna.create_study(directions=["maximize", "minimize"], study_name=study_name)
+    study = optuna.create_study(direction="minimize")
 
-  study.optimize(lambda trial: safe_objective(args, trial, study), n_trials=n_trials, gc_after_trial=True, timeout=37800) #change
+  study.optimize(lambda trial: safe_objective(args, trial), n_trials=n_trials, gc_after_trial=True, timeout=37800)
 
-  if not os.path.exists(f'Tunings'):
-    os.makedirs(f'Tunings', exist_ok=True)
+  print("Len trials:", len(study.trials))
+  print("Best params:", study.best_params)
+  print("Best validation loss:", study.best_value)
 
-  joblib.dump(study, path_pkl)
-  # try:
-  #   df_tuning = pd.read_csv(path_csv, delimiter=',')
-  # except Exception:
-  #   df_tuning = pd.DataFrame(columns=['model', 'trials', 'val_loss', 'parameters'])
 
-  # new_row = {'model': args.model, 'trials': len(study.trials), 'val_loss': study.best_value, 'parameters': study.best_params}
-  # new_row_df = pd.DataFrame([new_row]).dropna(axis=1, how='all')
-  # df_tuning = pd.concat([df_tuning, new_row_df], ignore_index=True)
-  # df_tuning = df_tuning.sort_values(by=['model', 'val_loss'], ascending=True).reset_index(drop=True)
 
-  # df_tuning.to_csv(path_csv, index=False)
+  # if study.best_value != float('inf'):
+  #   try:
+  #     df_tuning = pd.read_csv(f'Tunings/{args.dataset}_{args.pred_len}h_tuning.csv', delimiter=',')
+  #   except Exception:
+  #     df_tuning = pd.DataFrame(columns=['model', 'trials', 'val_loss', 'parameters'])
 
-  baseload, predictions, actuals = best_list[0]['baseload'], best_list[0]['predictions'], best_list[0]['actuals']
+  #   new_row = {'model': args.model, 'trials': len(study.trials), 'val_loss': study.best_value, 'parameters': study.best_params}
+  #   new_row_df = pd.DataFrame([new_row]).dropna(axis=1, how='all')
+  #   df_tuning = pd.concat([df_tuning, new_row_df], ignore_index=True)
+  #   df_tuning = df_tuning.sort_values(by=['model', 'val_loss'], ascending=True).reset_index(drop=True)
 
-  #baseload plot
-  plt.figure(figsize=(15, 4))
-  plt.plot(baseload, label='Baseload')
-  plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
-  plt.xlabel('Samples')
-  plt.ylabel('Electricity Consumption (kW)')
-  plt.legend()
-  plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_classification_baseload_plot.png')
-  plt.show()
-  plt.clf()
 
-  # pred and act plot
-  plt.figure(figsize=(15, 4))
-  plt.plot(actuals, label='Actuals')
-  plt.plot(predictions, label=f'predictions')
-  plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
-  plt.xlabel('Samples')
-  plt.ylabel('Electricity Consumption (kW)')
-  plt.legend()
-  plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_classification_predact_plot.png')
-  plt.show()
-  plt.clf()
+
+
+  #   if not os.path.exists(f'Tunings'):
+  #     os.makedirs(f'Tunings', exist_ok=True)
+  #   if args.individual:
+  #     df_tuning.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_individual_tuning.csv', index=False)
+  #     joblib.dump(study, f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_individual_tuning.pkl')
+  #   else:
+  #     df_tuning.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_tuning.csv', index=False)
+  #     joblib.dump(study, f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_tuning.pkl')
+  return study.best_params
 
 if __name__ == '__main__':
   parser = ArgumentParser()
-  parser.add_argument("--dataset", type=str, default="SDU")
+  parser.add_argument("--dataset", type=str, default="Colorado")
   parser.add_argument("--pred_len", type=int, default=24)
-  parser.add_argument("--model", type=str, default="LSTM")  # change
-  parser.add_argument("--load", type=str, default='False') #change
+  parser.add_argument("--model", type=str, default="LSTM")
+  parser.add_argument("--load", type=str, default='False')
   parser.add_argument("--mixed", type=str, default='True')
-  parser.add_argument("--individual", type=str, default="False")
-  parser.add_argument("--threshold", type=float, default=250)
-  parser.add_argument("--downscaling", type=int, default=13)
-  parser.add_argument("--multiplier", type=int, default=2)
-  parser.add_argument("--trials", type=int, default=150) #change
-
+  parser.add_argument("--individual", type=str, default="True")
   args = parser.parse_args()
-  
-  best_list = []
 
-  best_params = tune_model_with_optuna(args, n_trials=args.trials)
+  best_params = tune_model_with_optuna(args, n_trials=1)
