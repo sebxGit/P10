@@ -851,8 +851,10 @@ def objective(args, trial, study):
         'hidden_size': trial.suggest_int('hidden_size', 50, 200),
         'num_layers': trial.suggest_int('num_layers', 1, 10),
         'dropout': trial.suggest_float('dropout', 0.0, 1),
+        'weight_decay': trial.suggest_float('weight_decay', 1e-6, 1e-2, log=True),
+        'peak_weight': trial.suggest_float('peak_weight', 1.0, 10.0),
       }
-      model = LSTM(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
+      model = LSTM(input_size=params['input_size'], pred_len=params['pred_len'], weight_decay=_params['weight_decay'], peak_weight=_params['peak_weight'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "GRU":
       _params = {
           'hidden_size': trial.suggest_int('hidden_size', 50, 200),
