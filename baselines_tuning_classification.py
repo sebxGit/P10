@@ -829,7 +829,7 @@ def objective(args, trial, study):
         # 'criterion': torch.nn.L1Loss(),
         'criterion': torch.nn.HuberLoss(delta=0.25),
         'optimizer': torch.optim.Adam,
-        'scaler': StandardScaler(),
+        'scaler': MinMaxScaler(),
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
         'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100),
@@ -1007,7 +1007,8 @@ def objective(args, trial, study):
     plt.xlabel('Samples')
     plt.ylabel('Electricity Consumption (kWh)')
     plt.legend()
-    plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_{trial.number}_classification_predact_plot.png')
+    plt.savefig(
+        f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_{trial.number}_{total_recall_score:.4f}_classification_predact_plot.png')
     # plt.show()
     plt.clf()
 
@@ -1017,7 +1018,7 @@ def objective(args, trial, study):
       for best_trial in study.best_trials:
         if total_recall_score >= best_trial.values[0]:
           best_list.clear()
-          best_list.append({'baseload': baseload, 'predictions': predictions, 'actuals': actuals})
+          best_list.append({'baseload': baseload, 'predictions': predictions, 'actuals': actuals, 'recall': total_recall_score})
 
     return total_recall_score, total_mae_score
 
@@ -1057,19 +1058,19 @@ def tune_model_with_optuna(args, n_trials):
     os.makedirs(f'Tunings', exist_ok=True)
 
   joblib.dump(study, path_pkl)
+  baseload, predictions, actuals, recall = best_list[0]['baseload'], best_list[0]['predictions'], best_list[0]['actuals'], best_list[0]['recall']
   try:
     df_tuning = pd.read_csv(path_csv, delimiter=',')
   except Exception:
-    df_tuning = pd.DataFrame(columns=['model', 'trials', 'val_loss', 'parameters'])
+    df_tuning = pd.DataFrame(columns=['model', 'trials', 'rec', 'mae', 'parameters'])
 
-  new_row = {'model': args.model, 'trials': len(study.trials), 'val_loss': study.best_value, 'parameters': study.best_params}
+  new_row = {'model': args.model, 'trials': len(study.trials), 'rec': recall, 'mae': mean_absolute_error(predictions, actuals), 'parameters': study.best_params}
   new_row_df = pd.DataFrame([new_row]).dropna(axis=1, how='all')
   df_tuning = pd.concat([df_tuning, new_row_df], ignore_index=True)
-  df_tuning = df_tuning.sort_values(by=['model', 'val_loss'], ascending=True).reset_index(drop=True)
+  df_tuning = df_tuning.sort_values(by=['model', 'rec'], ascending=True).reset_index(drop=True)
 
   df_tuning.to_csv(path_csv, index=False)
 
-  baseload, predictions, actuals = best_list[0]['baseload'], best_list[0]['predictions'], best_list[0]['actuals']
 
   #baseload plot
   plt.figure(figsize=(15, 4))
@@ -1105,7 +1106,7 @@ if __name__ == '__main__':
   parser.add_argument("--threshold", type=float, default=250)
   parser.add_argument("--downscaling", type=int, default=13)
   parser.add_argument("--multiplier", type=int, default=2)
-  parser.add_argument("--trials", type=int, default=15) #change
+  parser.add_argument("--trials", type=int, default=2) #change
 
   args = parser.parse_args()
   
