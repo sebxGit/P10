@@ -1064,7 +1064,9 @@ def tune_model_with_optuna(args, n_trials):
   except Exception:
     df_tuning = pd.DataFrame(columns=['model', 'trials', 'rec', 'mae', 'parameters'])
 
-  new_row = {'model': args.model, 'trials': len(study.trials), 'rec': recall, 'mae': mean_absolute_error(predictions, actuals), 'parameters': study.best_params}
+  best_trial = max(study.best_trials, key=lambda t: t.values[0]) 
+
+  new_row = {'model': args.model, 'trials': len(study.trials), 'rec': best_trial.values[0], 'mae': best_trial.values[1], 'parameters': best_trial.params}
   new_row_df = pd.DataFrame([new_row]).dropna(axis=1, how='all')
   df_tuning = pd.concat([df_tuning, new_row_df], ignore_index=True)
   df_tuning = df_tuning.sort_values(by=['model', 'rec'], ascending=True).reset_index(drop=True)
