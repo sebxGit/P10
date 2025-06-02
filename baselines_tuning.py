@@ -643,7 +643,7 @@ def objective(args, trial):
         'batch_size': trial.suggest_int('batch_size', 32, 256, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
         # 'criterion': torch.nn.L1Loss(),
         # 'criterion': torch.nn.MSELoss(),# MSELoss is more common for regression tasks
-        'criterion': torch.nn.HuberLoss(delta=0.5), # Huber loss, less sensitive to outliers than MSE
+        'criterion': torch.nn.HuberLoss(delta=0.2), # Huber loss, less sensitive to outliers than MSE
         'optimizer': torch.optim.Adam,
         'scaler': MinMaxScaler(),
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
@@ -730,7 +730,7 @@ def objective(args, trial):
         pred_len = params['pred_len'],
         enc_in = params['input_size'],
         patch_len = trial.suggest_int('patch_len', 2, 16, step=2),
-        stride=trial.suggest_int('stride', 1, 8, step=2),
+        stride=trial.suggest_int('stride', 1, 7, step=2),
         padding_patch = trial.suggest_categorical('padding_patch', ['end', 'None']),
         revin = trial.suggest_int('revin', 0, 1),
         ma_type = trial.suggest_categorical('ma_type', ['reg', 'ema']),
