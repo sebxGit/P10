@@ -475,7 +475,7 @@ class SDUDataModule(L.LightningDataModule):
     # df = df.drop(columns=['montdh', 'Year', 'hour', 'Month', 'Hour', 'Day'])
     
     # Add Logp1 transformation to the target variable 
-    df['Aggregated charging load'] = np.log1p(df['Aggregated charging load'])
+    # df['Aggregated charging load'] = np.log1p(df['Aggregated charging load'])
 
     ### features 
     df['lag1h'] = df['Aggregated charging load'].shift(1)
@@ -711,8 +711,9 @@ def objective(args, trial):
         'max_features': trial.suggest_float('max_features', 0.1, 1.0),
         'learning_rate_model': trial.suggest_float('learning_rate_model', 0.01, 1.0),
         'subsample': trial.suggest_float('subsample', 0.6, 1.0),
+        'loss': trial.suggest_categorical('loss', ['squared_error', 'absolute_error', 'huber', 'quantile'])
       }
-      model = MultiOutputRegressor(GradientBoostingRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], subsample=_params['subsample'], min_samples_leaf=_params['min_samples_leaf'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
+      model = MultiOutputRegressor(GradientBoostingRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], loss=_params['loss'], min_samples_split=_params['min_samples_split'], subsample=_params['subsample'], min_samples_leaf=_params['min_samples_leaf'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "DPAD":
         _params = {
           'enc_hidden': trial.suggest_int('enc_hidden', 108, 324, step=24),
@@ -774,8 +775,6 @@ def objective(args, trial):
       predictions = trainer.predict(tuned_model, colmod, return_predictions=True)
 
       pred, act = get_actuals_and_prediction_flattened(colmod, predictions)
-      pred = np.expm1(pred)
-      act = np.expm1(act)
 
       mse = mean_squared_error(act, pred)
       mae = mean_absolute_error(act, pred)
@@ -793,10 +792,6 @@ def objective(args, trial):
       y_pred = model.predict(X_val)
       pred = y_pred.reshape(-1)
       act = y_val.reshape(-1)
-
-      pred = np.expm1(pred)
-      act = np.expm1(act)
-      
       mae = mean_absolute_error(y_val, y_pred)
       mse = mean_squared_error(act, pred)
       huber_loss = torch.nn.HuberLoss()(torch.tensor(pred), torch.tensor(act))
