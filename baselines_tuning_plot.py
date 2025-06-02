@@ -405,8 +405,8 @@ class SDUDataModule(L.LightningDataModule):
 
   def setup(self, stage: str):
     # Define the start and end dates
-    start_date = pd.to_datetime('2024-12-31')
-    end_date = pd.to_datetime('2032-12-31')
+    start_date = pd.to_datetime('2029-12-31')
+    end_date = pd.to_datetime('2030-12-31')
 
     # Load the CSV
     df = pd.read_csv(self.data_dir, skipinitialspace=True)
