@@ -420,7 +420,7 @@ class SDUDataModule(L.LightningDataModule):
     # Keep only relevant columns
     df = df[['Timestamp', 'Aggregated charging load',
             'Total number of EVs', 'Number of charging EVs',
-             'Number of driving EVs', 'Overload duration [min]', 
+             'Number of driving EVs', 
              'Year', 'Month', 'Day', 'Hour']]
 
     # Ensure numeric columns are correctly parsed
@@ -636,7 +636,7 @@ def get_actuals_and_prediction_flattened(colmod, prediction):
 def objective(args, trial):
     
     params = {
-        'input_size': 22 if args.dataset == "Colorado" else 17,
+        'input_size': 22 if args.dataset == "Colorado" else 16,
         'pred_len': args.pred_len,
         'seq_len': 24*7,
         'stride': args.pred_len,
@@ -799,8 +799,8 @@ def objective(args, trial):
     print(f"Best parameters: {trial.params}")
 
     plt.figure(figsize=(10, 5))
-    plt.plot(act, label='Actuals', alpha=0.5)
-    plt.plot(pred, label='Predictions', alpha=0.5)
+    plt.plot(act, label='Actuals')
+    plt.plot(pred, label='Predictions')
     plt.title(f'{args.model} - {args.dataset} - MAE: {mae:.4f} - MSE: {mse:.4f} - Huberloss: {train_loss:.4f}')
     plt.xlabel('Time Steps')
     plt.ylabel('Values')
