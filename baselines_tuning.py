@@ -793,7 +793,7 @@ def objective(args, trial, study):
 
     # print(f"MAE: {mae}, MSE: {mse}, Huber Loss: {huber_loss}")
     # print(f"Best parameters: {trial.params}")
-    if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials) and study.best_value != None and train_loss <= study.best_value:
+    if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials) and train_loss <= study.best_value:
       best_list.clear()
       best_list.append({'mae': mae, 'mse': mse, 'huber_loss': huber_loss, 'params': trial.params})
 
