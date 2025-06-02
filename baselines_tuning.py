@@ -479,22 +479,22 @@ class SDUDataModule(L.LightningDataModule):
 
     ### features 
     df['lag1h'] = df['Aggregated charging load'].shift(1)
-    df['lag3h'] = df['Aggregated charging load'].shift(3)
-    df['lag6h'] = df['Aggregated charging load'].shift(6)
+    # df['lag3h'] = df['Aggregated charging load'].shift(3)
+    # df['lag6h'] = df['Aggregated charging load'].shift(6)
 
-    df['lag12h'] = df['Aggregated charging load'].shift(12)
+    # df['lag12h'] = df['Aggregated charging load'].shift(12)
     df['lag24h'] = df['Aggregated charging load'].shift(24)  # 1 day
-    df['lag1w'] = df['Aggregated charging load'].shift(24*7)  # 1 week
+    # df['lag1w'] = df['Aggregated charging load'].shift(24*7)  # 1 week
 
-    df['roll_std_24h'] = df['Aggregated charging load'].rolling(window=24).std()
-    df['roll_min_24h'] = df['Aggregated charging load'].rolling(window=24).min()
+    # df['roll_std_24h'] = df['Aggregated charging load'].rolling(window=24).std()
+    # df['roll_min_24h'] = df['Aggregated charging load'].rolling(window=24).min()
  
 
-    df['rolling1h'] = df['Aggregated charging load'].rolling(window=2).mean()  # 1 hour rolling mean
-    df['rolling3h'] = df['Aggregated charging load'].rolling(window=3).mean()  # 3 hour rolling mean
-    df['rolling6h'] = df['Aggregated charging load'].rolling(window=6).mean()  # 6 hour rolling mean
-    df['rolling12h'] = df['Aggregated charging load'].rolling(window=12).mean()  # 12 hour rolling mean
-    df['roll_max_24h'] = df['Aggregated charging load'].rolling(window=24).max()
+    # df['rolling1h'] = df['Aggregated charging load'].rolling(window=2).mean()  # 1 hour rolling mean
+    # df['rolling3h'] = df['Aggregated charging load'].rolling(window=3).mean()  # 3 hour rolling mean
+    # df['rolling6h'] = df['Aggregated charging load'].rolling(window=6).mean()  # 6 hour rolling mean
+    # df['rolling12h'] = df['Aggregated charging load'].rolling(window=12).mean()  # 12 hour rolling mean
+    # df['roll_max_24h'] = df['Aggregated charging load'].rolling(window=24).max()
 
     df = df.dropna()
 
