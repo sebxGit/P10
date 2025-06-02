@@ -636,7 +636,7 @@ def get_actuals_and_prediction_flattened(colmod, prediction):
 def objective(args, trial):
     
     params = {
-        'input_size': 22 if args.dataset == "Colorado" else 17,
+        'input_size': 22 if args.dataset == "Colorado" else 16,
         'pred_len': args.pred_len,
         'seq_len': 24*7,
         'stride': args.pred_len,
