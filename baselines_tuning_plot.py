@@ -784,6 +784,7 @@ def objective(args, trial):
     plt.show()
     plt.clf()
 
+    print(f"Trial finished with loss: {train_loss}")
     exit()
 
 
