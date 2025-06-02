@@ -713,7 +713,7 @@ def objective(args, trial, all_subsets, study):
 
 parser = ArgumentParser()
 parser.add_argument("--criterion", type=str, default="MAELoss")
-parser.add_argument("--models", type=str, default="['LSTM', 'GRU', 'xPatch']") #['RandomForestRegressor', 'GradientBoostingRegressor', 'AdaBoostRegressor', 'LSTM', 'GRU', 'PatchMixer', 'xPatch']
+parser.add_argument("--models", type=str, default="['RandomForestRegressor', 'GradientBoostingRegressor', 'AdaBoostRegressor', 'LSTM', 'GRU', 'PatchMixer', 'xPatch']")
 parser.add_argument("--dataset", type=str, default="Colorado")
 parser.add_argument("--input_size", type=int, default=22)
 parser.add_argument("--pred_len", type=int, default=24)
