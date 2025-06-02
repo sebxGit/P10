@@ -8,4 +8,4 @@
 #SBATCH --cpus-per-task=128
 #SBATCH --mem=192G
 
-singularity exec --nv energycontainerblackbox.sif python3 model_run.py --model LSTM
+singularity exec --nv energycontainerblackbox.sif python3 model_run.py --model GRU
