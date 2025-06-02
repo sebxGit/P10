@@ -703,7 +703,7 @@ def objective(args, trial, all_subsets, study):
 
   if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials) and study.best_trials:
     for best_trial in study.best_trials:
-      if total_recall_score >= best_trial.values[0] and total_mae_score >= best_trial.values[1]:
+      if total_recall_score >= best_trial.values[0]:
         best_list.clear()
         best_list.append({'baseload': baseload, 'predictions': predictions, 'actuals': actuals})
 

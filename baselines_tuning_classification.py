@@ -384,7 +384,206 @@ class ColoradoDataModule(L.LightningDataModule):
     X_window, y_target = zip(*results)
     return np.array(X_window), np.array(y_target)
   
+
+
 class SDUDataModule(L.LightningDataModule):
+  def __init__(self, data_dir: str, scaler: int, seq_len: int, pred_len: int, stride: int, batch_size: int, num_workers: int, is_persistent: bool):
+    super().__init__()
+    self.data_dir = data_dir
+    self.scaler = scaler
+    self.seq_len = seq_len
+    self.pred_len = pred_len
+    self.stride = stride
+    self.batch_size = batch_size
+    self.num_workers = num_workers
+    self.is_persistent = is_persistent
+    self.X_train = None
+    self.y_train = None
+    self.X_val = None
+    self.y_val = None
+    self.X_test = None
+    self.y_test = None
+    self.X_train_val = None
+    self.y_train_val = None
+    self.val_dates = []
+
+  def setup(self, stage: str):
+    # Define the start and end dates
+    # start_date = pd.to_datetime('2024-12-31')
+    # end_date = pd.to_datetime('2032-12-31')
+    start_date = pd.to_datetime('2029-12-31')
+    end_date = pd.to_datetime('2030-12-31')
+
+    # Load the CSV
+    df = pd.read_csv(self.data_dir, skipinitialspace=True)
+
+    # Convert 'Timestamp' to datetime with exact format
+    df['Timestamp'] = pd.to_datetime(
+        df['Timestamp'], format="%b %d, %Y, %I:%M:%S %p")
+
+    # Keep only relevant columns
+    df = df[['Timestamp', 'Aggregated charging load',
+            'Total number of EVs', 'Number of charging EVs',
+             'Number of driving EVs', 
+             'Year', 'Month', 'Day', 'Hour']]
+
+    # Ensure numeric columns are correctly parsed
+    # numeric_cols = [
+    #     'Aggregated charging load',
+    #     'Total number of EVs',
+    #     'Number of driving EVs',
+    #     'Number of charging EVs',
+    #     'Overload duration [min]'
+    # ]
+    # df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric, errors='coerce')
+
+  
+    # Use lowercase 'h' to avoid deprecation warning
+    df['Timestamp'] = df['Timestamp'].dt.floor('h')
+
+    # Optional: Aggregate if multiple entries exist for the same hour
+    # df = df.groupby('Timestamp')[numeric_cols].sum().reset_index()
+
+    #df = add_featuresSDU(df)
+
+    # df['hour'] = df.index.hour
+    # df['dayofweek'] = df.index.dayofweek
+    # df['month'] = df.index.month
+
+    # print("CSV Columns:", df.columns.tolist())
+
+
+    #print(df.head())
+
+    # df['Aggregated charging load'] = df['Aggregated charging load'].interpolate(method='time')
+    # df['Aggregated charging load'] = df['Aggregated charging load'].interpolate(method='linear')
+    # df['Aggregated charging load'] = df['Aggregated charging load'].interpolate(method='pchip')
+
+    df.set_index('Timestamp', inplace=True)
+
+    df['hour_sin'] = np.sin(2 * np.pi * df['Hour'] / 24)
+    df['hour_cos'] = np.cos(2 * np.pi * df['Hour'] / 24)
+
+    df['month_sin'] = np.sin(2 * np.pi * df['Month'] / 12)
+    df['month_cos'] = np.cos(2 * np.pi * df['Month'] / 12)
+
+    # df['days_in_month'] = df.apply(lambda row: calendar.monthrange(row['Year'], row['Month'])[1], axis=1)
+    # df['day_sin'] = np.sin(2 * np.pi * df['Day'] / df['days_in_month'])
+    # df['day_cos'] = np.cos(2 * np.pi * df['Day'] / df['days_in_month'])
+
+    df['dayofweek'] = df.index.dayofweek
+    df['dayofweek_sin'] = np.sin(2 * np.pi * df['dayofweek'] / 7)
+    df['dayofweek_cos'] = np.cos(2 * np.pi * df['dayofweek'] / 7)
+
+    #remove  
+    # df = df.drop(columns=['montdh', 'Year', 'hour', 'Month', 'Hour', 'Day'])
+    
+    # Add Logp1 transformation to the target variable 
+    # df['Aggregated charging load'] = np.log1p(df['Aggregated charging load'])
+
+    ### features 
+    df['lag1h'] = df['Aggregated charging load'].shift(1)
+    df['lag3h'] = df['Aggregated charging load'].shift(3)
+    df['lag6h'] = df['Aggregated charging load'].shift(6)
+
+    df['lag12h'] = df['Aggregated charging load'].shift(12)
+    df['lag24h'] = df['Aggregated charging load'].shift(24)  # 1 day
+    df['lag1w'] = df['Aggregated charging load'].shift(24*7)  # 1 week
+
+    df['roll_std_24h'] = df['Aggregated charging load'].rolling(window=24).std()
+    df['roll_min_24h'] = df['Aggregated charging load'].rolling(window=24).min()
+ 
+
+    df['rolling1h'] = df['Aggregated charging load'].rolling(window=2).mean()  # 1 hour rolling mean
+    df['rolling3h'] = df['Aggregated charging load'].rolling(window=3).mean()  # 3 hour rolling mean
+    df['rolling6h'] = df['Aggregated charging load'].rolling(window=6).mean()  # 6 hour rolling mean
+    df['rolling12h'] = df['Aggregated charging load'].rolling(window=12).mean()  # 12 hour rolling mean
+    df['roll_max_24h'] = df['Aggregated charging load'].rolling(window=24).max()
+
+    df = df.dropna()
+
+    # print("final", df.columns.tolist())
+
+    df = filter_data(start_date, end_date, df)
+
+    df = df.dropna()
+
+    X = df.copy()
+
+    y = X.pop('Aggregated charging load')
+
+    # 60/20/20 split
+    self.X_train_val, self.X_test, self.y_train_val, self.y_test = train_test_split( X, y, test_size=0.2, shuffle=False)
+    self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(self.X_train_val, self.y_train_val, test_size=0.25, shuffle=False)
+
+    self.val_dates = self.X_val.index.tolist()
+
+    preprocessing = self.scaler
+    preprocessing.fit(self.X_train)  # should only fit to training data
+
+    if stage == "fit" or stage is None:
+      self.X_train = preprocessing.transform(self.X_train)
+      self.y_train = np.array(self.y_train)
+
+      # self.X_val = preprocessing.transform(self.X_val)
+      # self.y_val = np.array(self.y_val)
+
+    if stage == "test" or "predict" or stage is None:
+      self.X_val = preprocessing.transform(self.X_val)
+      self.y_val = np.array(self.y_val)
+
+      # self.X_test = preprocessing.transform(self.X_test)
+      # self.y_test = np.array(self.y_test)
+
+  def train_dataloader(self):
+    train_dataset = TimeSeriesDataset(
+        self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+    sampler = BootstrapSampler(len(train_dataset), random_state=SEED)
+    train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler,
+                              shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
+    # train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    return train_loader
+
+  # def predict_dataloader(self):
+  #   test_dataset = TimeSeriesDataset(self.X_test, self.y_test, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+  #   test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+  #   return test_loader
+
+  def predict_dataloader(self):
+    val_dataset = TimeSeriesDataset(
+        self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+    val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False,
+                            num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    return val_loader
+
+  def sklearn_setup(self, set_name: str = "train"):
+    if set_name == "train":
+      if args.individual == 'False':
+        X, y = resample(self.X_train, self.y_train, replace=True,
+                        n_samples=len(self.X_train), random_state=SEED)
+      else:
+        X, y = self.X_train, self.y_train
+    elif set_name == "val":
+        X, y = self.X_val, self.y_val
+    elif set_name == "test":
+        X, y = self.X_test, self.y_test
+    else:
+        raise ValueError(
+            "Invalid set name. Choose from 'train', 'val', or 'test'.")
+
+    seq_len, pred_len, stride = self.seq_len, self.pred_len, self.stride
+    max_start = len(X) - (seq_len + pred_len) + 1
+
+    # Parallelize the loop
+    results = Parallel(n_jobs=-1)(
+        delayed(process_window)(i, X, y, seq_len, pred_len) for i in range(0, max_start, stride)
+    )
+
+    # Unpack results
+    X_window, y_target = zip(*results)
+    return np.array(X_window), np.array(y_target)
+
+class SDUDataModule2(L.LightningDataModule):
   def __init__(self, data_dir: str, scaler: int, seq_len: int, pred_len: int, stride: int, batch_size: int, num_workers: int, is_persistent: bool):
     super().__init__()
     self.data_dir = data_dir
@@ -621,22 +820,20 @@ def get_baseloads_and_parts(colmod, y_pred, actuals):
 
 def objective(args, trial, study):
     params = {
-        'input_size': 22 if args.dataset == "Colorado" else 24,
+        'input_size': 22 if args.dataset == "Colorado" else 27,
         'pred_len': args.pred_len,
         'seq_len': 24*7,
         'stride': args.pred_len,
-        'batch_size': trial.suggest_int('batch_size', 32, 128, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
-        'criterion': torch.nn.L1Loss(),
+        'batch_size': trial.suggest_int('batch_size', 32, 256, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
+        # 'criterion': torch.nn.L1Loss(),
+        'criterion': torch.nn.HuberLoss(delta=1),
         'optimizer': torch.optim.Adam,
         'scaler': MinMaxScaler(),
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
-        'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100), #change
-        # 'max_epochs': 1,
-        'num_workers': trial.suggest_int('num_workers', 5, 12) if args.model != "DPAD" else 2, #change
-        # 'num_workers': 0,
-        'is_persistent': True #change
-        # 'is_persistent': False
+        'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100),
+        'num_workers': trial.suggest_int('num_workers', 6, 14) if args.model != "DPAD" else 2,
+        'is_persistent': True
     }
 
     if args.dataset == "Colorado":
@@ -659,9 +856,9 @@ def objective(args, trial, study):
       model = LSTM(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "GRU":
       _params = {
-        'hidden_size': trial.suggest_int('hidden_size', 50, 200),
-        'num_layers': trial.suggest_int('num_layers', 1, 10),
-        'dropout': trial.suggest_float('dropout', 0.0, 1),
+          'hidden_size': trial.suggest_int('hidden_size', 50, 200),
+          'num_layers': trial.suggest_int('num_layers', 1, 10),
+          'dropout': trial.suggest_float('dropout', 0.0, 1),
       }
       model = GRU(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "MLP":
@@ -683,14 +880,15 @@ def objective(args, trial, study):
       model =  MultiOutputRegressor(RandomForestRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], min_samples_leaf=_params['min_samples_leaf'], max_features=_params['max_features'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "GradientBoosting":
       _params = {
-        'n_estimators': trial.suggest_int('n_estimators', 50, 200),
-        'max_depth': trial.suggest_int('max_depth', 1, 20),
+        'n_estimators': trial.suggest_int('n_estimators', 100, 500),
+        'max_depth': trial.suggest_int('max_depth', 1, 10),
         'min_samples_split': trial.suggest_int('min_samples_split', 2, 20),
         'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 20),
         'max_features': trial.suggest_float('max_features', 0.1, 1.0),
         'learning_rate_model': trial.suggest_float('learning_rate_model', 0.01, 1.0),
+        'subsample': trial.suggest_float('subsample', 0.3, 1.0),
       }
-      model = MultiOutputRegressor(GradientBoostingRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], min_samples_leaf=_params['min_samples_leaf'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
+      model = MultiOutputRegressor(GradientBoostingRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], subsample=_params['subsample'], min_samples_leaf=_params['min_samples_leaf'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "DPAD":
         _params = {
           'enc_hidden': trial.suggest_int('enc_hidden', 108, 324, step=24),
@@ -707,8 +905,8 @@ def objective(args, trial, study):
         seq_len = params['seq_len'],
         pred_len = params['pred_len'],
         enc_in = params['input_size'],
-        patch_len = trial.suggest_int('patch_len', 12, 48, step=6),
-        stride=trial.suggest_int('stride', 12, 48, step=6),
+        patch_len = trial.suggest_int('patch_len', 2, 16, step=2),
+        stride=trial.suggest_int('stride', 1, 7, step=2),
         padding_patch = trial.suggest_categorical('padding_patch', ['end', 'None']),
         revin = trial.suggest_int('revin', 0, 1),
         ma_type = trial.suggest_categorical('ma_type', ['reg', 'ema']),
@@ -724,12 +922,12 @@ def objective(args, trial, study):
         "pred_len": params['pred_len'],
         "batch_size": params['batch_size'],
         "patch_len": trial.suggest_int("patch_len", 4, 32, step=4),  # Patch size
-        "stride": trial.suggest_int("stride", 1, 16, step=1),  # Stride for patching
+        "stride": trial.suggest_int("stride", 2, 16, step=2),  # Stride for patching
         "mixer_kernel_size": trial.suggest_int("mixer_kernel_size", 2, 16, step=2),  # Kernel size for the PatchMixer layer
         "d_model": trial.suggest_int("d_model", 128, 1024, step=64),  # Dimension of the model
-        "dropout": trial.suggest_float("dropout", 0.0, 0.5, step=0.05),  # Dropout rate for the model
-        "head_dropout": trial.suggest_float("head_dropout", 0.0, 0.5, step=0.05),  # Dropout rate for the head layers
-        "e_layers": trial.suggest_int("e_layers", 1, 4),  # Number of PatchMixer layers (depth)
+        "dropout": trial.suggest_float("dropout", 0.0, 0.8, step=0.1),  # Dropout rate for the model
+        "head_dropout": trial.suggest_float("head_dropout", 0.0, 0.8, step=0.1),  # Dropout rate for the head layers
+        "e_layers": trial.suggest_int("e_layers", 1, 10),  # Number of PatchMixer layers (depth)
       })
       model = PatchMixer(_params)
     else:
@@ -765,6 +963,8 @@ def objective(args, trial, study):
       x, y = batch
       act.extend(y.numpy())
 
+    print(colmod.val_dates)
+    exit()
     baseloads, dfs = get_baseloads_and_parts(colmod, y_pred, act)
 
     recall_scores = []
