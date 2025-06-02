@@ -868,6 +868,7 @@ if __name__ == '__main__':
   parser.add_argument("--load", type=str, default='False')
   parser.add_argument("--mixed", type=str, default='True')
   parser.add_argument("--individual", type=str, default="True")
+  parser.add_argument("--trials", type=int, default=150)
   args = parser.parse_args()
 
-  best_params = tune_model_with_optuna(args, n_trials=5)
+  best_params = tune_model_with_optuna(args, n_trials=args.trials)
