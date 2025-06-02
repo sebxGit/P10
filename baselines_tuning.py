@@ -776,8 +776,9 @@ def objective(args, trial):
 
       mse = mean_squared_error(act, pred)
       mae = mean_absolute_error(act, pred)
+      huber_loss = torch.nn.HuberLoss()(torch.tensor(pred), torch.tensor(act))
 
-      train_loss = params['criterion'](torch.tensor(pred), torch.tensor(act))
+      train_loss = params['criterion'](pred, act)
 
     elif isinstance(model, BaseEstimator):
       name = model.__class__.__name__
@@ -790,18 +791,18 @@ def objective(args, trial):
       pred = y_pred.reshape(-1)
       act = y_val.reshape(-1)
       mae = mean_absolute_error(y_val, y_pred)
-
       mse = mean_squared_error(act, pred)
+      huber_loss = torch.nn.HuberLoss()(torch.tensor(pred), torch.tensor(act))
 
-      train_loss = params['criterion'](torch.tensor(pred), torch.tensor(act))
+      train_loss = params['criterion'](pred, act)
 
-    print(f"MAE: {mae}, MSE: {mse}, Huber Loss: {train_loss}")
+    print(f"MAE: {mae}, MSE: {mse}, Huber Loss: {huber_loss}")
     print(f"Best parameters: {trial.params}")
 
     plt.figure(figsize=(10, 5))
     plt.plot(act, label='Actuals')
     plt.plot(pred, label='Predictions')
-    plt.title(f'{args.model} - {args.dataset} - MAE: {mae:.4f} - MSE: {mse:.4f} - Huberloss: {train_loss:.4f}')
+    plt.title(f'{args.model} - {args.dataset} - MAE: {mae:.4f} - MSE: {mse:.4f} - Huberloss: {huber_loss:.4f}')
     plt.xlabel('Time Steps')
     plt.ylabel('Values')
     plt.legend()
