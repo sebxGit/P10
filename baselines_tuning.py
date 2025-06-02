@@ -649,10 +649,8 @@ def objective(args, trial, study):
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
         'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100),
-        # 'max_epochs': 2000,  # Fixed for all models
-        # 'num_workers': trial.suggest_int('num_workers', 5, 20) if args.model != "DPAD" else 2, ###CHANGE
-        # 'is_persistent': True
-        'num_workers': 12,
+        'num_workers': trial.suggest_int('num_workers', 6, 14) if args.model != "DPAD" else 2, ###CHANGE
+        # 'num_workers': 12,
         'is_persistent': True
     }
 
@@ -670,19 +668,15 @@ def objective(args, trial, study):
     if args.model == "LSTM":
       _params = {
         'hidden_size': trial.suggest_int('hidden_size', 50, 200),
-        # 'num_layers': trial.suggest_int('num_layers', 1, 10),
-        'num_layers': 5,
-        'dropout': 0.001,
-        # 'dropout': trial.suggest_float('dropout', 0.0, 1),
+        'num_layers': trial.suggest_int('num_layers', 1, 10),
+        'dropout': trial.suggest_float('dropout', 0.0, 1),
       }
       model = LSTM(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "GRU":
       _params = {
           'hidden_size': trial.suggest_int('hidden_size', 50, 200),
-          # 'num_layers': trial.suggest_int('num_layers', 1, 10),
-          'num_layers': 5,
-          'dropout': 0.001,
-          # 'dropout': trial.suggest_float('dropout', 0.0, 1),
+          'num_layers': trial.suggest_int('num_layers', 1, 10),
+          'dropout': trial.suggest_float('dropout', 0.0, 1),
       }
       model = GRU(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "MLP":
@@ -799,20 +793,20 @@ def objective(args, trial, study):
 
     # print(f"MAE: {mae}, MSE: {mse}, Huber Loss: {huber_loss}")
     # print(f"Best parameters: {trial.params}")
-    if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials) and study.best_value != None and mae <= study.best_value:
+    if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials) and study.best_value != None and train_loss <= study.best_value:
       best_list.clear()
       best_list.append({'mae': mae, 'mse': mse, 'huber_loss': huber_loss, 'params': trial.params})
 
-    # plt.figure(figsize=(10, 5))
-    # plt.plot(act, label='Actuals')
-    # plt.plot(pred, label='Predictions')
-    # plt.title(f'{args.model} - {args.dataset} - MAE: {mae:.4f} - MSE: {mse:.4f} - Huberloss: {huber_loss:.4f}')
-    # plt.xlabel('Time Steps')
-    # plt.ylabel('Values')
-    # plt.legend()
-    # plt.tight_layout()
-    # plt.savefig(f"Tunings/test_plot{args.model}_trial_{trial.number}.png")
-    # plt.show()
+      plt.figure(figsize=(10, 5))
+      plt.plot(act, label='Actuals')
+      plt.plot(pred, label='Predictions')
+      plt.title(f'{args.model} tuning')
+      plt.xlabel('Samples')
+      plt.ylabel('Electricity Consumption (kWh)')
+      plt.legend()
+      plt.tight_layout()
+      plt.savefig(f"Tunings/test_plot{args.model}_trial_{trial.number}.png")
+      plt.show()
 
     return train_loss
 
@@ -833,12 +827,11 @@ def tune_model_with_optuna(args, n_trials):
       print("Loaded an old study:")
     except Exception as e:
       print("No previous tuning found. Starting a new tuning.", e) 
-      study = optuna.create_study(direction="minimize")
+      study = optuna.create_study(direction="minimize", study_name=f'{"individual" if args.individual == "True" else "bootstrap"}_tuning_{args.model}')
   else:
     print("Starting a new tuning.")
-    study = optuna.create_study(direction="minimize")
+    study = optuna.create_study(direction="minimize", study_name=f'{"individual" if args.individual == "True" else "bootstrap"}_tuning_{args.model}')
 
-  best_list = []
   study.optimize(lambda trial: safe_objective(args, trial, study), n_trials=n_trials, gc_after_trial=True, timeout=37800)
 
   print("Len trials:", len(study.trials))
@@ -878,4 +871,5 @@ if __name__ == '__main__':
   parser.add_argument("--trials", type=int, default=150)
   args = parser.parse_args()
 
+  best_list = []
   best_params = tune_model_with_optuna(args, n_trials=args.trials)
