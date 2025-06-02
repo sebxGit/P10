@@ -666,11 +666,19 @@ if __name__ == "__main__":
     elif args.dataset == "SDU":
       y_pred = [pred for pred in y_pred]
       actuals_flat = [item for sublist in actuals for item in sublist]
-      start_date = pd.to_datetime('2024-12-31')
-      end_date = pd.to_datetime('2032-12-31')
+      start_date = pd.to_datetime('2029-12-31')
+      end_date = pd.to_datetime('2030-12-31')
 
-      test_start_date = pd.to_datetime('2031-05-26 15:00:00')
-      test_end_date = pd.to_datetime('2032-12-31 00:00:00')
+      test_start_date = pd.to_datetime('2030-10-19 02:00:00')
+      test_end_date = pd.to_datetime('2030-12-31 00:00:00')
+
+      # Validation Dates:
+      # First: 2030-10-19 02:00:00
+      # Last: 2030-12-31 00:00:00
+
+      # Test Dates:
+      # First: 2030-10-19 02:00:00
+      # Last: 2030-12-31 00:00:00
 
       df = pd.read_csv('SDU Dataset/DumbCharging_2020_to_2032/Measurements.csv', skipinitialspace=True)
 
