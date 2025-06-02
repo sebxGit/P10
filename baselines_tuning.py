@@ -636,14 +636,14 @@ def get_actuals_and_prediction_flattened(colmod, prediction):
 def objective(args, trial):
     
     params = {
-        'input_size': 22 if args.dataset == "Colorado" else 17,
+        'input_size': 22 if args.dataset == "Colorado" else 16,
         'pred_len': args.pred_len,
         'seq_len': 24*7,
         'stride': args.pred_len,
         'batch_size': trial.suggest_int('batch_size', 32, 256, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
         # 'criterion': torch.nn.L1Loss(),
         # 'criterion': torch.nn.MSELoss(),# MSELoss is more common for regression tasks
-        'criterion': torch.nn.HuberLoss(delta=0.25), # Huber loss, less sensitive to outliers than MSE
+        'criterion': torch.nn.HuberLoss(delta=1), # Huber loss, less sensitive to outliers than MSE
         'optimizer': torch.optim.Adam,
         'scaler': MinMaxScaler(),
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
