@@ -648,8 +648,8 @@ def objective(args, trial, study):
         'scaler': MinMaxScaler(),
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
-        # 'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100),
-        'max_epochs':1,
+        'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100),
+        'max_epochs': 1,
         'num_workers': trial.suggest_int('num_workers', 6, 14) if args.model != "DPAD" else 2, ###CHANGE
         # 'num_workers': 12,
         'is_persistent': True
@@ -792,11 +792,9 @@ def objective(args, trial, study):
       
       train_loss = params['criterion'](torch.tensor(pred), torch.tensor(act))
 
-    # print(f"MAE: {mae}, MSE: {mse}, Huber Loss: {huber_loss}")
-    # print(f"Best parameters: {trial.params}")
     if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials) and train_loss <= study.best_value:
       best_list.clear()
-      best_list.append({'mae': mae, 'mse': mse, 'huber_loss': huber_loss, 'params': trial.params})
+      best_list.append({'mae': mae, 'mse': mse, 'huber_loss': huber_loss.item(), 'params': trial.params})
 
       plt.figure(figsize=(10, 5))
       plt.plot(act, label='Actuals')
@@ -865,10 +863,10 @@ if __name__ == '__main__':
   parser = ArgumentParser()
   parser.add_argument("--dataset", type=str, default="SDU")
   parser.add_argument("--pred_len", type=int, default=24)
-  parser.add_argument("--model", type=str, default="MLP")
+  parser.add_argument("--model", type=str, default="PatchMixer")
   parser.add_argument("--load", type=str, default='False')
   parser.add_argument("--mixed", type=str, default='True')
-  parser.add_argument("--individual", type=str, default="True")
+  parser.add_argument("--individual", type=str, default="False")
   parser.add_argument("--trials", type=int, default=150)
   args = parser.parse_args()
 
