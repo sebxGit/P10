@@ -801,7 +801,7 @@ if __name__ == "__main__":
   for d in tuning_results:
     if d not in unique_results:
       unique_results.append(d)
-  sorted_trials = sorted(filtered_trials, key=lambda x: x.get('rec', float('inf')))
+  sorted_trials = sorted(unique_results, key=lambda x: x.get('rec', float('inf')))
   top_10_tunings = sorted_trials[:10]
   df_top_10 = pd.DataFrame(top_10_tunings)
   df_top_10.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning_classification.csv', index=False)
