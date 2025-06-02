@@ -746,7 +746,7 @@ def objective(args, trial):
         "pred_len": params['pred_len'],
         "batch_size": params['batch_size'],
         "patch_len": trial.suggest_int("patch_len", 4, 32, step=4),  # Patch size
-        "stride": trial.suggest_int("stride", 1, 16, step=2),  # Stride for patching
+        "stride": trial.suggest_int("stride", 2, 16, step=2),  # Stride for patching
         "mixer_kernel_size": trial.suggest_int("mixer_kernel_size", 2, 16, step=2),  # Kernel size for the PatchMixer layer
         "d_model": trial.suggest_int("d_model", 128, 1024, step=64),  # Dimension of the model
         "dropout": trial.suggest_float("dropout", 0.0, 0.8, step=0.1),  # Dropout rate for the model
@@ -763,13 +763,13 @@ def objective(args, trial):
 
       # Trainer for fitting using DDP - Multi GPU
       #trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
-      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, deterministic=True )
+      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
 
       trainer.fit(tuned_model, colmod)
 
       # New Trainer for inference on one GPU
       trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed ==
-                          'True' else None, enable_checkpointing=False, deterministic=True,  devices=1)
+                          'True' else None, enable_checkpointing=False, devices=1)
 
       predictions = trainer.predict(tuned_model, colmod, return_predictions=True)
 
