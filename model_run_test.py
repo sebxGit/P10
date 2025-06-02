@@ -589,8 +589,8 @@ def get_baseloads_and_parts(colmod, y_pred, actuals):
     val_end_date = pd.to_datetime('2031-05-26 14:00:00')
 
     # Validation Dates:
-    # First: 2030-10-19 02:00:00
-    # Last: 2030-12-31 00:00:00
+    # First: 2030-08-07 01:00:00
+    # Last: 2030-10-19 00:00:00
 
     # Test Dates:
     # First: 2030-10-19 02:00:00
