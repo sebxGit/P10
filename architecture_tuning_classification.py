@@ -801,7 +801,7 @@ if __name__ == "__main__":
   for d in tuning_results:
     if d not in unique_results:
       unique_results.append(d)
-  filtered_trials = [trial for trial in tuning_results if trial.get('mae', float('inf')) <= 150]
+  filtered_trials = [trial for trial in tuning_results if trial.get('mae', float('inf')) <= 80]
   sorted_trials = sorted(filtered_trials, key=lambda x: x.get('rec', float('inf')))
   top_10_tunings = sorted_trials[:10]
   df_top_10 = pd.DataFrame(top_10_tunings)
