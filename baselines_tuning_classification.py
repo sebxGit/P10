@@ -384,8 +384,6 @@ class ColoradoDataModule(L.LightningDataModule):
     # Unpack results
     X_window, y_target = zip(*results)
     return np.array(X_window), np.array(y_target)
-  
-
 
 class SDUDataModule(L.LightningDataModule):
   def __init__(self, data_dir: str, scaler: int, seq_len: int, pred_len: int, stride: int, batch_size: int, num_workers: int, is_persistent: bool):
@@ -583,7 +581,6 @@ class SDUDataModule(L.LightningDataModule):
     # Unpack results
     X_window, y_target = zip(*results)
     return np.array(X_window), np.array(y_target)
-
 
 class SDUDataModule2(L.LightningDataModule):
   def __init__(self, data_dir: str, scaler: int, seq_len: int, pred_len: int, stride: int, batch_size: int, num_workers: int, is_persistent: bool):
