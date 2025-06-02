@@ -806,6 +806,7 @@ if __name__ == "__main__":
   top_10_tunings = sorted_trials[:10]
   df_top_10 = pd.DataFrame(top_10_tunings)
   df_top_10.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning_classification.csv', index=False)
+  print(df_top_10)
   
   baseload, predictions, actuals = best_list[0]['baseload'], best_list[0]['predictions'], best_list[0]['actuals']
 
