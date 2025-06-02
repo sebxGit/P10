@@ -633,7 +633,7 @@ def get_actuals_and_prediction_flattened(colmod, prediction):
 
   return predictions_flattened, actuals_flattened
 
-def objective(args, trial):
+def objective(args, trial, study):
     
     params = {
         'input_size': 22 if args.dataset == "Colorado" else 27,
@@ -797,25 +797,28 @@ def objective(args, trial):
       
       train_loss = params['criterion'](torch.tensor(pred), torch.tensor(act))
 
-    print(f"MAE: {mae}, MSE: {mse}, Huber Loss: {huber_loss}")
-    print(f"Best parameters: {trial.params}")
+    # print(f"MAE: {mae}, MSE: {mse}, Huber Loss: {huber_loss}")
+    # print(f"Best parameters: {trial.params}")
+    if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials) and study.best_value != None and mae <= study.best_value:
+      best_list.clear()
+      best_list.append({'mae': mae, 'mse': mse, 'huber_loss': huber_loss, 'params': trial.params})
 
-    plt.figure(figsize=(10, 5))
-    plt.plot(act, label='Actuals')
-    plt.plot(pred, label='Predictions')
-    plt.title(f'{args.model} - {args.dataset} - MAE: {mae:.4f} - MSE: {mse:.4f} - Huberloss: {huber_loss:.4f}')
-    plt.xlabel('Time Steps')
-    plt.ylabel('Values')
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(f"Tunings/test_plot{args.model}_trial_{trial.number}.png")
-    plt.show()
+    # plt.figure(figsize=(10, 5))
+    # plt.plot(act, label='Actuals')
+    # plt.plot(pred, label='Predictions')
+    # plt.title(f'{args.model} - {args.dataset} - MAE: {mae:.4f} - MSE: {mse:.4f} - Huberloss: {huber_loss:.4f}')
+    # plt.xlabel('Time Steps')
+    # plt.ylabel('Values')
+    # plt.legend()
+    # plt.tight_layout()
+    # plt.savefig(f"Tunings/test_plot{args.model}_trial_{trial.number}.png")
+    # plt.show()
 
     return train_loss
 
-def safe_objective(args, trial):
+def safe_objective(args, trial, study):
   try:
-    return objective(args, trial)
+    return objective(args, trial, study)
   except Exception as e:
     print(f"Failed trial: {e}. Skipped this trial.")
     return float('inf')
@@ -835,7 +838,8 @@ def tune_model_with_optuna(args, n_trials):
     print("Starting a new tuning.")
     study = optuna.create_study(direction="minimize")
 
-  study.optimize(lambda trial: objective(args, trial), n_trials=n_trials, gc_after_trial=True, timeout=37800)
+  best_list = []
+  study.optimize(lambda trial: safe_objective(args, trial, study), n_trials=n_trials, gc_after_trial=True, timeout=37800)
 
   print("Len trials:", len(study.trials))
   print("Best params:", study.best_params)
@@ -845,9 +849,10 @@ def tune_model_with_optuna(args, n_trials):
     try:
       df_tuning = pd.read_csv(f'Tunings/{args.dataset}_{args.pred_len}h_tuning.csv', delimiter=',')
     except Exception:
-      df_tuning = pd.DataFrame(columns=['model', 'trials', 'val_loss', 'parameters'])
+      df_tuning = pd.DataFrame(columns=['model', 'trials', 'mae', 'mse', 'huber_loss', 'val_loss', 'parameters'])
 
-    new_row = {'model': args.model, 'trials': len(study.trials), 'val_loss': study.best_value, 'parameters': study.best_params}
+    mae, mse, huber_loss = best_list[0]['mae'], best_list[0]['mse'], best_list[0]['huber_loss']
+    new_row = {'model': args.model, 'trials': len(study.trials), 'mae': mae, 'mse': mse, 'huber_loss': huber_loss, 'val_loss': study.best_value, 'parameters': study.best_params}
     new_row_df = pd.DataFrame([new_row]).dropna(axis=1, how='all')
     df_tuning = pd.concat([df_tuning, new_row_df], ignore_index=True)
     df_tuning = df_tuning.sort_values(by=['model', 'val_loss'], ascending=True).reset_index(drop=True)

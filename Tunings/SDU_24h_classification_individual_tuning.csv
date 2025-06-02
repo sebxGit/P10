@@ -1,6 +1,0 @@
-model,trials,recall,mae,parameters
-GRU,150,0.0,18.137635171766366,"{'batch_size': 32, 'learning_rate': 0.005713720666306324, 'max_epochs': 2000, 'num_workers': 7, 'hidden_size': 95, 'num_layers': 2, 'dropout': 0.6324040297560001}"
-xPatch,150,0.7151898734177216,18.399522870968422,"{'batch_size': 32, 'learning_rate': 0.0038873025427381257, 'max_epochs': 1000, 'num_workers': 11, 'patch_len': 30, 'stride': 12, 'padding_patch': 'end', 'revin': 0, 'ma_type': 'reg', 'alpha': 0.8712230411740758, 'beta': 0.29040866130604703}"
-RandomForestRegressor,150,0.0,34.43904355474244,"{'batch_size': 80, 'learning_rate': 0.009681721156735532, 'max_epochs': 1200, 'num_workers': 11, 'n_estimators': 78, 'max_depth': 1, 'min_samples_split': 11, 'min_samples_leaf': 12, 'max_features': 0.2471320588971963}"
-AdaBoostRegressor,150,0.0,35.28481089067828,"{'batch_size': 112, 'learning_rate': 0.0036638415309796974, 'max_epochs': 1900, 'num_workers': 12, 'n_estimators': 153, 'learning_rate_model': 0.9928471168442914}"
-GradientBoostingRegressor,150,0.0,35.01954655918488,"{'batch_size': 128, 'learning_rate': 0.00014457405413578002, 'max_epochs': 1100, 'num_workers': 12, 'n_estimators': 63, 'max_depth': 14, 'min_samples_split': 4, 'min_samples_leaf': 12, 'max_features': 0.3392108142783584, 'learning_rate_model': 0.9761054315774583}"
