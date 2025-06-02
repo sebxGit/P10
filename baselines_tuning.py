@@ -494,7 +494,7 @@ class SDUDataModule(L.LightningDataModule):
     # df['rolling3h'] = df['Aggregated charging load'].rolling(window=3).mean()  # 3 hour rolling mean
     # df['rolling6h'] = df['Aggregated charging load'].rolling(window=6).mean()  # 6 hour rolling mean
     # df['rolling12h'] = df['Aggregated charging load'].rolling(window=12).mean()  # 12 hour rolling mean
-    # df['roll_max_24h'] = df['Aggregated charging load'].rolling(window=24).max()
+    df['roll_max_24h'] = df['Aggregated charging load'].rolling(window=24).max()
 
     df = df.dropna()
 
@@ -636,7 +636,7 @@ def get_actuals_and_prediction_flattened(colmod, prediction):
 def objective(args, trial):
     
     params = {
-        'input_size': 22 if args.dataset == "Colorado" else 16,
+        'input_size': 22 if args.dataset == "Colorado" else 17,
         'pred_len': args.pred_len,
         'seq_len': 24*7,
         'stride': args.pred_len,
