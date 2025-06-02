@@ -634,17 +634,13 @@ def objective(args, trial):
         'pred_len': args.pred_len,
         'seq_len': 24*7,
         'stride': args.pred_len,
-        # 'batch_size': trial.suggest_int('batch_size', 32, 128, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
-        'batch_size': 48,  # Fixed for all trials
+        'batch_size': 48,
         'criterion': torch.nn.L1Loss(),
         'optimizer': torch.optim.Adam,
         'scaler': MinMaxScaler(),
-        # 'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
-        'learning_rate': 0.00021128018387968383,  # Fixed for all trials
+        'learning_rate': 0.00021128018387968383,
         'seed': 42,
-        # 'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100),
-        'max_epochs': 1200,  # Fixed for all trials
-        # 'num_workers': trial.suggest_int('num_workers', 5, 20) if args.model != "DPAD" else 2, ###CHANGE
+        'max_epochs': 1200,
         'num_workers': 8,  
         'is_persistent': True
     }
@@ -728,33 +724,21 @@ def objective(args, trial):
       )
       model = xPatch(params_xpatch)
     elif args.model == "PatchMixer":
-      # _params = Configs({
-      #   "enc_in": params['input_size'],                # Number of input channels
-      #   "seq_len": params['seq_len'],               # Context window (lookback length)
-      #   "pred_len": params['pred_len'],
-      #   "batch_size": params['batch_size'],
-      #   "patch_len": trial.suggest_int("patch_len", 2, 16, step=2),  # Patch size  
-      #   "stride": trial.suggest_int("stride", 1, 8, step=1),  # Stride for patching 
-      #   "mixer_kernel_size": trial.suggest_int("mixer_kernel_size", 2, 64, step=2),  # Kernel size for the PatchMixer layer
-      #   "d_model": trial.suggest_int("d_model", 256, 1024, step=64),  # Dimension of the model
-      #   "dropout": trial.suggest_float("dropout", 0.0, 0.2, step=0.05),  # Dropout rate for the model
-      #   "head_dropout": trial.suggest_float("head_dropout", 0.0, 0.2, step=0.05),  # Dropout rate for the head layers
-      #   "e_layers": trial.suggest_int("e_layers", 1, 5),  # Number of PatchMixer layers (depth)
-      # })
       _params = Configs({
         "enc_in": params['input_size'],                # Number of input channels
         "seq_len": params['seq_len'],               # Context window (lookback length)
         "pred_len": params['pred_len'],
         "batch_size": params['batch_size'],
-        "patch_len": 32,  # Patch size  
-        "stride": 9,  # Stride for patching 
-        "mixer_kernel_size": 2,  # Kernel size for the PatchMixer layer
-        "d_model": 128,  # Dimension of the model
-        "dropout": 0.35000000000000003,  # Dropout rate for the model
+        "patch_len": 32,
+        "stride": 9,
+        "mixer_kernel_size": 2,
+        "d_model": 128,
+        "dropout": 0.35,  # Dropout rate for the model
         "head_dropout": 0.0,  # Dropout rate for the head layers
         "e_layers": 1,  # Number of PatchMixer layers (depth)
       })
-      model = PatchMixer(_params)
+      #{'batch_size': 48, 'learning_rate': 0.00021128018387968383, 'max_epochs': 1200, 'num_workers': 8, 'patch_len': 32, 
+      #'stride': 9, 'mixer_kernel_size': 2, 'd_model': 128, 'dropout': 0.35000000000000003, 'head_dropout': 0.0, 'e_layers': 1}
     else:
       raise ValueError("Model not found")
       
