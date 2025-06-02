@@ -787,7 +787,7 @@ def objective(args, trial):
       X_train, y_train = colmod.sklearn_setup("train")
       X_val, y_val = colmod.sklearn_setup("val")
       
-      model.fit(X_train, y_train, early_stopping_rounds=10)
+      model.fit(X_train, y_train)
       y_pred = model.predict(X_val)
       pred = y_pred.reshape(-1)
       act = y_val.reshape(-1)
