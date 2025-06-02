@@ -841,6 +841,7 @@ def tune_model_with_optuna(args, n_trials):
       df_tuning = pd.DataFrame(columns=['model', 'trials', 'mae', 'mse', 'huber_loss', 'val_loss', 'parameters'])
 
     mae, mse, huber_loss = best_list[0]['mae'], best_list[0]['mse'], best_list[0]['huber_loss']
+    print(f"Best MAE: {mae}, MSE: {mse}, Huber Loss: {huber_loss}")
     new_row = {'model': args.model, 'trials': len(study.trials), 'mae': mae, 'mse': mse, 'huber_loss': huber_loss, 'val_loss': study.best_value, 'parameters': study.best_params}
     new_row_df = pd.DataFrame([new_row]).dropna(axis=1, how='all')
     df_tuning = pd.concat([df_tuning, new_row_df], ignore_index=True)
