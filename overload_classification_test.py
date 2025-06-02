@@ -596,10 +596,10 @@ if __name__ == "__main__":
       hparams = pd.read_csv(f'./Tunings/{args.dataset}_{args.pred_len}h_classification_individual_tuning.csv')
 
     hyperparameters = ast.literal_eval(hparams[hparams['model'] == model_name].iloc[0].values[3])
-    print(hyperparameters)
-    if model_name == "DPAD": 
-      hyperparameters['num_workers'] = 2
-      hyperparameters['dropout'] = 0.5
+    if isinstance(hyperparameters, str):
+      hyperparameters = ast.literal_eval(hyperparameters)  # Evaluate only if it's a string
+    else:
+      hyperparameters = hyperparameters
 
     model = initialize_model(model_name, hyperparameters)
 

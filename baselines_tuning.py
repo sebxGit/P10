@@ -640,7 +640,7 @@ def objective(args, trial):
         'pred_len': args.pred_len,
         'seq_len': 24*7,
         'stride': args.pred_len,
-        'batch_size': trial.suggest_int('batch_size', 32, 128, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
+        'batch_size': trial.suggest_int('batch_size', 32, 256, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
         # 'criterion': torch.nn.L1Loss(),
         # 'criterion': torch.nn.MSELoss(),# MSELoss is more common for regression tasks
         'criterion': torch.nn.HuberLoss(), # Huber loss, less sensitive to outliers than MSE
@@ -648,8 +648,8 @@ def objective(args, trial):
         'scaler': MinMaxScaler(),
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
-        # 'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100),
-        'max_epochs': 2000,  # Fixed for all models
+        'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100),
+        # 'max_epochs': 2000,  # Fixed for all models
         # 'num_workers': trial.suggest_int('num_workers', 5, 20) if args.model != "DPAD" else 2, ###CHANGE
         # 'is_persistent': True
         'num_workers': 12,
@@ -748,9 +748,9 @@ def objective(args, trial):
         "stride": trial.suggest_int("stride", 4, 8),  # Stride for patching 
         "mixer_kernel_size": trial.suggest_int("mixer_kernel_size", 2, 16, step=2),  # Kernel size for the PatchMixer layer
         "d_model": trial.suggest_int("d_model", 256, 512, step=64),  # Dimension of the model
-        "dropout": trial.suggest_float("dropout", 0.1, 0.2, step=0.05),  # Dropout rate for the model
-        "head_dropout": trial.suggest_float("head_dropout", 0.1, 0.2, step=0.05),  # Dropout rate for the head layers
-        "e_layers": trial.suggest_int("e_layers", 1, 5),  # Number of PatchMixer layers (depth)
+        "dropout": trial.suggest_float("dropout", 0.1, 0.7, step=0.05),  # Dropout rate for the model
+        "head_dropout": trial.suggest_float("head_dropout", 0.1, 0.7, step=0.05),  # Dropout rate for the head layers
+        "e_layers": trial.suggest_int("e_layers", 1, 10),  # Number of PatchMixer layers (depth)
       })
       model = PatchMixer(_params)
     else:
