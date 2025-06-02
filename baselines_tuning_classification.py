@@ -851,10 +851,8 @@ def objective(args, trial, study):
         'hidden_size': trial.suggest_int('hidden_size', 50, 200),
         'num_layers': trial.suggest_int('num_layers', 1, 10),
         'dropout': trial.suggest_float('dropout', 0.0, 1),
-        'weight_decay': trial.suggest_float('weight_decay', 1e-6, 1e-2, log=True),
-        'peak_weight': trial.suggest_float('peak_weight', 1.0, 10.0),
       }
-      model = LSTM(input_size=params['input_size'], pred_len=params['pred_len'], weight_decay=_params['weight_decay'], peak_weight=_params['peak_weight'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
+      model = LSTM(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "GRU":
       _params = {
           'hidden_size': trial.suggest_int('hidden_size', 50, 200),
@@ -997,19 +995,18 @@ def objective(args, trial, study):
     total_recall_score = np.mean(recall_scores) if len(recall_scores) > 0 else 0
     total_mae_score = np.mean(mae_scores) if len(mae_scores) > 0 else float('inf')
 
-     
-    plt.figure(figsize=(15, 4))
-    plt.title(f'{args.model} - Total Recall Score: {total_recall_score:.4f}, Total MAE Score: {total_mae_score:.4f}')
-    plt.plot(actuals, label='Actuals')
-    plt.plot(predictions, label=f'predictions')
-    plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
-    plt.xlabel('Samples')
-    plt.ylabel('Electricity Consumption (kWh)')
-    plt.legend()
-    plt.savefig(
-        f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_{trial.number}_{total_recall_score:.4f}_classification_predact_plot.png')
-    # plt.show()
-    plt.clf()
+    # plt.figure(figsize=(15, 4))
+    # plt.title(f'{args.model} - Total Recall Score: {total_recall_score:.4f}, Total MAE Score: {total_mae_score:.4f}')
+    # plt.plot(actuals, label='Actuals')
+    # plt.plot(predictions, label=f'predictions')
+    # plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
+    # plt.xlabel('Samples')
+    # plt.ylabel('Electricity Consumption (kWh)')
+    # plt.legend()
+    # plt.savefig(
+    #     f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_{trial.number}_{total_recall_score:.4f}_classification_predact_plot.png')
+    # # plt.show()
+    # plt.clf()
 
     # exit()
 
@@ -1051,7 +1048,7 @@ def tune_model_with_optuna(args, n_trials):
     print("Starting a new tuning.")
     study = optuna.create_study(directions=["maximize", "minimize"], study_name=study_name)
 
-  study.optimize(lambda trial: objective(args, trial, study), n_trials=n_trials, gc_after_trial=True, timeout=37800) #change
+  study.optimize(lambda trial: safe_objective(args, trial, study), n_trials=n_trials, gc_after_trial=True, timeout=37800) #change
 
   if not os.path.exists(f'Tunings'):
     os.makedirs(f'Tunings', exist_ok=True)
@@ -1071,7 +1068,6 @@ def tune_model_with_optuna(args, n_trials):
   df_tuning = df_tuning.sort_values(by=['model', 'rec'], ascending=True).reset_index(drop=True)
 
   df_tuning.to_csv(path_csv, index=False)
-
 
   #baseload plot
   plt.figure(figsize=(15, 4))
@@ -1107,7 +1103,7 @@ if __name__ == '__main__':
   parser.add_argument("--threshold", type=float, default=250)
   parser.add_argument("--downscaling", type=int, default=13)
   parser.add_argument("--multiplier", type=int, default=2)
-  parser.add_argument("--trials", type=int, default=15) #change
+  parser.add_argument("--trials", type=int, default=150) #change
 
   args = parser.parse_args()
   
