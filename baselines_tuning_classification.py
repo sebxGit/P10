@@ -483,22 +483,22 @@ class SDUDataModule(L.LightningDataModule):
 
     ### features 
     df['lag1h'] = df['Aggregated charging load'].shift(1)
-    df['lag3h'] = df['Aggregated charging load'].shift(3)
-    df['lag6h'] = df['Aggregated charging load'].shift(6)
+    # df['lag3h'] = df['Aggregated charging load'].shift(3)
+    # df['lag6h'] = df['Aggregated charging load'].shift(6)
 
-    df['lag12h'] = df['Aggregated charging load'].shift(12)
+    # df['lag12h'] = df['Aggregated charging load'].shift(12)
     df['lag24h'] = df['Aggregated charging load'].shift(24)  # 1 day
-    df['lag1w'] = df['Aggregated charging load'].shift(24*7)  # 1 week
+    # df['lag1w'] = df['Aggregated charging load'].shift(24*7)  # 1 week
 
-    df['roll_std_24h'] = df['Aggregated charging load'].rolling(window=24).std()
-    df['roll_min_24h'] = df['Aggregated charging load'].rolling(window=24).min()
+    # df['roll_std_24h'] = df['Aggregated charging load'].rolling(window=24).std()
+    # df['roll_min_24h'] = df['Aggregated charging load'].rolling(window=24).min()
  
 
-    df['rolling1h'] = df['Aggregated charging load'].rolling(window=2).mean()  # 1 hour rolling mean
-    df['rolling3h'] = df['Aggregated charging load'].rolling(window=3).mean()  # 3 hour rolling mean
-    df['rolling6h'] = df['Aggregated charging load'].rolling(window=6).mean()  # 6 hour rolling mean
-    df['rolling12h'] = df['Aggregated charging load'].rolling(window=12).mean()  # 12 hour rolling mean
-    df['roll_max_24h'] = df['Aggregated charging load'].rolling(window=24).max()
+    # df['rolling1h'] = df['Aggregated charging load'].rolling(window=2).mean()  # 1 hour rolling mean
+    # df['rolling3h'] = df['Aggregated charging load'].rolling(window=3).mean()  # 3 hour rolling mean
+    # df['rolling6h'] = df['Aggregated charging load'].rolling(window=6).mean()  # 6 hour rolling mean
+    # df['rolling12h'] = df['Aggregated charging load'].rolling(window=12).mean()  # 12 hour rolling mean
+    # df['roll_max_24h'] = df['Aggregated charging load'].rolling(window=24).max()
 
     df = df.dropna()
 
@@ -582,6 +582,7 @@ class SDUDataModule(L.LightningDataModule):
     # Unpack results
     X_window, y_target = zip(*results)
     return np.array(X_window), np.array(y_target)
+
 
 class SDUDataModule2(L.LightningDataModule):
   def __init__(self, data_dir: str, scaler: int, seq_len: int, pred_len: int, stride: int, batch_size: int, num_workers: int, is_persistent: bool):
@@ -995,6 +996,17 @@ def objective(args, trial, study):
     total_recall_score = np.mean(recall_scores) if len(recall_scores) > 0 else 0
     total_mae_score = np.mean(mae_scores) if len(mae_scores) > 0 else float('inf')
 
+    plt.figure(figsize=(15, 4))
+    plt.plot(actuals, label='Actuals')
+    plt.plot(predictions, label=f'predictions')
+    plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
+    plt.xlabel('Samples')
+    plt.ylabel('Electricity Consumption (kW)')
+    plt.legend()
+    plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_classification_predact_plot.png')
+    plt.show()
+    plt.clf()
+
     if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials) and study.best_trials:
       for best_trial in study.best_trials:
         if total_recall_score >= best_trial.values[0]:
@@ -1039,17 +1051,17 @@ def tune_model_with_optuna(args, n_trials):
     os.makedirs(f'Tunings', exist_ok=True)
 
   joblib.dump(study, path_pkl)
-  # try:
-  #   df_tuning = pd.read_csv(path_csv, delimiter=',')
-  # except Exception:
-  #   df_tuning = pd.DataFrame(columns=['model', 'trials', 'val_loss', 'parameters'])
+  try:
+    df_tuning = pd.read_csv(path_csv, delimiter=',')
+  except Exception:
+    df_tuning = pd.DataFrame(columns=['model', 'trials', 'val_loss', 'parameters'])
 
-  # new_row = {'model': args.model, 'trials': len(study.trials), 'val_loss': study.best_value, 'parameters': study.best_params}
-  # new_row_df = pd.DataFrame([new_row]).dropna(axis=1, how='all')
-  # df_tuning = pd.concat([df_tuning, new_row_df], ignore_index=True)
-  # df_tuning = df_tuning.sort_values(by=['model', 'val_loss'], ascending=True).reset_index(drop=True)
+  new_row = {'model': args.model, 'trials': len(study.trials), 'val_loss': study.best_value, 'parameters': study.best_params}
+  new_row_df = pd.DataFrame([new_row]).dropna(axis=1, how='all')
+  df_tuning = pd.concat([df_tuning, new_row_df], ignore_index=True)
+  df_tuning = df_tuning.sort_values(by=['model', 'val_loss'], ascending=True).reset_index(drop=True)
 
-  # df_tuning.to_csv(path_csv, index=False)
+  df_tuning.to_csv(path_csv, index=False)
 
   baseload, predictions, actuals = best_list[0]['baseload'], best_list[0]['predictions'], best_list[0]['actuals']
 
