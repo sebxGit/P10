@@ -402,6 +402,7 @@ class SDUDataModule(L.LightningDataModule):
     self.y_val = None
     self.X_test = None
     self.y_test = None
+    self.val_dates = []
     self.test_dates = []
 
   def setup(self, stage: str):
@@ -451,6 +452,7 @@ class SDUDataModule(L.LightningDataModule):
     X_tv, self.X_test, y_tv, self.y_test = train_test_split( X, y, test_size=0.2, shuffle=False)
     self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(X_tv, y_tv, test_size=0.25, shuffle=False)
 
+    self.val_dates = self.X_val.index.tolist()
     self.test_dates = self.X_test.index.tolist()
 
     preprocessing = self.scaler
@@ -559,7 +561,6 @@ def initialize_model(model_name, hyperparameters):
   }
   return model_dict[model_name]()
 
-
 def get_baseloads_and_parts(colmod, y_pred, actuals):
   if args.dataset == "Colorado":
     y_pred = [pred * args.multiplier for pred in y_pred]
@@ -588,12 +589,12 @@ def get_baseloads_and_parts(colmod, y_pred, actuals):
     val_end_date = pd.to_datetime('2031-05-26 14:00:00')
 
     # Validation Dates:
-    # First: 2029-10-19 05:00:00
-    # Last: 2031-05-26 14:00:00
+    # First: 2030-10-19 02:00:00
+    # Last: 2030-12-31 00:00:00
 
     # Test Dates:
-    # First: 2031-05-26 15: 00: 00
-    # Last: 2032-12-31 00: 00: 00
+    # First: 2030-10-19 02:00:00
+    # Last: 2030-12-31 00:00:00
 
     df = pd.read_csv('SDU Dataset/DumbCharging_2020_to_2032/Measurements.csv', skipinitialspace=True)
 
@@ -704,7 +705,7 @@ if __name__ == "__main__":
     plt.show()
     plt.clf()
 
-    print(colmod.test_dates)
+    print(colmod.val_dates)
 
     # # baseload = baseload['Aggregated base load'].values
 
