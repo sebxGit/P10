@@ -475,7 +475,7 @@ class SDUDataModule(L.LightningDataModule):
     # df = df.drop(columns=['montdh', 'Year', 'hour', 'Month', 'Hour', 'Day'])
     
     # Add Logp1 transformation to the target variable 
-    # df['Aggregated charging load'] = np.log1p(df['Aggregated charging load'])
+    df['Aggregated charging load'] = np.log1p(df['Aggregated charging load'])
 
     ### features 
     df['lag1h'] = df['Aggregated charging load'].shift(1)
@@ -774,6 +774,8 @@ def objective(args, trial):
       predictions = trainer.predict(tuned_model, colmod, return_predictions=True)
 
       pred, act = get_actuals_and_prediction_flattened(colmod, predictions)
+      pred = np.expm1(pred)
+      act = np.expm1(act)
 
       mse = mean_squared_error(act, pred)
       mae = mean_absolute_error(act, pred)
@@ -791,6 +793,10 @@ def objective(args, trial):
       y_pred = model.predict(X_val)
       pred = y_pred.reshape(-1)
       act = y_val.reshape(-1)
+
+      pred = np.expm1(pred)
+      act = np.expm1(act)
+      
       mae = mean_absolute_error(y_val, y_pred)
       mse = mean_squared_error(act, pred)
       huber_loss = torch.nn.HuberLoss()(torch.tensor(pred), torch.tensor(act))
