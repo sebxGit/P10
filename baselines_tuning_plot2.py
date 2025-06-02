@@ -644,8 +644,22 @@ def objective(args, trial):
       X_train, y_train = colmod.sklearn_setup("train")
       X_val, y_val = colmod.sklearn_setup("val")
       
-      model.fit(X_train, y_train)
-      train_loss = mean_absolute_error(y_val, model.predict(X_val))
+      y_pred = model.predict(X_val)
+      
+      act = y_val.reshape(-1)
+      pred = y_pred.reshape(-1)
+      
+      train_loss = mean_absolute_error(y_val, y_pred)
+
+    plt.figure(figsize=(15, 4))
+    plt.plot(act, label='Actuals')
+    plt.plot(pred, label=f'{train_loss} Predictions')
+    plt.xlabel('Samples')
+    plt.ylabel('Electricity Consumption (kW)')
+    plt.legend()
+    plt.savefig(f'{args.dataset}_{args.pred_len}h_{args.model}_tuning.png')
+    plt.show()
+    plt.clf()
     return train_loss
 
 def safe_objective(args, trial):
