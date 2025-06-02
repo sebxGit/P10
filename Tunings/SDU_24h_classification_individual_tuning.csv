@@ -1,1 +1,3 @@
 model,trials,recall,mae,parameters
+GRU,150,0.0,18.137635171766366,"{'batch_size': 32, 'learning_rate': 0.005713720666306324, 'max_epochs': 2000, 'num_workers': 7, 'hidden_size': 95, 'num_layers': 2, 'dropout': 0.6324040297560001}"
+xPatch,150,0.72,18.40,"{'batch_size': 32, 'learning_rate': 0.0038873025427381257, 'max_epochs': 1000, 'num_workers': 11, 'patch_len': 30, 'stride': 12, 'padding_patch': 'end', 'revin': 0, 'ma_type': 'reg', 'alpha': 0.8712230411740758, 'beta': 0.29040866130604703}"
