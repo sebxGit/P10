@@ -806,7 +806,7 @@ def objective(args, trial):
     plt.ylabel('Values')
     plt.legend()
     plt.tight_layout()
-    plt.savefig(f"Tunings/test_plot{args.model}.png")
+    plt.savefig(f"Tunings/test_plot{args.model}_trial_{trial.number}.png")
     plt.show()
 
     return train_loss
