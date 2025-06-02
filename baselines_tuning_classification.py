@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 import holidays
 import optuna
+from sklearn.discriminant_analysis import StandardScaler
 from models.LSTM import LSTM
 from models.GRU import GRU
 from models.MLP import MLP
@@ -16,7 +17,7 @@ from models.xPatch import xPatch
 from models.PatchMixer import PatchMixer
 
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, RobustScaler
 from sklearn.ensemble import RandomForestRegressor, AdaBoostRegressor, GradientBoostingRegressor
 from sklearn.multioutput import MultiOutputRegressor
 from sklearn.base import BaseEstimator
@@ -820,19 +821,20 @@ def get_baseloads_and_parts(colmod, y_pred, actuals):
 
 def objective(args, trial, study):
     params = {
-        'input_size': 22 if args.dataset == "Colorado" else 27,
+        'input_size': 22 if args.dataset == "Colorado" else 16,
         'pred_len': args.pred_len,
         'seq_len': 24*7,
         'stride': args.pred_len,
         'batch_size': trial.suggest_int('batch_size', 32, 256, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
         # 'criterion': torch.nn.L1Loss(),
-        'criterion': torch.nn.HuberLoss(delta=1),
+        'criterion': torch.nn.HuberLoss(delta=0.25),
         'optimizer': torch.optim.Adam,
-        'scaler': MinMaxScaler(),
+        'scaler': StandardScaler(),
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
         'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100),
-        'num_workers': trial.suggest_int('num_workers', 6, 14) if args.model != "DPAD" else 2,
+        # 'num_workers': trial.suggest_int('num_workers', 6, 14) if args.model != "DPAD" else 2,
+        'num_workers': 10,
         'is_persistent': True
     }
 
@@ -996,16 +998,20 @@ def objective(args, trial, study):
     total_recall_score = np.mean(recall_scores) if len(recall_scores) > 0 else 0
     total_mae_score = np.mean(mae_scores) if len(mae_scores) > 0 else float('inf')
 
-    plt.figure(figsize=(15, 4))
-    plt.plot(actuals, label='Actuals')
-    plt.plot(predictions, label=f'predictions')
-    plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
-    plt.xlabel('Samples')
-    plt.ylabel('Electricity Consumption (kW)')
-    plt.legend()
-    plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_classification_predact_plot.png')
-    plt.show()
-    plt.clf()
+     
+    # plt.figure(figsize=(15, 4))
+    # plt.title(f'{args.model} - Total Recall Score: {total_recall_score:.4f}, Total MAE Score: {total_mae_score:.4f}')
+    # plt.plot(actuals, label='Actuals')
+    # plt.plot(predictions, label=f'predictions')
+    # plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
+    # plt.xlabel('Samples')
+    # plt.ylabel('Electricity Consumption (kWh)')
+    # plt.legend()
+    # # plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_classification_predact_plot.png')
+    # plt.show()
+    # plt.clf()
+
+    # exit()
 
     if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials) and study.best_trials:
       for best_trial in study.best_trials:
@@ -1070,7 +1076,7 @@ def tune_model_with_optuna(args, n_trials):
   plt.plot(baseload, label='Baseload')
   plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
   plt.xlabel('Samples')
-  plt.ylabel('Electricity Consumption (kW)')
+  plt.ylabel('Electricity Consumption (kWh)')
   plt.legend()
   plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_classification_baseload_plot.png')
   plt.show()
@@ -1082,7 +1088,7 @@ def tune_model_with_optuna(args, n_trials):
   plt.plot(predictions, label=f'predictions')
   plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
   plt.xlabel('Samples')
-  plt.ylabel('Electricity Consumption (kW)')
+  plt.ylabel('Electricity Consumption (kWh)')
   plt.legend()
   plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_classification_predact_plot.png')
   plt.show()
@@ -1092,14 +1098,14 @@ if __name__ == '__main__':
   parser = ArgumentParser()
   parser.add_argument("--dataset", type=str, default="SDU")
   parser.add_argument("--pred_len", type=int, default=24)
-  parser.add_argument("--model", type=str, default="LSTM")  # change
+  parser.add_argument("--model", type=str, default="GRU")  # change
   parser.add_argument("--load", type=str, default='False') #change
   parser.add_argument("--mixed", type=str, default='True')
   parser.add_argument("--individual", type=str, default="False")
   parser.add_argument("--threshold", type=float, default=250)
   parser.add_argument("--downscaling", type=int, default=13)
   parser.add_argument("--multiplier", type=int, default=2)
-  parser.add_argument("--trials", type=int, default=150) #change
+  parser.add_argument("--trials", type=int, default=15) #change
 
   args = parser.parse_args()
   
