@@ -999,17 +999,17 @@ def objective(args, trial, study):
     total_mae_score = np.mean(mae_scores) if len(mae_scores) > 0 else float('inf')
 
      
-    # plt.figure(figsize=(15, 4))
-    # plt.title(f'{args.model} - Total Recall Score: {total_recall_score:.4f}, Total MAE Score: {total_mae_score:.4f}')
-    # plt.plot(actuals, label='Actuals')
-    # plt.plot(predictions, label=f'predictions')
-    # plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
-    # plt.xlabel('Samples')
-    # plt.ylabel('Electricity Consumption (kWh)')
-    # plt.legend()
-    # # plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_classification_predact_plot.png')
+    plt.figure(figsize=(15, 4))
+    plt.title(f'{args.model} - Total Recall Score: {total_recall_score:.4f}, Total MAE Score: {total_mae_score:.4f}')
+    plt.plot(actuals, label='Actuals')
+    plt.plot(predictions, label=f'predictions')
+    plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
+    plt.xlabel('Samples')
+    plt.ylabel('Electricity Consumption (kWh)')
+    plt.legend()
+    plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_{trial.number}_classification_predact_plot.png')
     # plt.show()
-    # plt.clf()
+    plt.clf()
 
     # exit()
 
