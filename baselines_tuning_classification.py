@@ -660,7 +660,10 @@ class SDUDataModule2(L.LightningDataModule):
     self.val_dates = self.X_val.index.tolist()
 
     preprocessing = self.scaler
-    preprocessing.fit(self.X_train)  # should only fit to training data
+    # preprocessing.fit(self.X_train)  # should only fit to training data
+    preprocessing.fit_transform(self.X_train)  # should only fit to training data
+
+    
 
     if stage == "fit" or stage is None:
       self.X_train = preprocessing.transform(self.X_train)
