@@ -778,7 +778,7 @@ def objective(args, trial):
       mae = mean_absolute_error(act, pred)
       huber_loss = torch.nn.HuberLoss()(torch.tensor(pred), torch.tensor(act))
 
-      train_loss = params['criterion'](pred, act)
+      train_loss = params['criterion'](torch.tensor(pred), torch.tensor(act))
 
     elif isinstance(model, BaseEstimator):
       name = model.__class__.__name__
@@ -793,8 +793,8 @@ def objective(args, trial):
       mae = mean_absolute_error(y_val, y_pred)
       mse = mean_squared_error(act, pred)
       huber_loss = torch.nn.HuberLoss()(torch.tensor(pred), torch.tensor(act))
-
-      train_loss = params['criterion'](pred, act)
+      
+      train_loss = params['criterion'](torch.tensor(pred), torch.tensor(act))
 
     print(f"MAE: {mae}, MSE: {mse}, Huber Loss: {huber_loss}")
     print(f"Best parameters: {trial.params}")
