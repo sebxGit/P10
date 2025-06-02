@@ -560,10 +560,9 @@ def initialize_model(model_name, hyperparameters):
   return model_dict[model_name]()
 
 parser = ArgumentParser()
-# ['LSTM', 'GRU', 'PatchMixer', 'xPatch'] #['LSTM', 'GRU', 'PatchMixer', 'xPatch']
-parser.add_argument("--models", type=str, default="LSTM")
-# parser.add_argument("--models", type=str, default="['RandomForestRegressor', 'GradientBoostingRegressor', 'GRU', 'PatchMixer', 'xPatch']")
-parser.add_argument("--individual", type=str, default="True")
+# parser.add_argument("--models", type=str, default="LSTM") # ['LSTM', 'GRU', 'PatchMixer', 'xPatch'] #['LSTM', 'GRU', 'PatchMixer', 'xPatch']
+parser.add_argument("--models", type=str, default="['RandomForestRegressor', 'GradientBoostingRegressor', 'GRU', 'PatchMixer', 'xPatch']")
+parser.add_argument("--individual", type=str, default="False")
 parser.add_argument("--input_size", type=int, default=22)
 parser.add_argument("--pred_len", type=int, default=24)
 parser.add_argument("--seq_len", type=int, default=24*7)
@@ -581,7 +580,7 @@ if __name__ == "__main__":
   if mode == "ensemble":
     selected_models = ast.literal_eval(args.models)
     combined_name = "-".join([m for m in selected_models])
-    file_path = f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning.csv'
+    file_path = f'Tunings/{args.dataset}_{args.pred_len}h_tuning.csv'
   else:
     selected_models = [args.models]
     combined_name = args.models
