@@ -848,7 +848,7 @@ def tune_model_with_optuna(args, n_trials):
 
     if not os.path.exists(f'Tunings'):
       os.makedirs(f'Tunings', exist_ok=True)
-    if args.individual:
+    if args.individual == "True":
       df_tuning.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_individual_tuning.csv', index=False)
       joblib.dump(study, f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_individual_tuning.pkl')
     else:
