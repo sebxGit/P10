@@ -405,8 +405,10 @@ class SDUDataModule(L.LightningDataModule):
 
   def setup(self, stage: str):
     # Define the start and end dates
-    start_date = pd.to_datetime('2024-12-31')
-    end_date = pd.to_datetime('2032-12-31')
+    # start_date = pd.to_datetime('2024-12-31')
+    # end_date = pd.to_datetime('2032-12-31')
+    start_date = pd.to_datetime('2029-12-31')
+    end_date = pd.to_datetime('2030-12-31')
 
     # Load the CSV
     df = pd.read_csv(self.data_dir, skipinitialspace=True)
@@ -418,25 +420,27 @@ class SDUDataModule(L.LightningDataModule):
     # Keep only relevant columns
     df = df[['Timestamp', 'Aggregated charging load',
             'Total number of EVs', 'Number of charging EVs',
-             'Number of driving EVs', 'Overload duration [min]']]
+             'Number of driving EVs', 'Overload duration [min]', 
+             'Year', 'Month', 'Day', 'Hour']]
 
     # Ensure numeric columns are correctly parsed
-    numeric_cols = [
-        'Aggregated charging load',
-        'Total number of EVs',
-        'Number of driving EVs',
-        'Number of charging EVs',
-        'Overload duration [min]'
-    ]
-    df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric, errors='coerce')
+    # numeric_cols = [
+    #     'Aggregated charging load',
+    #     'Total number of EVs',
+    #     'Number of driving EVs',
+    #     'Number of charging EVs',
+    #     'Overload duration [min]'
+    # ]
+    # df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric, errors='coerce')
 
+  
     # Use lowercase 'h' to avoid deprecation warning
     df['Timestamp'] = df['Timestamp'].dt.floor('h')
 
     # Optional: Aggregate if multiple entries exist for the same hour
-    df = df.groupby('Timestamp')[numeric_cols].sum().reset_index()
+    # df = df.groupby('Timestamp')[numeric_cols].sum().reset_index()
 
-    df = add_featuresSDU(df)
+    #df = add_featuresSDU(df)
 
     # df['hour'] = df.index.hour
     # df['dayofweek'] = df.index.dayofweek
@@ -448,8 +452,10 @@ class SDUDataModule(L.LightningDataModule):
     #print(df.head())
 
     # df['Aggregated charging load'] = df['Aggregated charging load'].interpolate(method='time')
-    df['Aggregated charging load'] = df['Aggregated charging load'].interpolate(method='linear')
+    # df['Aggregated charging load'] = df['Aggregated charging load'].interpolate(method='linear')
     # df['Aggregated charging load'] = df['Aggregated charging load'].interpolate(method='pchip')
+
+    df.set_index('Timestamp', inplace=True)
 
     df['hour_sin'] = np.sin(2 * np.pi * df['Hour'] / 24)
     df['hour_cos'] = np.cos(2 * np.pi * df['Hour'] / 24)
@@ -466,7 +472,7 @@ class SDUDataModule(L.LightningDataModule):
     df['dayofweek_cos'] = np.cos(2 * np.pi * df['dayofweek'] / 7)
 
     #remove  
-    # df = df.drop(columns=['month', 'Year', 'hour', 'Month', 'Hour', 'Day'])
+    # df = df.drop(columns=['montdh', 'Year', 'hour', 'Month', 'Hour', 'Day'])
     
     # Add Logp1 transformation to the target variable 
     # df['Aggregated charging load'] = np.log1p(df['Aggregated charging load'])
@@ -630,18 +636,23 @@ def get_actuals_and_prediction_flattened(colmod, prediction):
 def objective(args, trial):
     
     params = {
-        'input_size': 22 if args.dataset == "Colorado" else 24,
+        'input_size': 22 if args.dataset == "Colorado" else 17,
         'pred_len': args.pred_len,
         'seq_len': 24*7,
         'stride': args.pred_len,
         'batch_size': trial.suggest_int('batch_size', 32, 128, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
-        'criterion': torch.nn.L1Loss(),
+        # 'criterion': torch.nn.L1Loss(),
+        # 'criterion': torch.nn.MSELoss(),# MSELoss is more common for regression tasks
+        'criterion': torch.nn.HuberLoss(), # Huber loss, less sensitive to outliers than MSE
         'optimizer': torch.optim.Adam,
         'scaler': MinMaxScaler(),
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
-        'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100),
-        'num_workers': trial.suggest_int('num_workers', 5, 20) if args.model != "DPAD" else 2, ###CHANGE
+        # 'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100),
+        'max_epochs': 1000,  # Fixed for all models
+        # 'num_workers': trial.suggest_int('num_workers', 5, 20) if args.model != "DPAD" else 2, ###CHANGE
+        # 'is_persistent': True
+        'num_workers': 12,
         'is_persistent': True
     }
 
@@ -659,15 +670,19 @@ def objective(args, trial):
     if args.model == "LSTM":
       _params = {
         'hidden_size': trial.suggest_int('hidden_size', 50, 200),
-        'num_layers': trial.suggest_int('num_layers', 1, 10),
-        'dropout': trial.suggest_float('dropout', 0.0, 1),
+        # 'num_layers': trial.suggest_int('num_layers', 1, 10),
+        'num_layers': 5,
+        'dropout': 0.001,
+        # 'dropout': trial.suggest_float('dropout', 0.0, 1),
       }
       model = LSTM(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "GRU":
       _params = {
-        'hidden_size': trial.suggest_int('hidden_size', 50, 200),
-        'num_layers': trial.suggest_int('num_layers', 1, 10),
-        'dropout': trial.suggest_float('dropout', 0.0, 1),
+          'hidden_size': trial.suggest_int('hidden_size', 50, 200),
+          # 'num_layers': trial.suggest_int('num_layers', 1, 10),
+          'num_layers': 5,
+          'dropout': 0.001,
+          # 'dropout': trial.suggest_float('dropout', 0.0, 1),
       }
       model = GRU(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "MLP":
@@ -747,18 +762,22 @@ def objective(args, trial):
 
       # Trainer for fitting using DDP - Multi GPU
       #trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
-      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
+      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, deterministic=True )
 
       trainer.fit(tuned_model, colmod)
 
       # New Trainer for inference on one GPU
-      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, devices=1)
+      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed ==
+                          'True' else None, enable_checkpointing=False, deterministic=True,  devices=1)
 
       predictions = trainer.predict(tuned_model, colmod, return_predictions=True)
 
       pred, act = get_actuals_and_prediction_flattened(colmod, predictions)
 
-      train_loss = mean_absolute_error(act, pred)
+      mse = mean_squared_error(act, pred)
+      mae = mean_absolute_error(act, pred)
+
+      train_loss = params['criterion'](torch.tensor(pred), torch.tensor(act))
 
     elif isinstance(model, BaseEstimator):
       name = model.__class__.__name__
@@ -767,7 +786,27 @@ def objective(args, trial):
       X_val, y_val = colmod.sklearn_setup("val")
       
       model.fit(X_train, y_train)
-      train_loss = mean_absolute_error(y_val, model.predict(X_val))
+      y_pred = model.predict(X_val)
+      pred = y_pred.reshape(-1)
+      act = y_val.reshape(-1)
+      mae = mean_absolute_error(y_val, y_pred)
+
+      mse = mean_squared_error(act, pred)
+
+      train_loss = params['criterion'](torch.tensor(pred), torch.tensor(act))
+
+    print(f"MAE: {mae}, MSE: {mse}, Huber Loss: {train_loss}")
+    print(f"Best parameters: {trial.params}")
+
+    plt.figure(figsize=(10, 5))
+    plt.plot(act, label='Actuals', alpha=0.5)
+    plt.plot(pred, label='Predictions', alpha=0.5)
+    plt.title(f'{args.model} - {args.dataset} - MAE: {mae:.4f} - MSE: {mse:.4f} - Huberloss: {train_loss:.4f}')
+    plt.xlabel('Time Steps')
+    plt.ylabel('Values')
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
 
     return train_loss
 
@@ -793,7 +832,7 @@ def tune_model_with_optuna(args, n_trials):
     print("Starting a new tuning.")
     study = optuna.create_study(direction="minimize")
 
-  study.optimize(lambda trial: safe_objective(args, trial), n_trials=n_trials, gc_after_trial=True, timeout=37800)
+  study.optimize(lambda trial: objective(args, trial), n_trials=n_trials, gc_after_trial=True, timeout=37800)
 
   print("Len trials:", len(study.trials))
   print("Best params:", study.best_params)
@@ -824,10 +863,10 @@ if __name__ == '__main__':
   parser = ArgumentParser()
   parser.add_argument("--dataset", type=str, default="SDU")
   parser.add_argument("--pred_len", type=int, default=24)
-  parser.add_argument("--model", type=str, default="LSTM")
+  parser.add_argument("--model", type=str, default="GRU")
   parser.add_argument("--load", type=str, default='False')
   parser.add_argument("--mixed", type=str, default='True')
-  parser.add_argument("--individual", type=str, default="False")
+  parser.add_argument("--individual", type=str, default="True")
   args = parser.parse_args()
 
   best_params = tune_model_with_optuna(args, n_trials=5)
