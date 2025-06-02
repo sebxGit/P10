@@ -699,7 +699,7 @@ def objective(args, trial, all_subsets, study):
   total_recall_score = np.mean(recall_scores) if len(recall_scores) > 0 else 0
   total_mae_score = np.mean(mae_scores) if len(mae_scores) > 0 else float('inf')
 
-  tuning_results.append({'combined_name': combined_name, 'rec': total_recall_score, 'parameters': trial.params})
+  tuning_results.append({'combined_name': combined_name, 'rec': total_recall_score, 'mae': total_mae_score, 'parameters': trial.params})
 
   if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials) and study.best_trials:
     for best_trial in study.best_trials:
@@ -801,9 +801,8 @@ if __name__ == "__main__":
   for d in tuning_results:
     if d not in unique_results:
       unique_results.append(d)
-      print(d)
-  # filtered_trials = [trial for trial in tuning_results if trial.get('mae', float('inf')) <= 80]
-  sorted_trials = sorted(unique_results, key=lambda x: x.get('rec', float('inf')))
+  filtered_trials = [trial for trial in tuning_results if trial.get('mae', float('inf')) <= 80]
+  sorted_trials = sorted(filtered_trials, key=lambda x: x.get('rec', float('inf')))
   top_10_tunings = sorted_trials[:10]
   df_top_10 = pd.DataFrame(top_10_tunings)
   df_top_10.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning_classification.csv', index=False)
