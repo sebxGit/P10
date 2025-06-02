@@ -17,7 +17,7 @@ from models.xPatch import xPatch
 from models.PatchMixer import PatchMixer
 
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler, PowerTransformer, RobustScaler
+from sklearn.preprocessing import MaxAbsScaler, MinMaxScaler, RobustScaler
 from sklearn.ensemble import RandomForestRegressor, AdaBoostRegressor, GradientBoostingRegressor
 from sklearn.multioutput import MultiOutputRegressor
 from sklearn.base import BaseEstimator
@@ -660,10 +660,7 @@ class SDUDataModule2(L.LightningDataModule):
     self.val_dates = self.X_val.index.tolist()
 
     preprocessing = self.scaler
-    # preprocessing.fit(self.X_train)  # should only fit to training data
-    preprocessing.fit_transform(self.X_train)  # should only fit to training data
-
-    
+    preprocessing.fit(self.X_train)  # should only fit to training data
 
     if stage == "fit" or stage is None:
       self.X_train = preprocessing.transform(self.X_train)
@@ -832,7 +829,7 @@ def objective(args, trial, study):
         # 'criterion': torch.nn.L1Loss(),
         'criterion': torch.nn.HuberLoss(delta=0.25),
         'optimizer': torch.optim.Adam,
-        'scaler': PowerTransformer(method='yeo-johnson'),
+        'scaler': MaxAbsScaler(),
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
         'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100),
@@ -1055,7 +1052,7 @@ def tune_model_with_optuna(args, n_trials):
     print("Starting a new tuning.")
     study = optuna.create_study(directions=["maximize", "minimize"], study_name=study_name)
 
-  study.optimize(lambda trial: objective(args, trial, study), n_trials=n_trials, gc_after_trial=True, timeout=37800) #change
+  study.optimize(lambda trial: safe_objective(args, trial, study), n_trials=n_trials, gc_after_trial=True, timeout=37800) #change
 
   if not os.path.exists(f'Tunings'):
     os.makedirs(f'Tunings', exist_ok=True)
@@ -1111,7 +1108,7 @@ if __name__ == '__main__':
   parser.add_argument("--threshold", type=float, default=250)
   parser.add_argument("--downscaling", type=int, default=13)
   parser.add_argument("--multiplier", type=int, default=2)
-  parser.add_argument("--trials", type=int, default=150) #change
+  parser.add_argument("--trials", type=int, default=15) #change
 
   args = parser.parse_args()
   
