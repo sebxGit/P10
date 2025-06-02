@@ -703,7 +703,7 @@ def objective(args, trial, all_subsets, study):
 
   if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials) and study.best_trials:
     for best_trial in study.best_trials:
-      if total_recall_score >= best_trial.values[0]:
+      if total_recall_score >= best_trial.values[0] and total_mae_score >= best_trial.values[1]:
         best_list.clear()
         best_list.append({'baseload': baseload, 'predictions': predictions, 'actuals': actuals})
 
@@ -713,7 +713,7 @@ def objective(args, trial, all_subsets, study):
 
 parser = ArgumentParser()
 parser.add_argument("--criterion", type=str, default="MAELoss")
-parser.add_argument("--models", type=str, default="['RandomForestRegressor', 'GradientBoostingRegressor', 'AdaBoostRegressor', 'LSTM', 'GRU', 'PatchMixer', 'xPatch']")
+parser.add_argument("--models", type=str, default="['LSTM', 'GRU', 'xPatch']") #['RandomForestRegressor', 'GradientBoostingRegressor', 'AdaBoostRegressor', 'LSTM', 'GRU', 'PatchMixer', 'xPatch']
 parser.add_argument("--dataset", type=str, default="Colorado")
 parser.add_argument("--input_size", type=int, default=22)
 parser.add_argument("--pred_len", type=int, default=24)
@@ -805,7 +805,6 @@ if __name__ == "__main__":
   top_10_tunings = sorted_trials[:10]
   df_top_10 = pd.DataFrame(top_10_tunings)
   df_top_10.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning_classification.csv', index=False)
-  print(df_top_10)
   
   baseload, predictions, actuals = best_list[0]['baseload'], best_list[0]['predictions'], best_list[0]['actuals']
 
