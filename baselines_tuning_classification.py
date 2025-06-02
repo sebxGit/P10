@@ -887,7 +887,7 @@ def objective(args, trial, study):
         'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 20),
         'max_features': trial.suggest_float('max_features', 0.1, 1.0),
         'learning_rate_model': trial.suggest_float('learning_rate_model', 0.01, 1.0),
-        'subsample': trial.suggest_float('subsample', 0.3, 1.0),
+        'subsample': trial.suggest_float('subsample', 0.7, 1.0),
       }
       model = MultiOutputRegressor(GradientBoostingRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], subsample=_params['subsample'], min_samples_leaf=_params['min_samples_leaf'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "DPAD":
