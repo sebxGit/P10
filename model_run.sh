@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=p10
-#SBATCH --output=result_model_LSTM_run_%j.out
-#SBATCH --error=error_model_LSTM_run_%j.err
+#SBATCH --output=result_model_GRU_run_%j.out
+#SBATCH --error=error_model_GRU_run_%j.err
 #SBATCH --time=12:00:00 # 
 #SBATCH --ntasks=1
 #SBATCH --gres=gpu:8
