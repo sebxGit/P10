@@ -1,3 +1,4 @@
 model,trials,mae,mse,huber_loss,val_loss,parameters
 LSTM,150,12.778544655050894,601.6705096007597,12.46203327178955,3.172377824783325,"{'batch_size': 240, 'learning_rate': 0.006737826136406453, 'max_epochs': 1800, 'num_workers': 8, 'hidden_size': 168, 'num_layers': 1, 'dropout': 0.08926779431569574}"
 PatchMixer,150,13.380616144286565,583.9655222578269,12.90068244934082,3.314014673233032,"{'batch_size': 256, 'learning_rate': 0.0004646414616809131, 'max_epochs': 2000, 'num_workers': 9, 'patch_len': 4, 'stride': 10, 'mixer_kernel_size': 2, 'd_model': 320, 'dropout': 0.4, 'head_dropout': 0.0, 'e_layers': 10}"
+xPatch,150,10.455543804800872,338.89313782026704,10.07259464263916,2.585550308227539,"{'batch_size': 208, 'learning_rate': 0.0006554334484062519, 'max_epochs': 2000, 'num_workers': 8, 'patch_len': 16, 'stride': 5, 'padding_patch': 'None', 'revin': 0, 'ma_type': 'reg', 'alpha': 0.6803081419478867, 'beta': 0.7493277554345201}"
