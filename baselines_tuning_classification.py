@@ -404,14 +404,16 @@ class SDUDataModule(L.LightningDataModule):
     self.y_test = None
     self.X_train_val = None
     self.y_train_val = None
+    self.train_dates = []
     self.val_dates = []
+    self.test_dates = []
 
   def setup(self, stage: str):
     # Define the start and end dates
     # start_date = pd.to_datetime('2024-12-31')
     # end_date = pd.to_datetime('2032-12-31')
-    start_date = pd.to_datetime('2029-12-31')
-    end_date = pd.to_datetime('2030-12-31')
+    start_date = pd.to_datetime('2029-12-31') 
+    end_date = pd.to_datetime('2030-01-29')
 
     # Load the CSV
     df = pd.read_csv(self.data_dir, skipinitialspace=True)
@@ -511,11 +513,15 @@ class SDUDataModule(L.LightningDataModule):
 
     y = X.pop('Aggregated charging load')
 
-    # 60/20/20 split
-    self.X_train_val, self.X_test, self.y_train_val, self.y_test = train_test_split( X, y, test_size=0.2, shuffle=False)
-    self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(self.X_train_val, self.y_train_val, test_size=0.25, shuffle=False)
+    # 7+7 train, 7 val, 7 test
 
+    # 60/20/20 split
+    self.X_train_val, self.X_test, self.y_train_val, self.y_test = train_test_split(X, y, test_size=0.25, shuffle=False)
+    self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(self.X_train_val, self.y_train_val, test_size=0.3333, shuffle=False)
+
+    self.train_dates = self.X_train.index.tolist()
     self.val_dates = self.X_val.index.tolist()
+    self.test_dates = self.X_test.index.tolist()
 
     preprocessing = self.scaler
     preprocessing.fit(self.X_train)  # should only fit to training data
@@ -995,20 +1001,22 @@ def objective(args, trial, study):
     total_recall_score = np.mean(recall_scores) if len(recall_scores) > 0 else 0
     total_mae_score = np.mean(mae_scores) if len(mae_scores) > 0 else float('inf')
 
-    # plt.figure(figsize=(15, 4))
-    # plt.title(f'{args.model} - Total Recall Score: {total_recall_score:.4f}, Total MAE Score: {total_mae_score:.4f}')
-    # plt.plot(actuals, label='Actuals')
-    # plt.plot(predictions, label=f'predictions')
-    # plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
-    # plt.xlabel('Samples')
-    # plt.ylabel('Electricity Consumption (kWh)')
-    # plt.legend()
-    # plt.savefig(
-    #     f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_{trial.number}_{total_recall_score:.4f}_classification_predact_plot.png')
-    # # plt.show()
-    # plt.clf()
+    print(colmod.val_dates)
 
-    # exit()
+    plt.figure(figsize=(15, 4))
+    plt.title(f'{args.model} - Total Recall Score: {total_recall_score:.4f}, Total MAE Score: {total_mae_score:.4f}')
+    plt.plot(actuals, label='Actuals')
+    plt.plot(predictions, label=f'predictions')
+    plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
+    plt.xlabel('Samples')
+    plt.ylabel('Electricity Consumption (kWh)')
+    plt.legend()
+    plt.savefig(
+        f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_{trial.number}_{total_recall_score:.4f}_classification_predact_plot.png')
+    # plt.show()
+    plt.clf()
+
+    exit()
 
     if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials) and study.best_trials:
       for best_trial in study.best_trials:
