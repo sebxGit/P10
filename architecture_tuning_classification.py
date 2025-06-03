@@ -805,7 +805,7 @@ def objective(args, trial, all_subsets, study):
         plt.ylabel('Electricity Consumption (kWh)')
         plt.legend()
         plt.tight_layout()
-        plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_{trial.number}_architecture_classification_predact_plot.png')
+        plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_{trial.number}_{total_recall_score}_{total_mae_score}_architecture_classification_plot.png')
         plt.show()
         plt.clf()
         plt.close()
