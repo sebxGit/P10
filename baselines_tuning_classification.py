@@ -1056,7 +1056,7 @@ def tune_model_with_optuna(args, n_trials):
     print("Starting a new tuning.")
     study = optuna.create_study(directions=["maximize", "minimize"], study_name=study_name)
 
-  study.optimize(lambda trial: safe_objective(args, trial, study), n_trials=n_trials, gc_after_trial=True, timeout=37800) #change
+  study.optimize(lambda trial: objective(args, trial, study), n_trials=n_trials, gc_after_trial=True, timeout=37800) #change
 
   if not os.path.exists(f'Tunings'):
     os.makedirs(f'Tunings', exist_ok=True)
