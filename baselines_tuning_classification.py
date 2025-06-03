@@ -404,16 +404,14 @@ class SDUDataModule(L.LightningDataModule):
     self.y_test = None
     self.X_train_val = None
     self.y_train_val = None
-    self.train_dates = []
     self.val_dates = []
-    self.test_dates = []
 
   def setup(self, stage: str):
     # Define the start and end dates
     # start_date = pd.to_datetime('2024-12-31')
     # end_date = pd.to_datetime('2032-12-31')
-    start_date = pd.to_datetime('2029-10-31') 
-    end_date = pd.to_datetime('2030-03-01')
+    start_date = pd.to_datetime('2029-12-31')
+    end_date = pd.to_datetime('2030-12-31')
 
     # Load the CSV
     df = pd.read_csv(self.data_dir, skipinitialspace=True)
@@ -514,12 +512,10 @@ class SDUDataModule(L.LightningDataModule):
     y = X.pop('Aggregated charging load')
 
     # 60/20/20 split
-    X_tv, self.X_test, y_tv, self.y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
-    self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(X_tv, y_tv, test_size=0.25, shuffle=False)
+    self.X_train_val, self.X_test, self.y_train_val, self.y_test = train_test_split( X, y, test_size=0.2, shuffle=False)
+    self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(self.X_train_val, self.y_train_val, test_size=0.25, shuffle=False)
 
-    self.train_dates = self.X_train.index.tolist()
     self.val_dates = self.X_val.index.tolist()
-    self.test_dates = self.X_test.index.tolist()
 
     preprocessing = self.scaler
     preprocessing.fit(self.X_train)  # should only fit to training data
@@ -586,137 +582,6 @@ class SDUDataModule(L.LightningDataModule):
     X_window, y_target = zip(*results)
     return np.array(X_window), np.array(y_target)
 
-class SDUDataModule2(L.LightningDataModule):
-  def __init__(self, data_dir: str, scaler: int, seq_len: int, pred_len: int, stride: int, batch_size: int, num_workers: int, is_persistent: bool):
-    super().__init__()
-    self.data_dir = data_dir
-    self.scaler = scaler
-    self.seq_len = seq_len
-    self.pred_len = pred_len
-    self.stride = stride
-    self.batch_size = batch_size
-    self.num_workers = num_workers
-    self.is_persistent = is_persistent
-    self.X_train = None
-    self.y_train = None
-    self.X_val = None
-    self.y_val = None
-    self.X_test = None
-    self.y_test = None
-    self.X_train_val = None
-    self.y_train_val = None
-    self.val_dates = []
-
-
-
-  def setup(self, stage: str):
-    # Define the start and end dates
-    start_date = pd.to_datetime('2024-12-31')
-    end_date = pd.to_datetime('2032-12-31')
-
-    # Load the CSV
-    df = pd.read_csv(self.data_dir, skipinitialspace=True)
-
-    # Convert 'Timestamp' to datetime with exact format
-    df['Timestamp'] = pd.to_datetime(
-        df['Timestamp'], format="%b %d, %Y, %I:%M:%S %p")
-
-    # Keep only relevant columns
-    df = df[['Timestamp', 'Aggregated charging load',
-            'Total number of EVs', 'Number of charging EVs',
-             'Number of driving EVs', 'Overload duration [min]']]
-
-    # Ensure numeric columns are correctly parsed
-    numeric_cols = [
-        'Aggregated charging load',
-        'Total number of EVs',
-        'Number of driving EVs',
-        'Number of charging EVs',
-        'Overload duration [min]'
-    ]
-    df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric, errors='coerce')
-
-    # Use lowercase 'h' to avoid deprecation warning
-    df['Timestamp'] = df['Timestamp'].dt.floor('h')
-
-    # Optional: Aggregate if multiple entries exist for the same hour
-    df = df.groupby('Timestamp')[numeric_cols].sum().reset_index()
-
-    df = add_featuresSDU(df)
-
-    df = df.set_index('Timestamp')
-
-    df = filter_data(start_date, end_date, df)
-
-    df = df.dropna()
-
-    X = df.copy()
-
-    y = X.pop('Aggregated charging load')
-
-    # 60/20/20 split
-    self.X_train_val, self.X_test, self.y_train_val, self.y_test = train_test_split( X, y, test_size=0.2, shuffle=False)
-    self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(self.X_train_val, self.y_train_val, test_size=0.25, shuffle=False)
-
-    self.val_dates = self.X_val.index.tolist()
-
-    preprocessing = self.scaler
-    preprocessing.fit(self.X_train)  # should only fit to training data
-
-    if stage == "fit" or stage is None:
-      self.X_train = preprocessing.transform(self.X_train)
-      self.y_train = np.array(self.y_train)
-
-      # self.X_val = preprocessing.transform(self.X_val)
-      # self.y_val = np.array(self.y_val)
-
-    if stage == "test" or "predict" or stage is None:
-      self.X_val = preprocessing.transform(self.X_val)
-      self.y_val = np.array(self.y_val)
-
-      # self.X_test = preprocessing.transform(self.X_test)
-      # self.y_test = np.array(self.y_test)
-
-  def train_dataloader(self):
-    train_dataset = TimeSeriesDataset(self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-    sampler = BootstrapSampler(len(train_dataset), random_state=SEED)
-    if args.individual == 'False':
-      train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
-    else:
-      train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
-    return train_loader
-  
-  def predict_dataloader(self):
-    val_dataset = TimeSeriesDataset(self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-    val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
-    return val_loader
-  
-  def sklearn_setup(self, set_name: str = "train"):
-    if set_name == "train":
-      if args.individual == 'False':
-        X, y = resample(self.X_train, self.y_train, replace=True, n_samples=len(self.X_train), random_state=SEED)
-      else:
-        X, y = self.X_train, self.y_train
-    elif set_name == "val":
-        X, y = self.X_val, self.y_val
-    elif set_name == "test":
-        X, y = self.X_test, self.y_test
-    else:
-        raise ValueError(
-            "Invalid set name. Choose from 'train', 'val', or 'test'.")
-
-    seq_len, pred_len, stride = self.seq_len, self.pred_len, self.stride
-    max_start = len(X) - (seq_len + pred_len) + 1
-
-    # Parallelize the loop
-    results = Parallel(n_jobs=-1)(
-        delayed(process_window)(i, X, y, seq_len, pred_len) for i in range(0, max_start, stride)
-    )
-
-    # Unpack results
-    X_window, y_target = zip(*results)
-    return np.array(X_window), np.array(y_target)
-  
 class CustomWriter(BasePredictionWriter):
   def __init__(self, output_dir, write_interval, combined_name, model_name):
     super().__init__(write_interval)
@@ -833,7 +698,7 @@ def objective(args, trial, study):
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
         # 'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100),
-        'max_epochs': 5000,
+        'max_epochs': 1000,
         # 'num_workers': trial.suggest_int('num_workers', 6, 14) if args.model != "DPAD" else 2,
         'num_workers': 10,
         'is_persistent': True
