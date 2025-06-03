@@ -798,7 +798,7 @@ def get_baseloads_and_parts(colmod, y_pred, actuals):
     # train dates:
     # First: '2029-10-31 00:00:00'
     # Last: '2029-12-30 11:00:00'
-    
+
     # Validation Dates:
     # First: '2029-12-30 12:00:00'
     # Last: '2030-01-29 17:00:00'
@@ -1006,15 +1006,16 @@ def objective(args, trial, study):
     total_recall_score = np.mean(recall_scores) if len(recall_scores) > 0 else 0
     total_mae_score = np.mean(mae_scores) if len(mae_scores) > 0 else float('inf')
 
-    print(colmod.train_dates[0], colmod.train_dates[-1])
-    print("----------------------------------------")
-    print(colmod.val_dates[0], colmod.val_dates[-1])
-    print("----------------------------------------")
-    print(colmod.test_dates[0], colmod.test_dates[-1])
+    # print(colmod.train_dates[0], colmod.train_dates[-1])
+    # print("----------------------------------------")
+    # print(colmod.val_dates[0], colmod.val_dates[-1])
+    # print("----------------------------------------")
+    # print(colmod.test_dates[0], colmod.test_dates[-1])
 
     plt.figure(figsize=(15, 4))
     plt.title(f'{args.model} - Total Recall Score: {total_recall_score:.4f}, Total MAE Score: {total_mae_score:.4f}')
     plt.plot(actuals, label='Actuals')
+    plt.plot(baseload, label='Baseload')
     plt.plot(predictions, label=f'predictions')
     plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
     plt.xlabel('Samples')
@@ -1112,7 +1113,7 @@ if __name__ == '__main__':
   parser = ArgumentParser()
   parser.add_argument("--dataset", type=str, default="SDU")
   parser.add_argument("--pred_len", type=int, default=24)
-  parser.add_argument("--model", type=str, default="GRU")  # change
+  parser.add_argument("--model", type=str, default="xPatch")  # change
   parser.add_argument("--load", type=str, default='False') #change
   parser.add_argument("--mixed", type=str, default='True')
   parser.add_argument("--individual", type=str, default="False")
