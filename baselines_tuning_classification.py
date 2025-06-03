@@ -868,7 +868,7 @@ def objective(args, trial, study):
       FN = np.sum((pred_class == 0) & (actual_class == 1))
       
       recall_scores.append(recall_score(TP, FN))
-      mae_scores.append(mean_absolute_error(actuals, predictions))
+      mae_scores.append(mean_squared_error(actuals, predictions))
       
     total_recall_score = np.mean(recall_scores) if len(recall_scores) > 0 else 0
     total_mae_score = np.mean(mae_scores) if len(mae_scores) > 0 else float('inf')
