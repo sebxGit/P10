@@ -999,11 +999,11 @@ def objective(args, trial, study):
     total_recall_score = np.mean(recall_scores) if len(recall_scores) > 0 else 0
     total_mae_score = np.mean(mae_scores) if len(mae_scores) > 0 else float('inf')
 
-    print(colmod.train_dates[0], colmod.train_dates[-1])
-    print("----------------------------------------")
-    print(colmod.val_dates[0], colmod.val_dates[-1])
-    print("----------------------------------------")
-    print(colmod.test_dates[0], colmod.test_dates[-1])
+    # print(colmod.train_dates[0], colmod.train_dates[-1])
+    # print("----------------------------------------")
+    # print(colmod.val_dates[0], colmod.val_dates[-1])
+    # print("----------------------------------------")
+    # print(colmod.test_dates[0], colmod.test_dates[-1])
 
     plt.figure(figsize=(15, 4))
     plt.title(f'{args.model} - Total Recall Score: {total_recall_score:.4f}, Total MAE Score: {total_mae_score:.4f}')
@@ -1104,7 +1104,7 @@ def tune_model_with_optuna(args, n_trials):
 
 if __name__ == '__main__':
   parser = ArgumentParser()
-  parser.add_argument("--dataset", type=str, default="SDU")
+  parser.add_argument("--dataset", type=str, default="Colorado")
   parser.add_argument("--pred_len", type=int, default=24)
   parser.add_argument("--model", type=str, default="xPatch")  # change
   parser.add_argument("--load", type=str, default='False') #change
