@@ -513,11 +513,9 @@ class SDUDataModule(L.LightningDataModule):
 
     y = X.pop('Aggregated charging load')
 
-    # 7+7 train, 7 val, 7 test
-
     # 60/20/20 split
-    self.X_train_val, self.X_test, self.y_train_val, self.y_test = train_test_split(X, y, test_size=0.25, shuffle=False)
-    self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(self.X_train_val, self.y_train_val, test_size=0.3333, shuffle=False)
+    X_tv, self.X_test, y_tv, self.y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
+    self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(X_tv, y_tv, test_size=0.25, shuffle=False)
 
     self.train_dates = self.X_train.index.tolist()
     self.val_dates = self.X_val.index.tolist()
@@ -1006,11 +1004,11 @@ def objective(args, trial, study):
     total_recall_score = np.mean(recall_scores) if len(recall_scores) > 0 else 0
     total_mae_score = np.mean(mae_scores) if len(mae_scores) > 0 else float('inf')
 
-    # print(colmod.train_dates[0], colmod.train_dates[-1])
-    # print("----------------------------------------")
-    # print(colmod.val_dates[0], colmod.val_dates[-1])
-    # print("----------------------------------------")
-    # print(colmod.test_dates[0], colmod.test_dates[-1])
+    print(colmod.train_dates[0], colmod.train_dates[-1])
+    print("----------------------------------------")
+    print(colmod.val_dates[0], colmod.val_dates[-1])
+    print("----------------------------------------")
+    print(colmod.test_dates[0], colmod.test_dates[-1])
 
     plt.figure(figsize=(15, 4))
     plt.title(f'{args.model} - Total Recall Score: {total_recall_score:.4f}, Total MAE Score: {total_mae_score:.4f}')
