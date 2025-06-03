@@ -412,8 +412,8 @@ class SDUDataModule(L.LightningDataModule):
     # Define the start and end dates
     # start_date = pd.to_datetime('2024-12-31')
     # end_date = pd.to_datetime('2032-12-31')
-    start_date = pd.to_datetime('2029-12-15') 
-    end_date = pd.to_datetime('2030-02-15')
+    start_date = pd.to_datetime('2029-10-31') 
+    end_date = pd.to_datetime('2030-03-01')
 
     # Load the CSV
     df = pd.read_csv(self.data_dir, skipinitialspace=True)
@@ -1002,7 +1002,11 @@ def objective(args, trial, study):
     total_recall_score = np.mean(recall_scores) if len(recall_scores) > 0 else 0
     total_mae_score = np.mean(mae_scores) if len(mae_scores) > 0 else float('inf')
 
-    print(colmod.val_dates)
+    print(colmod.train_dates[0], colmod.train_dates[-1])
+    print("----------------------------------------")
+    print(colmod.val_dates[0], colmod.val_dates[-1])
+    print("----------------------------------------")
+    print(colmod.test_dates[0], colmod.test_dates[-1])
 
     plt.figure(figsize=(15, 4))
     plt.title(f'{args.model} - Total Recall Score: {total_recall_score:.4f}, Total MAE Score: {total_mae_score:.4f}')
