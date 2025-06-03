@@ -842,6 +842,7 @@ parser.add_argument("--trials", type=int, default=100)
 parser.add_argument("--threshold", type=float, default=250)
 parser.add_argument("--downscaling", type=int, default=13)
 parser.add_argument("--multiplier", type=int, default=2)
+parser.add_argument("--individual", type=str, default='False')
 
 criterion_map = { 
                   "MSELoss": nn.MSELoss, 
