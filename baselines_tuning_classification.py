@@ -404,7 +404,10 @@ class SDUDataModule(L.LightningDataModule):
     self.y_test = None
     self.X_train_val = None
     self.y_train_val = None
+    self.train_dates = []
     self.val_dates = []
+    self.test_dates = []
+
 
   def setup(self, stage: str):
     # Define the start and end dates
@@ -515,7 +518,9 @@ class SDUDataModule(L.LightningDataModule):
     self.X_train_val, self.X_test, self.y_train_val, self.y_test = train_test_split( X, y, test_size=0.2, shuffle=False)
     self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(self.X_train_val, self.y_train_val, test_size=0.25, shuffle=False)
 
+    self.train_dates = self.X_train.index.tolist()
     self.val_dates = self.X_val.index.tolist()
+    self.test_dates = self.X_test.index.tolist()
 
     preprocessing = self.scaler
     preprocessing.fit(self.X_train)  # should only fit to training data
@@ -831,6 +836,12 @@ def objective(args, trial, study):
       x, y = batch
       act.extend(y.numpy())
 
+    print(colmod.train_dates[0], colmod.train_dates[-1])
+    print("----------------------------------------")
+    print(colmod.val_dates[0], colmod.val_dates[-1])
+    print("----------------------------------------")
+    print(colmod.test_dates[0], colmod.test_dates[-1])
+    
     baseloads, dfs = get_baseloads_and_parts(colmod, y_pred, act)
 
     recall_scores = []
@@ -864,11 +875,7 @@ def objective(args, trial, study):
     total_recall_score = np.mean(recall_scores) if len(recall_scores) > 0 else 0
     total_mae_score = np.mean(mae_scores) if len(mae_scores) > 0 else float('inf')
 
-    print(colmod.train_dates[0], colmod.train_dates[-1])
-    print("----------------------------------------")
-    print(colmod.val_dates[0], colmod.val_dates[-1])
-    print("----------------------------------------")
-    print(colmod.test_dates[0], colmod.test_dates[-1])
+
 
     plt.figure(figsize=(15, 4))
     plt.title(f'{args.model} - Total Recall Score: {total_recall_score:.4f}, Total MAE Score: {total_mae_score:.4f}')
