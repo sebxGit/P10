@@ -843,7 +843,7 @@ def objective(args, trial, study):
     baseloads, dfs = get_baseloads_and_parts(colmod, y_pred, act)
 
     recall_scores = []
-    mae_scores = []
+    huber_loss_scores = []
 
     for i, (baseload, df) in enumerate(zip(baseloads, dfs)):
       if args.dataset == "Colorado":
@@ -868,13 +868,13 @@ def objective(args, trial, study):
       FN = np.sum((pred_class == 0) & (actual_class == 1))
       
       recall_scores.append(recall_score(TP, FN))
-      mae_scores.append(mean_squared_error(actuals, predictions))
+      huber_loss_scores.append(params['criterion'](torch.tensor(predictions), torch.tensor(actuals)))
       
     total_recall_score = np.mean(recall_scores) if len(recall_scores) > 0 else 0
-    total_mae_score = np.mean(mae_scores) if len(mae_scores) > 0 else float('inf')
+    total_huber_loss_score = np.mean(huber_loss_scores) if len(huber_loss_scores) > 0 else float('inf')
 
     plt.figure(figsize=(15, 4))
-    plt.title(f'{args.model} - Total Recall Score: {total_recall_score:.4f}, Total MAE Score: {total_mae_score:.4f}')
+    plt.title(f'{args.model} - Total Recall Score: {total_recall_score:.4f}, Total MAE Score: {total_huber_loss_score:.4f}')
     plt.plot(actuals, label='Actuals')
     plt.plot(baseload, label='Baseload')
     plt.plot(predictions, label=f'predictions')
@@ -892,7 +892,7 @@ def objective(args, trial, study):
           best_list.clear()
           best_list.append({'baseload': baseload, 'predictions': predictions, 'actuals': actuals, 'recall': total_recall_score})
 
-    return total_recall_score, total_mae_score
+    return total_recall_score, total_huber_loss_score
 
 def safe_objective(args, trial, study):
   try:
@@ -938,7 +938,7 @@ def tune_model_with_optuna(args, n_trials):
 
   best_trial = max(study.best_trials, key=lambda t: t.values[0]) 
 
-  new_row = {'model': args.model, 'trials': len(study.trials), 'rec': best_trial.values[0], 'mae': best_trial.values[1], 'parameters': best_trial.params}
+  new_row = {'model': args.model, 'trials': len(study.trials), 'rec': best_trial.values[0], 'huber': best_trial.values[1], 'parameters': best_trial.params}
   new_row_df = pd.DataFrame([new_row]).dropna(axis=1, how='all')
   df_tuning = pd.concat([df_tuning, new_row_df], ignore_index=True)
   df_tuning = df_tuning.sort_values(by=['model', 'rec'], ascending=True).reset_index(drop=True)
