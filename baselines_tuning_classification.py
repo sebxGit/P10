@@ -694,16 +694,14 @@ def objective(args, trial, study):
         'pred_len': args.pred_len,
         'seq_len': 24*7,
         'stride': args.pred_len,
-        # 'batch_size': trial.suggest_int('batch_size', 32, 256, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
-        'batch_size': 16,
+        'batch_size': trial.suggest_int('batch_size', 32, 256, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
         # 'criterion': torch.nn.L1Loss(),
         'criterion': torch.nn.HuberLoss(delta=0.25),
         'optimizer': torch.optim.Adam,
         'scaler': MaxAbsScaler(),
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
-        # 'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100),
-        'max_epochs': 1000,
+        'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100),
         # 'num_workers': trial.suggest_int('num_workers', 6, 14) if args.model != "DPAD" else 2,
         'num_workers': 10,
         'is_persistent': True
@@ -836,11 +834,11 @@ def objective(args, trial, study):
       x, y = batch
       act.extend(y.numpy())
 
-    print(colmod.train_dates[0], colmod.train_dates[-1])
-    print("----------------------------------------")
-    print(colmod.val_dates[0], colmod.val_dates[-1])
-    print("----------------------------------------")
-    print(colmod.test_dates[0], colmod.test_dates[-1])
+    # print(colmod.train_dates[0], colmod.train_dates[-1])
+    # print("----------------------------------------")
+    # print(colmod.val_dates[0], colmod.val_dates[-1])
+    # print("----------------------------------------")
+    # print(colmod.test_dates[0], colmod.test_dates[-1])
 
     baseloads, dfs = get_baseloads_and_parts(colmod, y_pred, act)
 
@@ -889,8 +887,6 @@ def objective(args, trial, study):
     plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_{trial.number}_{total_recall_score:.4f}_classification_predact_plot.png')
     # plt.show()
     plt.clf()
-
-    exit()
 
     if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials) and study.best_trials:
       for best_trial in study.best_trials:
@@ -981,7 +977,7 @@ if __name__ == '__main__':
   parser.add_argument("--model", type=str, default="xPatch")  # change
   parser.add_argument("--load", type=str, default='False') #change
   parser.add_argument("--mixed", type=str, default='True')
-  parser.add_argument("--individual", type=str, default="True")
+  parser.add_argument("--individual", type=str, default="False")
   parser.add_argument("--threshold", type=float, default=250)
   parser.add_argument("--downscaling", type=int, default=13)
   parser.add_argument("--multiplier", type=int, default=2)
