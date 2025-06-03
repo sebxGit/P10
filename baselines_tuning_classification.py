@@ -686,6 +686,8 @@ def get_baseloads_and_parts(colmod, y_pred, actuals):
 
     df_pred_act = df_pred_act.iloc[1100:1400]
 
+    dates.append(df_pred_act.index)
+
     baseloads = [df]
     dfs = [df_pred_act]
 
@@ -950,10 +952,11 @@ def tune_model_with_optuna(args, n_trials):
 
   #baseload plot
   plt.figure(figsize=(15, 4))
-  plt.plot(baseload, label='Baseload')
+  plt.plot(dates, baseload, label='Baseload')
   plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
-  plt.xlabel('Samples')
+  plt.xlabel('Dates')
   plt.ylabel('Electricity Consumption (kWh)')
+  plt.xticks(rotation=45)
   plt.legend()
   plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_classification_baseload_plot.png')
   plt.show()
@@ -961,11 +964,12 @@ def tune_model_with_optuna(args, n_trials):
 
   # pred and act plot
   plt.figure(figsize=(15, 4))
-  plt.plot(actuals, label='Actuals')
-  plt.plot(predictions, label=f'predictions')
+  plt.plot(dates, actuals, label='Actuals')
+  plt.plot(dates, predictions, label=f'predictions')
   plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
-  plt.xlabel('Samples')
+  plt.xlabel('Dates')
   plt.ylabel('Electricity Consumption (kWh)')
+  plt.xticks(rotation=45)
   plt.legend()
   plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_classification_predact_plot.png')
   plt.show()
@@ -987,5 +991,6 @@ if __name__ == '__main__':
   args = parser.parse_args()
   
   best_list = []
+  dates = []
 
   best_params = tune_model_with_optuna(args, n_trials=args.trials)
