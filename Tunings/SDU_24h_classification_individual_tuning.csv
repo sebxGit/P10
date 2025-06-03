@@ -1,0 +1,2 @@
+model,trials,rec,mae,parameters,huber
+LSTM,150,0.0,,"{'batch_size': 192, 'learning_rate': 0.00526833387860358, 'max_epochs': 1600, 'hidden_size': 164, 'num_layers': 1, 'dropout': 0.9297010312416186}",2.996332418004994
