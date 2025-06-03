@@ -953,6 +953,7 @@ def tune_model_with_optuna(args, n_trials):
 
   #baseload plot
   plt.figure(figsize=(15, 4))
+  plt.title(f'{args.model} - Best Recall Score: {best_trial.values[0]:.4f}, MAE Score: {best_trial.values[1]:.4f}')
   plt.plot(dates, baseload, label='Baseload')
   plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
   plt.xlabel('Dates')
@@ -965,6 +966,7 @@ def tune_model_with_optuna(args, n_trials):
 
   # pred and act plot
   plt.figure(figsize=(15, 4))
+  plt.title(f'{args.model} - Best Recall Score: {best_trial.values[0]:.4f}, MAE Score: {best_trial.values[1]:.4f}')
   plt.plot(dates, actuals, label='Actuals')
   plt.plot(dates, predictions, label=f'predictions')
   plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
