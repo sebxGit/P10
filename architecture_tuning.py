@@ -710,7 +710,8 @@ def objective(args, trial, all_subsets, study):
   
   # rank top 10 baggings save in trial.set_user_attr
   tuning_results.append({'combined_name': combined_name, 'huber': huber_loss.item(), 'mae': mae.item(), 'mse': mse.item(), 'parameters': trial.params})
-
+  
+  dates = colmod.val_dates[-len(y_pred_tensor):]
   plt.figure(figsize=(15, 4))
   plt.plot(dates, actuals, label='Actuals')
   plt.plot(dates, predictions, label=f'predictions')
@@ -727,19 +728,19 @@ def objective(args, trial, all_subsets, study):
   if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials) and study.best_value != None and mae <= study.best_value:
     best_list.clear()
     best_list.append({'predictions': y_val_tensor[-len(y_pred_tensor):].tolist(), 'actuals': y_pred_tensor.tolist()})
-    dates = colmod.val_dates[-len(y_pred_tensor):]
-    plt.figure(figsize=(15, 4))
-    plt.plot(dates, actuals, label='Actuals')
-    plt.plot(dates, predictions, label=f'predictions')
-    plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
-    plt.xlabel('Dates')
-    plt.ylabel('Electricity Consumption (kWh)')
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_{trial.number}_{huber_loss}_{mae}_{mse}_architecture_classification_plot.png')
-    plt.show()
-    plt.clf()
-    plt.close()
+    # dates = colmod.val_dates[-len(y_pred_tensor):]
+    # plt.figure(figsize=(15, 4))
+    # plt.plot(dates, actuals, label='Actuals')
+    # plt.plot(dates, predictions, label=f'predictions')
+    # plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
+    # plt.xlabel('Dates')
+    # plt.ylabel('Electricity Consumption (kWh)')
+    # plt.legend()
+    # plt.tight_layout()
+    # plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_{trial.number}_{huber_loss}_{mae}_{mse}_architecture_classification_plot.png')
+    # plt.show()
+    # plt.clf()
+    # plt.close()
 
   if os.path.exists(f"Tunings/{combined_name}"):
     shutil.rmtree(f"Tunings/{combined_name}")
