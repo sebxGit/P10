@@ -805,23 +805,25 @@ def objective(args, trial, all_subsets, study):
 
   tuning_results.append({'combined_name': combined_name, 'rec': total_recall_score, 'huber': total_huber_score, 'mae': total_mae_score, 'mse': total_mse_score, 'parameters': trial.params})
 
+  plt.figure(figsize=(15, 4))
+  plt.plot(dates, actuals, label='Actuals')
+  plt.plot(dates, predictions, label=f'predictions')
+  plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
+  plt.xlabel('Dates')
+  plt.ylabel('Electricity Consumption (kWh)')
+  plt.legend()
+  plt.tight_layout()
+  plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_archclass_{trial.number}_{total_recall_score}_{total_huber_score}_{total_mae_score}_{total_mse_score}_plot.png')
+  plt.show()
+  plt.clf()
+  plt.close()
+  
   if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials) and study.best_trials:
     for best_trial in study.best_trials:
       if total_recall_score >= best_trial.values[0] and total_huber_score <= 70:
         best_list.clear()
         best_list.append({'baseload': baseload, 'predictions': predictions, 'actuals': actuals})
-        plt.figure(figsize=(15, 4))
-        plt.plot(dates, actuals, label='Actuals')
-        plt.plot(dates, predictions, label=f'predictions')
-        plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
-        plt.xlabel('Dates')
-        plt.ylabel('Electricity Consumption (kWh)')
-        plt.legend()
-        plt.tight_layout()
-        plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_archclass_{trial.number}_{total_recall_score}_{total_huber_score}_{total_mae_score}_{total_mse_score}_plot.png')
-        plt.show()
-        plt.clf()
-        plt.close()
+
 
   if os.path.exists(f"Tunings/{combined_name}"):
     shutil.rmtree(f"Tunings/{combined_name}")
