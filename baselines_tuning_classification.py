@@ -660,14 +660,14 @@ def get_baseloads_and_parts(colmod, y_pred, actuals):
     y_pred = [pred for pred in y_pred]
     actuals_flat = [item for sublist in actuals for item in sublist]
 
-    val_start_date = pd.to_datetime('2030-01-11 15:00:00')
-    val_end_date = pd.to_datetime('2030-02-04 19:00:00')
+    val_start_date = pd.to_datetime('2030-08-07 01:00:00')
+    val_end_date = pd.to_datetime('2030-10-19 00:00:00')
 
-    # 2029-10-31 00:00:00 2030-01-11 14:00:00
+    # 2029-12-31 00:00:00 2030-08-07 00:00:00
     # ----------------------------------------
-    # 2030-01-11 15:00:00 2030-02-04 19:00:00
+    # 2030-08-07 01:00:00 2030-10-19 00:00:00
     # ----------------------------------------
-    # 2030-02-04 20:00:00 2030-03-01 00:00:00
+    # 2030-10-19 01:00:00 2030-12-31 00:00:00
 
     df = pd.read_csv('SDU Dataset/DumbCharging_2020_to_2032/Measurements.csv', skipinitialspace=True)
 
@@ -841,7 +841,7 @@ def objective(args, trial, study):
     print(colmod.val_dates[0], colmod.val_dates[-1])
     print("----------------------------------------")
     print(colmod.test_dates[0], colmod.test_dates[-1])
-    
+
     baseloads, dfs = get_baseloads_and_parts(colmod, y_pred, act)
 
     recall_scores = []
