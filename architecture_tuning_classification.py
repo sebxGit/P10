@@ -659,7 +659,7 @@ def get_baseloads_and_parts(colmod, y_pred, actuals):
     range1_start = pd.to_datetime(range1_start)
     range1_end = pd.to_datetime(range1_end)
 
-    df_pred_act = pd.DataFrame({'y_pred': y_pred[-min_length:], 'actuals_flat': actuals_flat})
+    df_pred_act = pd.DataFrame({'y_pred': y_pred[-min_length:], 'actuals_flat': actuals_flat[-min_length:]})
     df_pred_act.index = colmod.val_dates[-min_length:]
 
     df_part1 = df_pred_act[(df_pred_act.index >= range1_start) & (df_pred_act.index <= range1_end)]
