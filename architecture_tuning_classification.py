@@ -666,6 +666,9 @@ def get_baseloads_and_parts(colmod, y_pred, actuals):
     baseload1 = baseload1[(baseload1['Timestamp (Hour Ending)'] >= range1_start) & (baseload1['Timestamp (Hour Ending)'] <= range1_end)]
     baseload1 = baseload1[-min_length:]
 
+    dates.clear()
+    dates.extend(df_pred_act.index)
+
     baseloads = [baseload1]
     dfs = [df_part1]
 
@@ -880,6 +883,7 @@ if __name__ == "__main__":
 
   tuning_results = []
   best_list = []
+  dates = []
 
   study.optimize(lambda trial: objective(args, trial, all_subsets, study), n_trials=args.trials, gc_after_trial=True, timeout=37800)
 
@@ -899,23 +903,25 @@ if __name__ == "__main__":
 
   #baseload plot
   plt.figure(figsize=(15, 4))
-  plt.plot(baseload, label='Baseload')
+  plt.plot(dates, baseload, label='Baseload')
   plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
-  plt.xlabel('Samples')
-  plt.ylabel('Electricity Consumption (kW)')
+  plt.xlabel('Dates')
+  plt.ylabel('Electricity Consumption (kWh)')
   plt.legend()
-  plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_classification_baseload_plot.png')
+  plt.tight_layout()
+  plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_classification_baseload_plot.png')
   plt.show()
   plt.clf()
 
   # pred and act plot
   plt.figure(figsize=(15, 4))
-  plt.plot(actuals, label='Actuals+baseload')
-  plt.plot(predictions, label=f'model+baseload')
+  plt.plot(dates, actuals, label='Actuals')
+  plt.plot(dates, predictions, label=f'predictions')
   plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
-  plt.xlabel('Samples')
-  plt.ylabel('Electricity Consumption (kW)')
+  plt.xlabel('Dates')
+  plt.ylabel('Electricity Consumption (kWh)')
   plt.legend()
-  plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_classification_predact_plot.png')
+  plt.tight_layout()
+  plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_classification_predact_plot.png')
   plt.show()
   plt.clf()
