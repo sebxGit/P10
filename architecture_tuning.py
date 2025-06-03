@@ -734,7 +734,7 @@ parser.add_argument("--individual", type=str, default="False")
 criterion_map = { 
                   "MSELoss": nn.MSELoss, 
                   "MAELoss": nn.L1Loss,
-                  "HuberLoss": nn.HuberLoss(delta=0.25),
+                  "HuberLoss": lambda: nn.HuberLoss(delta=0.25),
                 }
 
 optimizer_map = { "Adam": torch.optim.Adam }
