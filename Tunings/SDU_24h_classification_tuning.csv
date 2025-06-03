@@ -1,0 +1,5 @@
+model,trials,rec,mae,parameters,huber
+LSTM,150,0.0,,"{'batch_size': 48, 'learning_rate': 0.00696072774267959, 'max_epochs': 1800, 'hidden_size': 194, 'num_layers': 6, 'dropout': 0.2953120207344502}",2.981000147961107
+PatchMixer,150,1.0,,"{'batch_size': 256, 'learning_rate': 0.002739975780721063, 'max_epochs': 1300, 'patch_len': 16, 'stride': 8, 'mixer_kernel_size': 16, 'd_model': 512, 'dropout': 0.8, 'head_dropout': 0.0, 'e_layers': 5}",10.935669201346435
+RandomForest,150,0.0,54.12314023724346,"{'batch_size': 64, 'learning_rate': 0.00011390887701116642, 'max_epochs': 1000, 'n_estimators': 134, 'max_depth': 2, 'min_samples_split': 19, 'min_samples_leaf': 17, 'max_features': 0.9268536988426446}",
+AdaBoost,150,0.0,,"{'batch_size': 256, 'learning_rate': 0.0025081870046723045, 'max_epochs': 1000, 'n_estimators': 54, 'learning_rate_model': 0.0584444870721746}",10.837439820212268
