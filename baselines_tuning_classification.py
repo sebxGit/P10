@@ -888,7 +888,7 @@ def objective(args, trial, study):
     plt.xlabel('Samples')
     plt.ylabel('Electricity Consumption (kWh)')
     plt.legend()
-    plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_{trial.number}_{total_recall_score:.4f}_classification_predact_plot.png')
+    plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_{trial.number}_{total_recall_score:.4f}_{"individual" if args.individual == "True" else "bootstrap"}_classification_predact_plot.png')
     # plt.show()
     plt.clf()
 
