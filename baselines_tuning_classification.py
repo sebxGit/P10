@@ -810,7 +810,7 @@ def get_baseloads_and_parts(colmod, y_pred, actuals):
 
     df = df[['Aggregated base load']]
 
-    df_pred_act = pd.DataFrame({'y_pred': y_pred, 'actuals_flat': actuals_flat})
+    df_pred_act = pd.DataFrame({'y_pred': y_pred[:len(actuals_flat)], 'actuals_flat': actuals_flat})
     df_pred_act.index = colmod.val_dates[:len(actuals_flat)]
 
     baseloads = [df]
