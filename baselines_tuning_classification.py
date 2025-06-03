@@ -677,11 +677,14 @@ def get_baseloads_and_parts(colmod, y_pred, actuals):
     df = df[(df.index >= val_start_date) & (df.index <= val_end_date)]
     
     df = df.iloc[:len(actuals_flat)]
+    df = df.iloc[1100:1400] 
 
     df = df[['Aggregated base load']]
 
     df_pred_act = pd.DataFrame({'y_pred': y_pred, 'actuals_flat': actuals_flat})
     df_pred_act.index = colmod.val_dates[:len(actuals_flat)]
+
+    df_pred_act = df_pred_act.iloc[1100:1400]
 
     baseloads = [df]
     dfs = [df_pred_act]
