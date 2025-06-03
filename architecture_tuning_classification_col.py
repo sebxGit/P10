@@ -670,6 +670,9 @@ def get_baseloads_and_parts(colmod, y_pred, actuals):
     baseload1 = baseload1[(baseload1['Timestamp (Hour Ending)'] >= range1_start) & (baseload1['Timestamp (Hour Ending)'] <= range1_end)]
     baseload1 = baseload1[-min_length:]
 
+    dates.clear()
+    dates.extend(df_pred_act.index)
+
     baseloads = [baseload1]
     dfs = [df_part1]
 
