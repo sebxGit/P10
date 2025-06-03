@@ -797,6 +797,18 @@ def objective(args, trial, all_subsets, study):
       if total_recall_score >= best_trial.values[0]:
         best_list.clear()
         best_list.append({'baseload': baseload, 'predictions': predictions, 'actuals': actuals})
+        plt.figure(figsize=(15, 4))
+        plt.plot(dates, actuals, label='Actuals')
+        plt.plot(dates, predictions, label=f'predictions')
+        plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
+        plt.xlabel('Dates')
+        plt.ylabel('Electricity Consumption (kWh)')
+        plt.legend()
+        plt.tight_layout()
+        plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_{trial.number}_architecture_classification_predact_plot.png')
+        plt.show()
+        plt.clf()
+        plt.close()
 
   if os.path.exists(f"Tunings/{combined_name}"):
     shutil.rmtree(f"Tunings/{combined_name}")
