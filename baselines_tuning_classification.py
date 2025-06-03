@@ -412,8 +412,8 @@ class SDUDataModule(L.LightningDataModule):
     # Define the start and end dates
     # start_date = pd.to_datetime('2024-12-31')
     # end_date = pd.to_datetime('2032-12-31')
-    start_date = pd.to_datetime('2029-12-31') 
-    end_date = pd.to_datetime('2030-01-29')
+    start_date = pd.to_datetime('2029-12-15') 
+    end_date = pd.to_datetime('2030-02-15')
 
     # Load the CSV
     df = pd.read_csv(self.data_dir, skipinitialspace=True)
@@ -828,7 +828,8 @@ def objective(args, trial, study):
         'pred_len': args.pred_len,
         'seq_len': 24*7,
         'stride': args.pred_len,
-        'batch_size': trial.suggest_int('batch_size', 32, 256, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
+        # 'batch_size': trial.suggest_int('batch_size', 32, 256, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
+        'batch_size': 16,
         # 'criterion': torch.nn.L1Loss(),
         'criterion': torch.nn.HuberLoss(delta=0.25),
         'optimizer': torch.optim.Adam,
@@ -1011,8 +1012,7 @@ def objective(args, trial, study):
     plt.xlabel('Samples')
     plt.ylabel('Electricity Consumption (kWh)')
     plt.legend()
-    plt.savefig(
-        f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_{trial.number}_{total_recall_score:.4f}_classification_predact_plot.png')
+    plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_{trial.number}_{total_recall_score:.4f}_classification_predact_plot.png')
     # plt.show()
     plt.clf()
 
