@@ -690,7 +690,7 @@ def get_baseloads_and_parts(colmod, y_pred, actuals):
 
 def objective(args, trial, study):
     params = {
-        'input_size': 22 if args.dataset == "Colorado" else 16,
+        'input_size': 22 if args.dataset == "Colorado" else 17,
         'pred_len': args.pred_len,
         'seq_len': 24*7,
         'stride': args.pred_len,
