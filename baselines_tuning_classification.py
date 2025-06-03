@@ -686,6 +686,7 @@ def get_baseloads_and_parts(colmod, y_pred, actuals):
 
     df_pred_act = df_pred_act.iloc[1100:1400]
 
+    best_list.clear()
     dates.append(df_pred_act.index)
 
     baseloads = [df]
