@@ -776,12 +776,12 @@ def get_baseloads_and_parts(colmod, y_pred, actuals):
     range1_start = pd.to_datetime(range1_start)
     range1_end = pd.to_datetime(range1_end)
 
-    df_pred_act = pd.DataFrame({'y_pred': y_pred, 'actuals_flat': actuals_flat})
-    df_pred_act.index = colmod.val_dates[:len(actuals_flat)]
+    df_pred_act = pd.DataFrame({'y_pred': y_pred[-len(actuals_flat):], 'actuals_flat': actuals_flat})
+    df_pred_act.index = colmod.val_dates[-len(actuals_flat):]
 
     df_part1 = df_pred_act[(df_pred_act.index >= range1_start) & (df_pred_act.index <= range1_end)]
     baseload1 = baseload1[(baseload1['Timestamp (Hour Ending)'] >= range1_start) & (baseload1['Timestamp (Hour Ending)'] <= range1_end)]
-    baseload1 = baseload1[:len(actuals_flat)]
+    baseload1 = baseload1[-len(actuals_flat):]
 
     baseloads = [baseload1]
     dfs = [df_part1]
@@ -1104,7 +1104,7 @@ def tune_model_with_optuna(args, n_trials):
 
 if __name__ == '__main__':
   parser = ArgumentParser()
-  parser.add_argument("--dataset", type=str, default="Colorado")
+  parser.add_argument("--dataset", type=str, default="SDU")
   parser.add_argument("--pred_len", type=int, default=24)
   parser.add_argument("--model", type=str, default="xPatch")  # change
   parser.add_argument("--load", type=str, default='False') #change
