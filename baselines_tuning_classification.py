@@ -810,7 +810,7 @@ def get_baseloads_and_parts(colmod, y_pred, actuals):
 
     df = df[['Aggregated base load']]
 
-    df_pred_act = pd.DataFrame({'y_pred': y_pred[:len(actuals_flat)], 'actuals_flat': actuals_flat})
+    df_pred_act = pd.DataFrame({'y_pred': y_pred, 'actuals_flat': actuals_flat})
     df_pred_act.index = colmod.val_dates[:len(actuals_flat)]
 
     baseloads = [df]
@@ -832,7 +832,8 @@ def objective(args, trial, study):
         'scaler': MaxAbsScaler(),
         'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
-        'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100),
+        # 'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100),
+        'max_epochs': 5000,
         # 'num_workers': trial.suggest_int('num_workers', 6, 14) if args.model != "DPAD" else 2,
         'num_workers': 10,
         'is_persistent': True
