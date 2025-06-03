@@ -794,7 +794,7 @@ def objective(args, trial, all_subsets, study):
     FN = np.sum((pred_class == 0) & (actual_class == 1))
 
     recall_scores.append(recall_score(TP, FN))
-    huber_scores.append(criterion_map.get(args.criterion)(torch.tensor(predictions), torch.tensor(actuals)))
+    huber_scores.append(criterion_map.get(args.criterion)()(torch.tensor(predictions), torch.tensor(actuals)))
     mae_scores.append(mean_absolute_error(actuals, predictions))
     mse_scores.append(mean_squared_error(actuals, predictions))
 
