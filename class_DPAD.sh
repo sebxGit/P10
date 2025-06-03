@@ -8,4 +8,4 @@
 #SBATCH --cpus-per-task=128
 #SBATCH --mem=192G
 
-singularity exec --nv energycontainerblackbox.sif python3 baselines_tuning_classification.py --model DPAD --load False --individual False --dataset SDU --threshold 250
+singularity exec --nv energycontainerblackbox.sif python3 baselines_tuning_classification.py --model DPAD --load False --individual True --dataset SDU --threshold 250
