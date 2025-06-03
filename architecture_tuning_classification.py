@@ -651,18 +651,20 @@ def get_baseloads_and_parts(colmod, y_pred, actuals):
     baseload1 = pd.read_csv('Colorado/ElectricityDemandColorado/ColoradoDemand_val.csv')
     baseload1['Timestamp (Hour Ending)'] = pd.to_datetime(baseload1['Timestamp (Hour Ending)'])
 
+    min_length = min(len(y_pred), len(actuals_flat))
+
     range1_start = pd.Timestamp('2022-08-11 00:00')
     range1_end = pd.Timestamp('2023-01-03 23:00')
 
     range1_start = pd.to_datetime(range1_start)
     range1_end = pd.to_datetime(range1_end)
 
-    df_pred_act = pd.DataFrame({'y_pred': y_pred[-len(actuals_flat):], 'actuals_flat': actuals_flat})
-    df_pred_act.index = colmod.val_dates[-len(actuals_flat):]
+    df_pred_act = pd.DataFrame({'y_pred': y_pred[-len(min_length):], 'actuals_flat': min_length})
+    df_pred_act.index = colmod.val_dates[-len(min_length):]
 
     df_part1 = df_pred_act[(df_pred_act.index >= range1_start) & (df_pred_act.index <= range1_end)]
     baseload1 = baseload1[(baseload1['Timestamp (Hour Ending)'] >= range1_start) & (baseload1['Timestamp (Hour Ending)'] <= range1_end)]
-    baseload1 = baseload1[-len(actuals_flat):]
+    baseload1 = baseload1[-len(min_length):]
 
     baseloads = [baseload1]
     dfs = [df_part1]
