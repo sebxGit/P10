@@ -20,7 +20,7 @@ from itertools import combinations
 import shutil
 
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MaxAbsScaler, MinMaxScaler
 from sklearn.ensemble import RandomForestRegressor, AdaBoostRegressor, GradientBoostingRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.base import BaseEstimator
@@ -651,23 +651,18 @@ def get_baseloads_and_parts(colmod, y_pred, actuals):
     baseload1 = pd.read_csv('Colorado/ElectricityDemandColorado/ColoradoDemand_val.csv')
     baseload1['Timestamp (Hour Ending)'] = pd.to_datetime(baseload1['Timestamp (Hour Ending)'])
 
-    min_length = min(len(y_pred), len(actuals_flat))
-
     range1_start = pd.Timestamp('2022-08-11 00:00')
     range1_end = pd.Timestamp('2023-01-03 23:00')
 
     range1_start = pd.to_datetime(range1_start)
     range1_end = pd.to_datetime(range1_end)
 
-    df_pred_act = pd.DataFrame({'y_pred': y_pred[-min_length:], 'actuals_flat': actuals_flat[-min_length:]})
-    df_pred_act.index = colmod.val_dates[-min_length:]
+    df_pred_act = pd.DataFrame({'y_pred': y_pred[-len(actuals_flat):], 'actuals_flat': actuals_flat})
+    df_pred_act.index = colmod.val_dates[-len(actuals_flat):]
 
     df_part1 = df_pred_act[(df_pred_act.index >= range1_start) & (df_pred_act.index <= range1_end)]
     baseload1 = baseload1[(baseload1['Timestamp (Hour Ending)'] >= range1_start) & (baseload1['Timestamp (Hour Ending)'] <= range1_end)]
-    baseload1 = baseload1[-min_length:]
-
-    dates.clear()
-    dates.extend(df_pred_act.index)
+    baseload1 = baseload1[-len(actuals_flat):]
 
     baseloads = [baseload1]
     dfs = [df_part1]
@@ -676,22 +671,34 @@ def get_baseloads_and_parts(colmod, y_pred, actuals):
     y_pred = [pred for pred in y_pred]
     actuals_flat = [item for sublist in actuals for item in sublist]
 
-    test_start_date = pd.to_datetime('2029-10-19 05:00:00')
-    test_end_date = pd.to_datetime('2031-05-26 14:00:00')
+    val_start_date = pd.to_datetime('2030-08-07 01:00:00')
+    val_end_date = pd.to_datetime('2030-10-19 00:00:00')
+
+    # 2029-12-31 00:00:00 2030-08-07 00:00:00
+    # ----------------------------------------
+    # 2030-08-07 01:00:00 2030-10-19 00:00:00
+    # ----------------------------------------
+    # 2030-10-19 01:00:00 2030-12-31 00:00:00
 
     df = pd.read_csv('SDU Dataset/DumbCharging_2020_to_2032/Measurements.csv', skipinitialspace=True)
 
     df['Timestamp'] = pd.to_datetime(df['Timestamp'], format="%b %d, %Y, %I:%M:%S %p")
     df.set_index('Timestamp', inplace=True)
 
-    df = df[(df.index >= test_start_date) & (df.index <= test_end_date)]
+    df = df[(df.index >= val_start_date) & (df.index <= val_end_date)]
     
     df = df.iloc[:len(actuals_flat)]
+    df = df.iloc[1100:1400] 
 
     df = df[['Aggregated base load']]
 
     df_pred_act = pd.DataFrame({'y_pred': y_pred, 'actuals_flat': actuals_flat})
     df_pred_act.index = colmod.val_dates[:len(actuals_flat)]
+
+    df_pred_act = df_pred_act.iloc[1100:1400]
+
+    dates.clear()
+    dates.extend(df_pred_act.index)
 
     baseloads = [df]
     dfs = [df_pred_act]
@@ -761,6 +768,8 @@ def objective(args, trial, all_subsets, study):
 
   recall_scores = []
   mae_scores = []
+  mse_scores = []
+  huber_scores = []
 
   for i, (baseload, df) in enumerate(zip(baseloads, dfs)):
     if args.dataset == "Colorado":
@@ -785,16 +794,20 @@ def objective(args, trial, all_subsets, study):
     FN = np.sum((pred_class == 0) & (actual_class == 1))
 
     recall_scores.append(recall_score(TP, FN))
+    huber_scores.append(criterion_map.get(args.criterion)(torch.tensor(predictions), torch.tensor(actuals)))
     mae_scores.append(mean_absolute_error(actuals, predictions))
+    mse_scores.append(mean_squared_error(actuals, predictions))
 
   total_recall_score = np.mean(recall_scores) if len(recall_scores) > 0 else 0
+  total_huber_score = np.mean(huber_scores) if len(huber_scores) > 0 else float('inf')
   total_mae_score = np.mean(mae_scores) if len(mae_scores) > 0 else float('inf')
+  total_mse_score = np.mean(mse_scores) if len(mse_scores) > 0 else float('inf')
 
-  tuning_results.append({'combined_name': combined_name, 'rec': total_recall_score, 'mae': total_mae_score, 'parameters': trial.params})
+  tuning_results.append({'combined_name': combined_name, 'rec': total_recall_score, 'huber': total_huber_score, 'mae': total_mae_score, 'mse': total_mse_score, 'parameters': trial.params})
 
   if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials) and study.best_trials:
     for best_trial in study.best_trials:
-      if total_recall_score >= best_trial.values[0]:
+      if total_recall_score >= best_trial.values[0] and total_huber_score <= 70:
         best_list.clear()
         best_list.append({'baseload': baseload, 'predictions': predictions, 'actuals': actuals})
         plt.figure(figsize=(15, 4))
@@ -805,39 +818,42 @@ def objective(args, trial, all_subsets, study):
         plt.ylabel('Electricity Consumption (kWh)')
         plt.legend()
         plt.tight_layout()
-        plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_{trial.number}_{total_recall_score}_{total_mae_score}_architecture_classification_plot.png')
+        plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_archclass_{trial.number}_{total_recall_score}_{total_huber_score}_{total_mae_score}_{total_mse_score}_plot.png')
         plt.show()
         plt.clf()
         plt.close()
 
   if os.path.exists(f"Tunings/{combined_name}"):
     shutil.rmtree(f"Tunings/{combined_name}")
-  return total_recall_score, total_mae_score
+  return total_recall_score, total_huber_score
 
 parser = ArgumentParser()
-parser.add_argument("--criterion", type=str, default="MAELoss")
-parser.add_argument("--models", type=str, default="['LSTM', 'GRU', 'AdaBoostRegressor' , 'RandomForestRegressor', 'GradientBoostingRegressor']") #'RandomForestRegressor', 'GradientBoostingRegressor', 'AdaBoostRegressor', 'PatchMixer', 
-parser.add_argument("--dataset", type=str, default="Colorado")
-parser.add_argument("--input_size", type=int, default=22)
+parser.add_argument("--criterion", type=str, default="HuberLoss")
+parser.add_argument("--models", type=str, default="['RandomForestRegressor', 'GradientBoostingRegressor', 'AdaBoostRegressor', 'LSTM', 'GRU', 'PatchMixer', 'xPatch']")
+parser.add_argument("--dataset", type=str, default="SDU")
+parser.add_argument("--input_size", type=int, default=16)
 parser.add_argument("--pred_len", type=int, default=24)
 parser.add_argument("--stride", type=int, default=24)
 parser.add_argument("--seq_len", type=int, default=24*7)
 parser.add_argument("--optimizer", type=str, default="Adam")
-parser.add_argument("--scaler", type=str, default="MinMaxScaler")
+parser.add_argument("--scaler", type=str, default="MaxAbsScaler")
 parser.add_argument("--load", type=str, default='False')
 parser.add_argument("--trials", type=int, default=100)
-parser.add_argument("--threshold", type=float, default=500)
+parser.add_argument("--threshold", type=float, default=250)
 parser.add_argument("--downscaling", type=int, default=13)
 parser.add_argument("--multiplier", type=int, default=2)
 
 criterion_map = { 
                   "MSELoss": nn.MSELoss, 
                   "MAELoss": nn.L1Loss,
+                  "HuberLoss": lambda: nn.HuberLoss(delta=0.25),
                 }
 
 optimizer_map = { "Adam": torch.optim.Adam }
 
-scaler_map = { "MinMaxScaler": MinMaxScaler }
+scaler_map = { "MinMaxScaler": MinMaxScaler,
+              "MaxAbsScaler": MaxAbsScaler,
+               }
 
 args = parser.parse_args()
 
@@ -903,7 +919,7 @@ if __name__ == "__main__":
 
   unique_results = []
   for d in tuning_results:
-    if d not in unique_results and d['mae'] <= 100:
+    if d not in unique_results and d['huber'] <= 70:
       unique_results.append(d)
   sorted_trials = sorted(unique_results, key=lambda x: x.get('rec', float('inf')), reverse=True)
   top_10_tunings = sorted_trials[:10]
