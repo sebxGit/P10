@@ -808,23 +808,18 @@ def objective(args, trial, all_subsets, study):
 
   tuning_results.append({'combined_name': combined_name, 'rec': total_recall_score, 'huber': total_mae_score, 'mae': total_mae_score, 'mse': total_mse_score, 'parameters': trial.params})
 
-  if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials) and study.best_trials:
-    for best_trial in study.best_trials:
-      if total_recall_score >= best_trial.values[0] and total_mae_score <= 70:
-        best_list.clear()
-        best_list.append({'baseload': baseload, 'predictions': predictions, 'actuals': actuals})
-        plt.figure(figsize=(15, 4))
-        plt.plot(dates, actuals, label='Actuals')
-        plt.plot(dates, predictions, label=f'predictions')
-        plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
-        plt.xlabel('Dates')
-        plt.ylabel('Electricity Consumption (kWh)')
-        plt.legend()
-        plt.tight_layout()
-        plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_archclass_{trial.number}_{total_recall_score}_{total_mae_score}_{total_mae_score}_plot.png')
-        plt.show()
-        plt.clf()
-        plt.close()
+  plt.figure(figsize=(15, 4))
+  plt.plot(dates, actuals, label='Actuals')
+  plt.plot(dates, predictions, label=f'predictions')
+  plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
+  plt.xlabel('Dates')
+  plt.ylabel('Electricity Consumption (kWh)')
+  plt.legend()
+  plt.tight_layout()
+  plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_archclass_{trial.number}_{total_recall_score}_{total_mae_score}_{total_mae_score}_plot.png')
+  plt.show()
+  plt.clf()
+  plt.close()
 
   if os.path.exists(f"Tunings/{combined_name}"):
     shutil.rmtree(f"Tunings/{combined_name}")
@@ -914,7 +909,6 @@ if __name__ == "__main__":
     study = optuna.create_study(directions=["maximize", "minimize"], study_name=f"Bagging-{combined_name}")
 
   tuning_results = []
-  best_list = []
   dates = []
 
   study.optimize(lambda trial: objective(args, trial, all_subsets, study), n_trials=args.trials, gc_after_trial=True, timeout=37800)
@@ -929,30 +923,3 @@ if __name__ == "__main__":
   top_10_tunings = sorted_trials[:10]
   df_top_10 = pd.DataFrame(top_10_tunings)
   df_top_10.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning_classification.csv', index=False)
-  
-  baseload, predictions, actuals = best_list[0]['baseload'], best_list[0]['predictions'], best_list[0]['actuals']
-
-  #baseload plot
-  plt.figure(figsize=(15, 4))
-  plt.plot(dates, baseload, label='Baseload')
-  plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
-  plt.xlabel('Dates')
-  plt.ylabel('Electricity Consumption (kWh)')
-  plt.legend()
-  plt.tight_layout()
-  plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_classification_baseload_plot.png')
-  plt.show()
-  plt.clf()
-
-  # pred and act plot
-  plt.figure(figsize=(15, 4))
-  plt.plot(dates, actuals, label='Actuals')
-  plt.plot(dates, predictions, label=f'predictions')
-  plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
-  plt.xlabel('Dates')
-  plt.ylabel('Electricity Consumption (kWh)')
-  plt.legend()
-  plt.tight_layout()
-  plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_classification_predact_plot.png')
-  plt.show()
-  plt.clf()

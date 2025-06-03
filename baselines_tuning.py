@@ -769,7 +769,7 @@ def objective(args, trial, study):
 
       mse = mean_squared_error(act, pred)
       mae = mean_absolute_error(act, pred)
-      huber_loss = torch.nn.HuberLoss()(torch.tensor(pred), torch.tensor(act))
+      huber_loss = torch.nn.HuberLoss(delta=0.25)(torch.tensor(pred), torch.tensor(act))
 
       train_loss = params['criterion'](torch.tensor(pred), torch.tensor(act))
 
@@ -785,7 +785,7 @@ def objective(args, trial, study):
       act = y_val.reshape(-1)
       mae = mean_absolute_error(y_val, y_pred)
       mse = mean_squared_error(act, pred)
-      huber_loss = torch.nn.HuberLoss()(torch.tensor(pred), torch.tensor(act))
+      huber_loss = torch.nn.HuberLoss(delta=0.25)(torch.tensor(pred), torch.tensor(act))
       
       train_loss = params['criterion'](torch.tensor(pred), torch.tensor(act))
 
