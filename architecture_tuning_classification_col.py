@@ -825,7 +825,7 @@ def objective(args, trial, all_subsets, study):
   return total_recall_score, total_mae_score
 
 parser = ArgumentParser()
-parser.add_argument("--criterion", type=str, default="MAE")
+parser.add_argument("--criterion", type=str, default="MAELoss")
 parser.add_argument("--models", type=str, default="['RandomForestRegressor', 'GradientBoostingRegressor', 'AdaBoostRegressor', 'LSTM', 'GRU', 'PatchMixer', 'xPatch']")
 parser.add_argument("--dataset", type=str, default="Colorado")
 parser.add_argument("--input_size", type=int, default=22)
