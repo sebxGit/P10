@@ -760,7 +760,7 @@ def safe_objective(args, trial, all_subsets, study):
     torch.cuda.empty_cache()
 
 if __name__ == "__main__":
-  hparams = pd.read_csv(f'./Tunings/{args.dataset}_{args.pred_len}h_tuning.csv')
+  hparams = pd.read_csv(f'./Tunings/{args.dataset}_{args.pred_len}h_classification_tuning.csv')
   lstm_params = ast.literal_eval(hparams[hparams['model'] == 'LSTM']['parameters'].values[0])
   gru_params = ast.literal_eval(hparams[hparams['model'] == 'GRU']['parameters'].values[0])
   xpatch_params = Configs({**ast.literal_eval(hparams[hparams['model'] == 'xPatch']['parameters'].values[0]), "enc_in": args.input_size, "pred_len": args.pred_len, 'seq_len': args.seq_len })
