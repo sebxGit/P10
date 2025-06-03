@@ -836,11 +836,11 @@ def objective(args, trial, study):
       x, y = batch
       act.extend(y.numpy())
 
-    print(colmod.train_dates[0], colmod.train_dates[-1])
-    print("----------------------------------------")
-    print(colmod.val_dates[0], colmod.val_dates[-1])
-    print("----------------------------------------")
-    print(colmod.test_dates[0], colmod.test_dates[-1])
+    # print(colmod.train_dates[0], colmod.train_dates[-1])
+    # print("----------------------------------------")
+    # print(colmod.val_dates[0], colmod.val_dates[-1])
+    # print("----------------------------------------")
+    # print(colmod.test_dates[0], colmod.test_dates[-1])
 
     baseloads, dfs = get_baseloads_and_parts(colmod, y_pred, act)
 
@@ -889,8 +889,6 @@ def objective(args, trial, study):
     plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.model}_{trial.number}_{total_recall_score:.4f}_classification_predact_plot.png')
     # plt.show()
     plt.clf()
-
-    exit()
 
     if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials) and study.best_trials:
       for best_trial in study.best_trials:
