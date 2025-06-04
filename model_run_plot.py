@@ -734,7 +734,7 @@ if __name__ == "__main__":
     dates = dates[-len(actuals_flattened):]
     
     plt.figure(figsize=(15, 4))
-    plt.plot(dates, actuals, label='Actuals')
+    plt.plot(dates, actuals_flattened, label='Actuals')
     plt.plot(dates, y_pred, label=f'predictions')
     plt.xlabel('Dates')
     plt.ylabel('Electricity Consumption (kWh)')
