@@ -305,6 +305,9 @@ class ColoradoDataModule(L.LightningDataModule):
     self.X_test = None
     self.y_test = None
 
+    self.val_dates = []
+    self.test_dates = []
+
   def setup(self, stage: str):
     start_date = pd.to_datetime('2021-05-30')
     end_date = pd.to_datetime('2023-05-30')
@@ -324,6 +327,9 @@ class ColoradoDataModule(L.LightningDataModule):
     # 60/20/20 split
     X_tv, self.X_test, y_tv, self.y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
     self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(X_tv, y_tv, test_size=0.25, shuffle=False)
+
+    self.val_dates = self.X_val.index.tolist()
+    self.test_dates = self.X_test.index.tolist()
 
     preprocessing = self.scaler
     preprocessing.fit(self.X_train)  # should only fit to training data
