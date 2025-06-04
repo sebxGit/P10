@@ -657,14 +657,14 @@ def objective(args, trial, study):
     # 'learning_rate': 0.00544215587526865,
     # 'max_epochs': 1900,
     # 'num_workers': 9
-        'batch_size': 96,                           # Batch size for training
-        'learning_rate': 0.0024656915080670467,     # Learning rate for the optimizer
-        'max_epochs': 1800,                         # Maximum number of epochs
-        'num_workers': 7,                           # Number of workers for data loading
-        'hidden_size': 91,                          # Hidden size for GRU layers
-        'num_layers': 1,                            # Number of GRU layers
-        'dropout': 0.44611302927266927,
-
+        'batch_size': 80,                           # Batch size for training
+        'learning_rate': 0.00544215587526865,       # Learning rate for the optimizer
+        'max_epochs': 1900,                         # Maximum number of epochs
+        'num_workers': 9,                           # Number of workers for data loading
+        'hidden_size': 67,                          # Hidden size for LSTM layers
+        'num_layers': 1,                            # Number of LSTM layers
+        'dropout': 0.27527815284264673,
+      
     }
 
     if args.dataset == "Colorado":
@@ -680,20 +680,20 @@ def objective(args, trial, study):
 
     if args.model == "LSTM":
       _params = {
-    'hidden_size': 67,  # Model-specific parameter
-    'num_layers': 1,    # Model-specific parameter
-    'dropout': 0.27527815284264673  # Model-specific parameter
+    # 'hidden_size': 67,  # Model-specific parameter
+    # 'num_layers': 1,    # Model-specific parameter
+    # 'dropout': 0.27527815284264673  # Model-specific parameter
+          # Hidden size for LSTM layers
+          'hidden_size': params['hidden_size'],
+          'num_layers': params['num_layers'],         # Number of LSTM layers
+          'dropout': params['dropout'],
       }
       model = LSTM(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "GRU":
       _params = {
-          # 'hidden_size': trial.suggest_int('hidden_size', 50, 200),
-          # 'num_layers': trial.suggest_int('num_layers', 1, 10),
-          # 'dropout': trial.suggest_float('dropout', 0.0, 1),
-          # Hidden size for GRU layers
-          'hidden_size': params['hidden_size'],
-          'num_layers': params['num_layers'],         # Number of GRU layers
-          'dropout': params['dropout'],
+          'hidden_size': trial.suggest_int('hidden_size', 50, 200),
+          'num_layers': trial.suggest_int('num_layers', 1, 10),
+          'dropout': trial.suggest_float('dropout', 0.0, 1),
       }
       model = GRU(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "MLP":
