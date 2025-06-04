@@ -756,8 +756,8 @@ if __name__ == "__main__":
       y_pred = [pred for pred in y_pred]
       actuals_flat = [item for sublist in actuals for item in sublist]
 
-      val_start_date = pd.to_datetime('2030-08-07 01:00:00')
-      val_end_date = pd.to_datetime('2030-10-19 00:00:00')
+      val_start_date = pd.to_datetime('2030-10-19 01:00:00')
+      val_end_date = pd.to_datetime('2030-12-31 00:00:00')
 
       # 2029-12-31 00:00:00 2030-08-07 00:00:00
       # ----------------------------------------
