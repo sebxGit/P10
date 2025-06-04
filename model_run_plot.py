@@ -740,11 +740,11 @@ if __name__ == "__main__":
     plt.ylabel('Electricity Consumption (kWh)')
     plt.legend()
     plt.tight_layout()
-    plt.savefig(f'Predictions/{args.dataset}_{args.model}_{mean_absolute_error(actuals, y_pred)}_{mean_squared_error(actuals, y_pred)}_plot.png')
+    plt.savefig(f'Predictions/{args.dataset}_{args.models}_{mean_absolute_error(actuals, y_pred)}_{mean_squared_error(actuals, y_pred)}_plot.png')
     plt.show()
     plt.clf()
     plt.close()
-    print(f"model: {args.model}, loss: {mean_absolute_error(actuals, y_pred)}, {mean_squared_error(actuals, y_pred)}")
+    print(f"model: {args.models}, loss: {mean_absolute_error(actuals, y_pred)}, {mean_squared_error(actuals, y_pred)}")
     exit()
 
     try:
