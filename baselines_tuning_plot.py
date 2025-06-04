@@ -751,7 +751,9 @@ def objective(args, trial, study):
         # alpha=0.7972611256000964,  # Fixed value from the dictionary
         # beta=0.17020757865248334   # Fixed value from the dictionary
             # Batch size for training
-            batch_size = params['batch_size'],
+            seq_len=params['seq_len'],
+            pred_len=params['pred_len'],
+            enc_in=params['input_size'],
             # Learning rate for the optimizer
             learning_rate =  params['learning_rate'],
             # Maximum number of epochs
