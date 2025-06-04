@@ -760,11 +760,11 @@ def objective(args, trial, study):
           # "d_model": 128,                               # Fixed dimension of the model
           # "dropout": 0.35,                              # Fixed dropout rate for the model
           # "head_dropout": 0.0,                          # Fixed dropout rate for the head layers
-          # "e_layers": 1,                                # Fixed number of PatchMixer layers (depth)
+          # "e_layers": 1,     
+          "enc_in": params['input_size'],
+          "seq_len": params['seq_len'],                 # Context window (lookback length)
+          "pred_len": params['pred_len'],                            # Fixed number of PatchMixer layers (depth)
           "batch_size": params['batch_size'],
-          "learning_rate": params['learning_rate'],
-          "max_epochs": params['max_epochs'],
-          "num_workers": params['num_workers'],
           "patch_len": params['patch_len'],
           "stride": 9,
           "mixer_kernel_size": params['mixer_kernel_size'],
