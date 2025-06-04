@@ -659,16 +659,14 @@ def objective(args, trial, study):
     # 'max_epochs': 1900,
     # 'num_workers': 9
 
-        'batch_size': 96,                           # Batch size for training
-        'learning_rate': 0.0024656915080670467,     # Learning rate for the optimizer
-        'max_epochs': 1800,                         # Maximum number of epochs
-        'num_workers': 7,                           # Number of workers for data loading
-        'hidden_size': 91,                          # Hidden size for GRU layers
-        'num_layers': 1,                            # Number of GRU layers
-        'dropout': 0.44611302927266927,
-
-        
-
+        'batch_size': 80,                           # Batch size for training
+        'learning_rate': 0.008963332707659527,      # Learning rate for the optimizer
+        'max_epochs': 1700,                         # Maximum number of epochs
+        'num_workers': 11,                          # Number of workers for data loading
+        'n_estimators': 61,                         # Number of estimators for AdaBoost
+        # Learning rate for the AdaBoost model
+        'learning_rate_model': 0.8546071447383281,
+  
     }
         
 
@@ -693,21 +691,21 @@ def objective(args, trial, study):
       model = LSTM(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "GRU":
       _params = {
-          # 'hidden_size': trial.suggest_int('hidden_size', 50, 200),
-          # 'num_layers': trial.suggest_int('num_layers', 1, 10),
-          # 'dropout': trial.suggest_float('dropout', 0.0, 1),
-          # Hidden size for GRU layers
-          'hidden_size': params['hidden_size'],
-          'num_layers': params['num_layers'],         # Number of GRU layers
-          'dropout': params['dropout'],
+          'hidden_size': trial.suggest_int('hidden_size', 50, 200),
+          'num_layers': trial.suggest_int('num_layers', 1, 10),
+          'dropout': trial.suggest_float('dropout', 0.0, 1),
       }
       model = GRU(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "MLP":
       model = MLP(num_features=params['seq_len']*params['input_size'], seq_len=params['batch_size'], pred_len=params['pred_len'], hidden_size=trial.suggest_int('hidden_size', 25, 250, step=25))
     elif args.model == "AdaBoost":
       _params = {
-          'n_estimators': 61,  # Specific to model configuration
-          'learning_rate_model': 0.8546071447383281 
+          # 'n_estimators': 61,  # Specific to model configuration
+          # 'learning_rate_model': 0.8546071447383281 
+          # Number of estimators for AdaBoost
+          'n_estimators': params['n_estimators'],
+          # Learning rate for the AdaBoost model
+          'learning_rate_model': params['learning_rate_model'],
       }
       model = MultiOutputRegressor(AdaBoostRegressor(n_estimators=_params['n_estimators'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "RandomForest":
