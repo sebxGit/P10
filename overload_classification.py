@@ -384,7 +384,7 @@ class ColoradoDataModule(L.LightningDataModule):
     # Unpack results
     X_window, y_target = zip(*results)
     return np.array(X_window), np.array(y_target)
-    
+
 class SDUDataModule(L.LightningDataModule):
   def __init__(self, data_dir: str, scaler: int, seq_len: int, pred_len: int, stride: int, batch_size: int, num_workers: int, is_persistent: bool):
     super().__init__()
@@ -402,12 +402,19 @@ class SDUDataModule(L.LightningDataModule):
     self.y_val = None
     self.X_test = None
     self.y_test = None
+    self.X_train_val = None
+    self.y_train_val = None
+    self.train_dates = []
+    self.val_dates = []
     self.test_dates = []
+
 
   def setup(self, stage: str):
     # Define the start and end dates
-    start_date = pd.to_datetime('2024-12-31')
-    end_date = pd.to_datetime('2032-12-31')
+    # start_date = pd.to_datetime('2024-12-31')
+    # end_date = pd.to_datetime('2032-12-31')
+    start_date = pd.to_datetime('2029-12-31')
+    end_date = pd.to_datetime('2030-12-31')
 
     # Load the CSV
     df = pd.read_csv(self.data_dir, skipinitialspace=True)
@@ -419,38 +426,100 @@ class SDUDataModule(L.LightningDataModule):
     # Keep only relevant columns
     df = df[['Timestamp', 'Aggregated charging load',
             'Total number of EVs', 'Number of charging EVs',
-             'Number of driving EVs', 'Overload duration [min]']]
+             'Number of driving EVs', 
+             'Year', 'Month', 'Day', 'Hour']]
 
     # Ensure numeric columns are correctly parsed
-    numeric_cols = [
-        'Aggregated charging load',
-        'Total number of EVs',
-        'Number of driving EVs',
-        'Number of charging EVs',
-        'Overload duration [min]'
-    ]
-    df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric, errors='coerce')
+    # numeric_cols = [
+    #     'Aggregated charging load',
+    #     'Total number of EVs',
+    #     'Number of driving EVs',
+    #     'Number of charging EVs',
+    #     'Overload duration [min]'
+    # ]
+    # df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric, errors='coerce')
 
+  
     # Use lowercase 'h' to avoid deprecation warning
     df['Timestamp'] = df['Timestamp'].dt.floor('h')
 
     # Optional: Aggregate if multiple entries exist for the same hour
-    df = df.groupby('Timestamp')[numeric_cols].sum().reset_index()
+    # df = df.groupby('Timestamp')[numeric_cols].sum().reset_index()
 
-    df = add_featuresSDU(df)
+    #df = add_featuresSDU(df)
 
-    df = df.set_index('Timestamp')
+    # df['hour'] = df.index.hour
+    # df['dayofweek'] = df.index.dayofweek
+    # df['month'] = df.index.month
+
+    # print("CSV Columns:", df.columns.tolist())
+
+
+    #print(df.head())
+
+    # df['Aggregated charging load'] = df['Aggregated charging load'].interpolate(method='time')
+    # df['Aggregated charging load'] = df['Aggregated charging load'].interpolate(method='linear')
+    # df['Aggregated charging load'] = df['Aggregated charging load'].interpolate(method='pchip')
+
+    df.set_index('Timestamp', inplace=True)
+
+    df['hour_sin'] = np.sin(2 * np.pi * df['Hour'] / 24)
+    df['hour_cos'] = np.cos(2 * np.pi * df['Hour'] / 24)
+
+    df['month_sin'] = np.sin(2 * np.pi * df['Month'] / 12)
+    df['month_cos'] = np.cos(2 * np.pi * df['Month'] / 12)
+
+    # df['days_in_month'] = df.apply(lambda row: calendar.monthrange(row['Year'], row['Month'])[1], axis=1)
+    # df['day_sin'] = np.sin(2 * np.pi * df['Day'] / df['days_in_month'])
+    # df['day_cos'] = np.cos(2 * np.pi * df['Day'] / df['days_in_month'])
+
+    df['dayofweek'] = df.index.dayofweek
+    df['dayofweek_sin'] = np.sin(2 * np.pi * df['dayofweek'] / 7)
+    df['dayofweek_cos'] = np.cos(2 * np.pi * df['dayofweek'] / 7)
+
+    #remove  
+    # df = df.drop(columns=['montdh', 'Year', 'hour', 'Month', 'Hour', 'Day'])
+    
+    # Add Logp1 transformation to the target variable 
+    # df['Aggregated charging load'] = np.log1p(df['Aggregated charging load'])
+
+    ### features 
+    df['lag1h'] = df['Aggregated charging load'].shift(1)
+    # df['lag3h'] = df['Aggregated charging load'].shift(3)
+    # df['lag6h'] = df['Aggregated charging load'].shift(6)
+
+    # df['lag12h'] = df['Aggregated charging load'].shift(12)
+    df['lag24h'] = df['Aggregated charging load'].shift(24)  # 1 day
+    # df['lag1w'] = df['Aggregated charging load'].shift(24*7)  # 1 week
+
+    # df['roll_std_24h'] = df['Aggregated charging load'].rolling(window=24).std()
+    # df['roll_min_24h'] = df['Aggregated charging load'].rolling(window=24).min()
+ 
+
+    # df['rolling1h'] = df['Aggregated charging load'].rolling(window=2).mean()  # 1 hour rolling mean
+    # df['rolling3h'] = df['Aggregated charging load'].rolling(window=3).mean()  # 3 hour rolling mean
+    # df['rolling6h'] = df['Aggregated charging load'].rolling(window=6).mean()  # 6 hour rolling mean
+    # df['rolling12h'] = df['Aggregated charging load'].rolling(window=12).mean()  # 12 hour rolling mean
+    # df['roll_max_24h'] = df['Aggregated charging load'].rolling(window=24).max()
+
+    df = df.dropna()
+
+    # print("final", df.columns.tolist())
 
     df = filter_data(start_date, end_date, df)
+
     df = df.dropna()
+
     X = df.copy()
 
     y = X.pop('Aggregated charging load')
 
     # 60/20/20 split
-    X_tv, self.X_test, y_tv, self.y_test = train_test_split( X, y, test_size=0.2, shuffle=False)
-    self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(X_tv, y_tv, test_size=0.25, shuffle=False)
+    self.X_train_val, self.X_test, self.y_train_val, self.y_test = train_test_split( X, y, test_size=0.2, shuffle=False)
+    self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(self.X_train_val, self.y_train_val, test_size=0.25, shuffle=False)
 
+    self.train_dates = self.X_train.index.tolist()
+    self.val_dates = self.X_val.index.tolist()
     self.test_dates = self.X_test.index.tolist()
 
     preprocessing = self.scaler
@@ -460,36 +529,51 @@ class SDUDataModule(L.LightningDataModule):
       self.X_train = preprocessing.transform(self.X_train)
       self.y_train = np.array(self.y_train)
 
+      # self.X_val = preprocessing.transform(self.X_val)
+      # self.y_val = np.array(self.y_val)
+
     if stage == "test" or "predict" or stage is None:
-      self.X_test = preprocessing.transform(self.X_test)
-      self.y_test = np.array(self.y_test)
+      self.X_val = preprocessing.transform(self.X_val)
+      self.y_val = np.array(self.y_val)
+
+      # self.X_test = preprocessing.transform(self.X_test)
+      # self.y_test = np.array(self.y_test)
 
   def train_dataloader(self):
-    train_dataset = TimeSeriesDataset(self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-    if args.individual == "True":
-      train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
-    else:   
-      sampler = BootstrapSampler(len(train_dataset), random_state=SEED)
-      train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
+    train_dataset = TimeSeriesDataset(
+        self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+    sampler = BootstrapSampler(len(train_dataset), random_state=SEED)
+    train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler,
+                              shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
+    # train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return train_loader
 
+  # def predict_dataloader(self):
+  #   test_dataset = TimeSeriesDataset(self.X_test, self.y_test, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+  #   test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+  #   return test_loader
+
   def predict_dataloader(self):
-    test_dataset = TimeSeriesDataset(self.X_test, self.y_test, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-    test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
-    return test_loader
-  
+    val_dataset = TimeSeriesDataset(
+        self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+    val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False,
+                            num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    return val_loader
+
   def sklearn_setup(self, set_name: str = "train"):
     if set_name == "train":
-        if args.individual == "True":
-          X, y = self.X_train, self.y_train
-        else:
-          X, y = resample(self.X_train, self.y_train, replace=True, n_samples=len(self.X_train), random_state=SEED)
+      if args.individual == 'False':
+        X, y = resample(self.X_train, self.y_train, replace=True,
+                        n_samples=len(self.X_train), random_state=SEED)
+      else:
+        X, y = self.X_train, self.y_train
     elif set_name == "val":
         X, y = self.X_val, self.y_val
     elif set_name == "test":
         X, y = self.X_test, self.y_test
     else:
-        raise ValueError("Invalid set name. Choose from 'train', 'val', or 'test'.")
+        raise ValueError(
+            "Invalid set name. Choose from 'train', 'val', or 'test'.")
 
     seq_len, pred_len, stride = self.seq_len, self.pred_len, self.stride
     max_start = len(X) - (seq_len + pred_len) + 1
@@ -595,7 +679,12 @@ if __name__ == "__main__":
     else:
       hparams = pd.read_csv(f'./Tunings/{args.dataset}_{args.pred_len}h_classification_individual_tuning.csv')
 
-    hyperparameters = ast.literal_eval(hparams[hparams['model'] == model_name].iloc[0].values[3])
+    # hyperparameters = ast.literal_eval(hparams[hparams['model'] == model_name].iloc[0].values[3])
+    if args.dataset == "Colorado":
+      hyperparameters = ast.literal_eval(hparams[hparams['model'] == model_name].iloc[0].values[3])
+    else:
+      hyperparameters = ast.literal_eval(hparams[hparams['model'] == model_name].iloc[0].values[5])
+
     print(hyperparameters)
     if model_name == "DPAD": 
       hyperparameters['num_workers'] = 2
@@ -607,7 +696,7 @@ if __name__ == "__main__":
     if args.dataset == "Colorado":
       colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=MinMaxScaler(), seq_len=args.seq_len, batch_size=hyperparameters['batch_size'], pred_len=args.pred_len, stride=args.stride, num_workers=hyperparameters['num_workers'], is_persistent=True if hyperparameters['num_workers'] > 0 else False)
     else: 
-      colmod = SDUDataModule(data_dir='SDU Dataset/DumbCharging_2020_to_2032/Measurements.csv', scaler=MinMaxScaler(), seq_len=args.seq_len, batch_size=hyperparameters['batch_size'], pred_len=args.pred_len, stride=args.stride, num_workers=hyperparameters['num_workers'], is_persistent=True if hyperparameters['num_workers'] > 0 else False)
+      colmod = SDUDataModule(data_dir='SDU Dataset/DumbCharging_2020_to_2032/Measurements.csv', scaler=MaxAbsScaler(), seq_len=args.seq_len, batch_size=hyperparameters['batch_size'], pred_len=args.pred_len, stride=args.stride, num_workers=hyperparameters['num_workers'], is_persistent=True if hyperparameters['num_workers'] > 0 else False)
 
     colmod.prepare_data()
     colmod.setup(stage=None)
@@ -666,28 +755,39 @@ if __name__ == "__main__":
     elif args.dataset == "SDU":
       y_pred = [pred for pred in y_pred]
       actuals_flat = [item for sublist in actuals for item in sublist]
-      start_date = pd.to_datetime('2024-12-31')
-      end_date = pd.to_datetime('2032-12-31')
 
-      test_start_date = pd.to_datetime('2031-05-26 15:00:00')
-      test_end_date = pd.to_datetime('2032-12-31 00:00:00')
+      val_start_date = pd.to_datetime('2030-08-07 01:00:00')
+      val_end_date = pd.to_datetime('2030-10-19 00:00:00')
+
+      # 2029-12-31 00:00:00 2030-08-07 00:00:00
+      # ----------------------------------------
+      # 2030-08-07 01:00:00 2030-10-19 00:00:00
+      # ----------------------------------------
+      # 2030-10-19 01:00:00 2030-12-31 00:00:00
 
       df = pd.read_csv('SDU Dataset/DumbCharging_2020_to_2032/Measurements.csv', skipinitialspace=True)
 
       df['Timestamp'] = pd.to_datetime(df['Timestamp'], format="%b %d, %Y, %I:%M:%S %p")
       df.set_index('Timestamp', inplace=True)
 
-      df = df[(df.index >= test_start_date) & (df.index <= test_end_date)]
+      df = df[(df.index >= val_start_date) & (df.index <= val_end_date)]
       
       df = df.iloc[:len(actuals_flat)]
+      df = df.iloc[1100:1400] 
 
       df = df[['Aggregated base load']]
 
       df_pred_act = pd.DataFrame({'y_pred': y_pred, 'actuals_flat': actuals_flat})
-      df_pred_act.index = colmod.test_dates[:len(actuals_flat)]
+      df_pred_act.index = colmod.val_dates[:len(actuals_flat)]
 
-      baseloads = [df]
-      dfs = [df_pred_act]
+      df_pred_act = df_pred_act.iloc[1100:1400]
+
+      dates.clear()
+      dates.extend(df_pred_act.index)
+
+    baseloads = [df]
+    dfs = [df_pred_act]
+
 
     for i, (baseload, df) in enumerate(zip(baseloads, dfs)):
       if args.dataset == "Colorado":
