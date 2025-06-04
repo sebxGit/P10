@@ -657,16 +657,14 @@ def objective(args, trial, study):
     # 'learning_rate': 0.00544215587526865,
     # 'max_epochs': 1900,
     # 'num_workers': 9
-        'batch_size': 48,
-        'learning_rate': 0.00021128018387968383,
-        'max_epochs': 1200,
-        'num_workers': 8,
-        'patch_len': 32,
-        'mixer_kernel_size': 2,
-        'd_model': 128,
-        'dropout': 0.35,
-        'head_dropout': 0.0,
-        'e_layers': 1
+        'batch_size': 96,                           # Batch size for training
+        'learning_rate': 0.0024656915080670467,     # Learning rate for the optimizer
+        'max_epochs': 1800,                         # Maximum number of epochs
+        'num_workers': 7,                           # Number of workers for data loading
+        'hidden_size': 91,                          # Hidden size for GRU layers
+        'num_layers': 1,                            # Number of GRU layers
+        'dropout': 0.44611302927266927,
+
     }
 
     if args.dataset == "Colorado":
@@ -689,9 +687,13 @@ def objective(args, trial, study):
       model = LSTM(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "GRU":
       _params = {
-          'hidden_size': trial.suggest_int('hidden_size', 50, 200),
-          'num_layers': trial.suggest_int('num_layers', 1, 10),
-          'dropout': trial.suggest_float('dropout', 0.0, 1),
+          # 'hidden_size': trial.suggest_int('hidden_size', 50, 200),
+          # 'num_layers': trial.suggest_int('num_layers', 1, 10),
+          # 'dropout': trial.suggest_float('dropout', 0.0, 1),
+          # Hidden size for GRU layers
+          'hidden_size': params['hidden_size'],
+          'num_layers': params['num_layers'],         # Number of GRU layers
+          'dropout': params['dropout'],
       }
       model = GRU(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "MLP":
@@ -750,28 +752,17 @@ def objective(args, trial, study):
       model = xPatch(params_xpatch)
     elif args.model == "PatchMixer":
       _params = Configs({
-          # "enc_in": params['input_size'],                # Number of input channels
-          # "seq_len": params['seq_len'],                 # Context window (lookback length)
-          # "pred_len": params['pred_len'],
-          # "batch_size": 48,                             # Fixed batch size
-          # "patch_len": 32,                              # Fixed patch size
-          # "stride": 9,                                  # Fixed stride for patching
-          # "mixer_kernel_size": 2,                       # Fixed kernel size for the PatchMixer layer
-          # "d_model": 128,                               # Fixed dimension of the model
-          # "dropout": 0.35,                              # Fixed dropout rate for the model
-          # "head_dropout": 0.0,                          # Fixed dropout rate for the head layers
-          # "e_layers": 1,     
-          "enc_in": params['input_size'],
+          "enc_in": params['input_size'],                # Number of input channels
           "seq_len": params['seq_len'],                 # Context window (lookback length)
-          "pred_len": params['pred_len'],                            # Fixed number of PatchMixer layers (depth)
-          "batch_size": params['batch_size'],
-          "patch_len": params['patch_len'],
-          "stride": 9,
-          "mixer_kernel_size": params['mixer_kernel_size'],
-          "d_model": params['d_model'],
-          "dropout": params['dropout'],
-          "head_dropout": params['head_dropout'],
-          "e_layers": params['e_layers']
+          "pred_len": params['pred_len'],
+          "batch_size": 48,                             # Fixed batch size
+          "patch_len": 32,                              # Fixed patch size
+          "stride": 9,                                  # Fixed stride for patching
+          "mixer_kernel_size": 2,                       # Fixed kernel size for the PatchMixer layer
+          "d_model": 128,                               # Fixed dimension of the model
+          "dropout": 0.35,                              # Fixed dropout rate for the model
+          "head_dropout": 0.0,                          # Fixed dropout rate for the head layers
+          "e_layers": 1,     
       })
       model = PatchMixer(_params)
     else:
