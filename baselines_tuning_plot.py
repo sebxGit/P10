@@ -657,14 +657,14 @@ def objective(args, trial, study):
     # 'learning_rate': 0.00544215587526865,
     # 'max_epochs': 1900,
     # 'num_workers': 9
-        'batch_size': 80,                           # Batch size for training
-        'learning_rate': 0.00544215587526865,       # Learning rate for the optimizer
-        'max_epochs': 1900,                         # Maximum number of epochs
-        'num_workers': 9,                           # Number of workers for data loading
-        'hidden_size': 67,                          # Hidden size for LSTM layers
-        'num_layers': 1,                            # Number of LSTM layers
-        'dropout': 0.27527815284264673,
-      
+        'batch_size': 48,                           # Batch size for training
+        'learning_rate': 0.0015466799648017806,     # Learning rate for the optimizer
+        'max_epochs': 1800,                         # Maximum number of epochs
+        'enc_hidden': 324,                          # Encoder hidden size
+        'dec_hidden': 252,                          # Decoder hidden size
+        'num_levels': 2,                            # Number of levels in DPAD
+        'K_IMP': 2,                                 # Importance sampling parameter
+        'RIN': 0,
     }
 
     if args.dataset == "Colorado":
@@ -683,10 +683,7 @@ def objective(args, trial, study):
     # 'hidden_size': 67,  # Model-specific parameter
     # 'num_layers': 1,    # Model-specific parameter
     # 'dropout': 0.27527815284264673  # Model-specific parameter
-          # Hidden size for LSTM layers
-          'hidden_size': params['hidden_size'],
-          'num_layers': params['num_layers'],         # Number of LSTM layers
-          'dropout': params['dropout'],
+    
       }
       model = LSTM(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "GRU":
@@ -726,12 +723,17 @@ def objective(args, trial, study):
       model = MultiOutputRegressor(GradientBoostingRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], subsample=_params['subsample'], min_samples_leaf=_params['min_samples_leaf'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "DPAD":
         _params = {
-          'enc_hidden': trial.suggest_int('enc_hidden', 108, 324, step=24),
-          'dec_hidden': trial.suggest_int('dec_hidden', 108, 324, step=24),
-          'num_levels': trial.suggest_int('num_levels', 1, 3),
+          # 'enc_hidden': trial.suggest_int('enc_hidden', 108, 324, step=24),
+          # 'dec_hidden': trial.suggest_int('dec_hidden', 108, 324, step=24),
+          # 'num_levels': trial.suggest_int('num_levels', 1, 3),
           'dropout': 0.5,
-          'K_IMP': trial.suggest_int('K_IMP', 1, 10),
-          'RIN': trial.suggest_int('RIN', 0, 1)
+          # 'K_IMP': trial.suggest_int('K_IMP', 1, 10),
+          # 'RIN': trial.suggest_int('RIN', 0, 1)
+          'enc_hidden': params['enc_hidden'],         # Encoder hidden size
+          'dec_hidden': params['dec_hidden'],         # Decoder hidden size
+          'num_levels': params['num_levels'],         # Number of levels in DPAD
+          'K_IMP': params['K_IMP'],                   # Importance sampling parameter
+          'RIN': params['RIN'],
         }
         model = DPAD_GCN(input_len=params['seq_len'], output_len=params['pred_len'], input_dim=params['input_size'], enc_hidden=_params['enc_hidden'], dec_hidden=_params['dec_hidden'], dropout=_params['dropout'], num_levels=_params['num_levels'], K_IMP=_params['K_IMP'], RIN=_params['RIN'])
     elif args.model == "xPatch":
