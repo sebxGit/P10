@@ -15,7 +15,7 @@ for model in "${MODELS[@]}"; do
     echo "Running model: $model"
     singularity exec --nv energycontainerblackbox.sif \
         python3 model_run.py \
-        --model "$model" \
+        --models "$model" \
         --individual True \
         --dataset SDU \
         --threshold 250
