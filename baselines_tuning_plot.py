@@ -804,7 +804,7 @@ def objective(args, trial, study):
     plt.ylabel('Electricity Consumption (kWh)')
     plt.legend()
     plt.tight_layout()
-    plt.savefig(f'Predictions/{args.dataset}_{train_loss}_plot.png')
+    plt.savefig(f'Predictions/{args.dataset}_{args.model}_{train_loss}_plot.png')
     plt.show()
     plt.clf()
     plt.close()
