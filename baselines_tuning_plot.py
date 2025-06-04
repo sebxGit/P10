@@ -653,10 +653,20 @@ def objective(args, trial, study):
         'seed': 42,
         'is_persistent': True,
 
-            'batch_size': 80,
-    'learning_rate': 0.00544215587526865,
-    'max_epochs': 1900,
-    'num_workers': 9
+    #         'batch_size': 80,
+    # 'learning_rate': 0.00544215587526865,
+    # 'max_epochs': 1900,
+    # 'num_workers': 9
+        'batch_size': 48,
+        'learning_rate': 0.00021128018387968383,
+        'max_epochs': 1200,
+        'num_workers': 8,
+        'patch_len': 32,
+        'mixer_kernel_size': 2,
+        'd_model': 128,
+        'dropout': 0.35,
+        'head_dropout': 0.0,
+        'e_layers': 1
     }
 
     if args.dataset == "Colorado":
@@ -740,17 +750,28 @@ def objective(args, trial, study):
       model = xPatch(params_xpatch)
     elif args.model == "PatchMixer":
       _params = Configs({
-          "enc_in": params['input_size'],                # Number of input channels
-          "seq_len": params['seq_len'],                 # Context window (lookback length)
-          "pred_len": params['pred_len'],
-          "batch_size": 48,                             # Fixed batch size
-          "patch_len": 32,                              # Fixed patch size
-          "stride": 9,                                  # Fixed stride for patching
-          "mixer_kernel_size": 2,                       # Fixed kernel size for the PatchMixer layer
-          "d_model": 128,                               # Fixed dimension of the model
-          "dropout": 0.35,                              # Fixed dropout rate for the model
-          "head_dropout": 0.0,                          # Fixed dropout rate for the head layers
-          "e_layers": 1,                                # Fixed number of PatchMixer layers (depth)
+          # "enc_in": params['input_size'],                # Number of input channels
+          # "seq_len": params['seq_len'],                 # Context window (lookback length)
+          # "pred_len": params['pred_len'],
+          # "batch_size": 48,                             # Fixed batch size
+          # "patch_len": 32,                              # Fixed patch size
+          # "stride": 9,                                  # Fixed stride for patching
+          # "mixer_kernel_size": 2,                       # Fixed kernel size for the PatchMixer layer
+          # "d_model": 128,                               # Fixed dimension of the model
+          # "dropout": 0.35,                              # Fixed dropout rate for the model
+          # "head_dropout": 0.0,                          # Fixed dropout rate for the head layers
+          # "e_layers": 1,                                # Fixed number of PatchMixer layers (depth)
+          "batch_size": params['batch_size'],
+          "learning_rate": params['learning_rate'],
+          "max_epochs": params['max_epochs'],
+          "num_workers": params['num_workers'],
+          "patch_len": params['patch_len'],
+          "stride": 9,
+          "mixer_kernel_size": params['mixer_kernel_size'],
+          "d_model": params['d_model'],
+          "dropout": params['dropout'],
+          "head_dropout": params['head_dropout'],
+          "e_layers": params['e_layers']
       })
       model = PatchMixer(_params)
     else:
@@ -797,7 +818,7 @@ def objective(args, trial, study):
       train_loss = params['criterion'](torch.tensor(pred), torch.tensor(act))
 
     dates = colmod.val_dates[-len(pred):]
-    plt.figure(figsize=(15, 10))
+    plt.figure(figsize=(8, 5))
     plt.plot(dates, act, label='Actuals')
     plt.plot(dates, pred, label=f'predictions')
     plt.xlabel('Dates')
