@@ -789,6 +789,20 @@ def objective(args, trial, study):
       
       train_loss = params['criterion'](torch.tensor(pred), torch.tensor(act))
 
+    dates = colmod.val_dates[-len(pred):]
+    plt.figure(figsize=(15, 4))
+    plt.plot(dates, act, label='Actuals')
+    plt.plot(dates, pred, label=f'predictions')
+    plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
+    plt.xlabel('Dates')
+    plt.ylabel('Electricity Consumption (kWh)')
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(f'Predictions/{args.dataset}_{train_loss}_plot.png')
+    plt.show()
+    plt.clf()
+    plt.close()
+
     if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials) and train_loss <= study.best_value:
       best_list.clear()
       best_list.append({'mae': mae, 'mse': mse, 'huber_loss': huber_loss.item(), 'params': trial.params})
@@ -859,7 +873,7 @@ def tune_model_with_optuna(args, n_trials):
 
 if __name__ == '__main__':
   parser = ArgumentParser()
-  parser.add_argument("--dataset", type=str, default="SDU")
+  parser.add_argument("--dataset", type=str, default="Colorado")
   parser.add_argument("--pred_len", type=int, default=24)
   parser.add_argument("--model", type=str, default="PatchMixer")
   parser.add_argument("--load", type=str, default='False')
