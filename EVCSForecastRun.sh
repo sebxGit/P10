@@ -16,7 +16,6 @@ for model in "${MODELS[@]}"; do
     singularity exec --nv energycontainerblackbox.sif \
         python3 model_run.py \
         --model "$model" \
-        --load False \
         --individual True \
         --dataset SDU \
         --threshold 250
