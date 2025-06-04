@@ -9,7 +9,7 @@
 #SBATCH --mem=192G
 
 
-MODELS=("LSTM", "GRU", "AdaBoostRegressor", "RandomForestRegressor", "GradientBoostingRegressor", "xPatch", "PatchMixer")
+MODELS=("LSTM", "GRU")
 
 for model in "${MODELS[@]}"; do
     echo "Running model: $model"
