@@ -1,3 +1,4 @@
 model,trials,rec,mae,parameters,huber
+GradientBoosting,150,0.5,,"{'batch_size': 224, 'learning_rate': 0.0009265401570267737, 'max_epochs': 1400, 'n_estimators': 338, 'max_depth': 3, 'min_samples_split': 19, 'min_samples_leaf': 14, 'max_features': 0.13996840741548092, 'learning_rate_model': 0.8208930394073057, 'subsample': 0.8785629204400206}",4.807660645952775
 LSTM,150,0.0,,"{'batch_size': 192, 'learning_rate': 0.00526833387860358, 'max_epochs': 1600, 'hidden_size': 164, 'num_layers': 1, 'dropout': 0.9297010312416186}",2.996332418004994
-RandomForest,150,0.0,,"{'batch_size': 176, 'learning_rate': 0.0014413815103835393, 'max_epochs': 1300, 'n_estimators': 144, 'max_depth': 9, 'min_samples_split': 5, 'min_samples_leaf': 5, 'max_features': 0.8399588878134902}",3.9177115234470588
+RandomForest,150,0.0,,"{'batch_size': 176, 'learning_rate': 0.0014413815103835393, 'max_epochs': 1300, 'n_estimators': 144, 'max_depth': 9, 'min_samples_split': 5, 'min_samples_leaf': 5, 'max_features': 0.8399588878134902}",3.9177115234470583
