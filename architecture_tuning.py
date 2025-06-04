@@ -710,10 +710,12 @@ def objective(args, trial, all_subsets, study):
   
   # rank top 10 baggings save in trial.set_user_attr
   tuning_results.append({'combined_name': combined_name, 'huber': huber_loss.item(), 'mae': mae.item(), 'mse': mse.item(), 'parameters': trial.params})
+
+  actuals_flattened = [item for sublist in actuals for item in sublist]
   
   dates = colmod.val_dates[-len(y_pred_tensor):]
   plt.figure(figsize=(15, 4))
-  plt.plot(dates, actuals, label='Actuals')
+  plt.plot(dates, actuals_flattened, label='Actuals')
   plt.plot(dates, predictions, label=f'predictions')
   plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
   plt.xlabel('Dates')
