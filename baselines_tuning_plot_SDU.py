@@ -659,10 +659,10 @@ def objective(args, trial, study):
         'seed': 42,
         'is_persistent': True,
 
-            'batch_size': 192,
-    'learning_rate': 0.008405810836213588,
-    'max_epochs': 1800,
-    'num_workers': 12
+            'batch_size': 80,
+    'learning_rate': 0.0024309462831591075,
+    'max_epochs': 2000,
+    'num_workers': 10
     }
 
     if args.dataset == "Colorado":
@@ -700,12 +700,12 @@ def objective(args, trial, study):
       model = MultiOutputRegressor(AdaBoostRegressor(n_estimators=_params['n_estimators'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "RandomForest":
       _params = {
-        'n_estimators': trial.suggest_int('n_estimators', 50, 200),
-        'max_depth': trial.suggest_int('max_depth', 1, 20),
-        'min_samples_split': trial.suggest_int('min_samples_split', 2, 20),
-        'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 20),
-        'max_features': trial.suggest_float('max_features', 0.1, 1.0),
-      }
+    'n_estimators': 111,  # Model-specific parameter
+    'max_depth': 16,      # Model-specific parameter
+    'min_samples_split': 3,  # Model-specific parameter
+    'min_samples_leaf': 3,   # Model-specific parameter
+    'max_features': 0.9596702162606467  # Model-specific parameter
+}
       model =  MultiOutputRegressor(RandomForestRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], min_samples_leaf=_params['min_samples_leaf'], max_features=_params['max_features'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "GradientBoosting":
       _params = {
