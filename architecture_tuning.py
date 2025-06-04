@@ -761,7 +761,7 @@ parser.add_argument("--seq_len", type=int, default=24*7)
 parser.add_argument("--optimizer", type=str, default="Adam")
 parser.add_argument("--scaler", type=str, default="MinMaxScaler")
 parser.add_argument("--load", type=str, default="False")
-parser.add_argument("--trials", type=int, default=3)
+parser.add_argument("--trials", type=int, default=100)
 parser.add_argument("--individual", type=str, default="False")
 
 criterion_map = { 
