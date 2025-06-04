@@ -9,9 +9,7 @@
 #SBATCH --mem=192G
 
 
-# MODELS=("LSTM", "GRU", "AdaBoost", "RandomForest", "GradientBoosting", "xPatch", "PatchMixer")
-
-MODELS=("AdaBoost", "RandomForest", "GradientBoosting")
+MODELS=("LSTM" "GRU" "AdaBoostRegressor" "RandomForestRegressor" "GradientBoostingRegressor" "xPatch" "PatchMixer")
 for model in "${MODELS[@]}"; do
     echo "Running model: $model"
     singularity exec --nv energycontainerblackbox.sif \
@@ -19,5 +17,5 @@ for model in "${MODELS[@]}"; do
         --models "$model" \
         --individual True \
         --dataset SDU \
-        --threshold 250
+        --threshold 250 || echo "Model $model failed due to missing hyperparameters."
 done
