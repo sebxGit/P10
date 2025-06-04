@@ -646,17 +646,17 @@ def objective(args, trial, study):
         'pred_len': args.pred_len,
         'seq_len': 24*7,
         'stride': args.pred_len,
-        'criterion': torch.nn.L1Loss(),
-        # 'criterion': torch.nn.HuberLoss(delta=0.25),
+        # 'criterion': torch.nn.L1Loss(),
+        'criterion': torch.nn.HuberLoss(delta=0.25),
         'optimizer': torch.optim.Adam,
         'scaler': MinMaxScaler(),
         'seed': 42,
         'is_persistent': True,
 
-            'batch_size': 80,
-    'learning_rate': 0.00544215587526865,
-    'max_epochs': 1900,
-    'num_workers': 9
+            'batch_size': 208,
+    'learning_rate': 0.0006554334484062519,
+    'max_epochs': 2000,
+    'num_workers': 8
     }
 
     if args.dataset == "Colorado":
@@ -728,13 +728,13 @@ def objective(args, trial, study):
         seq_len=params['seq_len'],
         pred_len=params['pred_len'],
         enc_in=params['input_size'],
-        patch_len=12,  # Fixed value from the dictionary
-        stride=36,     # Fixed value from the dictionary
+        patch_len=16,  # Fixed value from the dictionary
+        stride=5,      # Fixed value from the dictionary
         padding_patch='None',  # Fixed value from the dictionary
         revin=0,       # Fixed value from the dictionary
         ma_type='reg', # Fixed value from the dictionary
-        alpha=0.7972611256000964,  # Fixed value from the dictionary
-        beta=0.17020757865248334   # Fixed value from the dictionary
+        alpha=0.6803081419478867,  # Fixed value from the dictionary
+        beta=0.7493277554345201    # Fixed value from the dictionary
     )
       )
       model = xPatch(params_xpatch)
@@ -881,7 +881,7 @@ def tune_model_with_optuna(args, n_trials):
 
 if __name__ == '__main__':
   parser = ArgumentParser()
-  parser.add_argument("--dataset", type=str, default="Colorado")
+  parser.add_argument("--dataset", type=str, default="SDU")
   parser.add_argument("--pred_len", type=int, default=24)
   parser.add_argument("--model", type=str, default="PatchMixer")
   parser.add_argument("--load", type=str, default='False')
