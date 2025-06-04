@@ -782,9 +782,6 @@ if __name__ == "__main__":
 
       df_pred_act = df_pred_act.iloc[1100:1400]
 
-      dates.clear()
-      dates.extend(df_pred_act.index)
-
     baseloads = [df]
     dfs = [df_pred_act]
 
