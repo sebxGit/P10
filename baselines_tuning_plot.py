@@ -651,10 +651,12 @@ def objective(args, trial, study):
         # 'criterion': torch.nn.HuberLoss(delta=0.25),
         'optimizer': torch.optim.Adam,
         'scaler': MinMaxScaler(),
-        'learning_rate': 0.00021128018387968383,
+        
+        'learning_rate': 0.00015659795416669107,
+        'max_epochs': 1000,
+        'num_workers': 6,
+
         'seed': 42,
-        'max_epochs': 1200,
-        'num_workers': 8,
         'is_persistent': True
     }
 
@@ -724,17 +726,17 @@ def objective(args, trial, study):
     elif args.model == "xPatch":
       params_xpatch = Configs(
         dict(
-        seq_len = params['seq_len'],
-        pred_len = params['pred_len'],
-        enc_in = params['input_size'],
-        patch_len = trial.suggest_int('patch_len', 2, 16, step=2),
-        stride=trial.suggest_int('stride', 1, 7, step=2),
-        padding_patch = trial.suggest_categorical('padding_patch', ['end', 'None']),
-        revin = trial.suggest_int('revin', 0, 1),
-        ma_type = trial.suggest_categorical('ma_type', ['reg', 'ema']),
-        alpha = trial.suggest_float('alpha', 0.0, 1.0),
-        beta = trial.suggest_float('beta', 0.0, 1.0),
-        )
+        seq_len=params['seq_len'],
+        pred_len=params['pred_len'],
+        enc_in=params['input_size'],
+        patch_len=12,  # Fixed value from the dictionary
+        stride=36,     # Fixed value from the dictionary
+        padding_patch='None',  # Fixed value from the dictionary
+        revin=0,       # Fixed value from the dictionary
+        ma_type='reg', # Fixed value from the dictionary
+        alpha=0.7972611256000964,  # Fixed value from the dictionary
+        beta=0.17020757865248334   # Fixed value from the dictionary
+    )
       )
       model = xPatch(params_xpatch)
     elif args.model == "PatchMixer":
