@@ -9,8 +9,9 @@
 #SBATCH --mem=192G
 
 
-MODELS=("LSTM", "GRU", "AdaBoost", "RandomForest", "GradientBoosting", "xPatch", "PatchMixer")
+# MODELS=("LSTM", "GRU", "AdaBoost", "RandomForest", "GradientBoosting", "xPatch", "PatchMixer")
 
+MODELS=("AdaBoost", "RandomForest", "GradientBoosting")
 for model in "${MODELS[@]}"; do
     echo "Running model: $model"
     singularity exec --nv energycontainerblackbox.sif \
