@@ -529,11 +529,11 @@ class SDUDataModule(L.LightningDataModule):
       # self.y_val = np.array(self.y_val)
 
     if stage == "test" or "predict" or stage is None:
-      self.X_val = preprocessing.transform(self.X_val)
-      self.y_val = np.array(self.y_val)
+      # self.X_val = preprocessing.transform(self.X_val)
+      # self.y_val = np.array(self.y_val)
 
-      # self.X_test = preprocessing.transform(self.X_test)
-      # self.y_test = np.array(self.y_test)
+      self.X_test = preprocessing.transform(self.X_test)
+      self.y_test = np.array(self.y_test)
 
   def train_dataloader(self):
     train_dataset = TimeSeriesDataset(
