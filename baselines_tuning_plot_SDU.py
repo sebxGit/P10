@@ -659,10 +659,10 @@ def objective(args, trial, study):
         'seed': 42,
         'is_persistent': True,
 
-            'batch_size': 208,
-    'learning_rate': 0.0006554334484062519,
-    'max_epochs': 2000,
-    'num_workers': 8
+            'batch_size': 192,
+    'learning_rate': 0.008405810836213588,
+    'max_epochs': 1800,
+    'num_workers': 12
     }
 
     if args.dataset == "Colorado":
@@ -678,10 +678,10 @@ def objective(args, trial, study):
 
     if args.model == "LSTM":
       _params = {
-    'hidden_size': 67,  # Model-specific parameter
-    'num_layers': 1,    # Model-specific parameter
-    'dropout': 0.27527815284264673  # Model-specific parameter
-      }
+    'hidden_size': 144,  # Model-specific parameter
+    'num_layers': 1,     # Model-specific parameter
+    'dropout': 0.624867070588652  # Model-specific parameter
+}
       model = LSTM(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "GRU":
       _params = {
