@@ -533,11 +533,11 @@ class SDUDataModule(L.LightningDataModule):
       # self.y_val = np.array(self.y_val)
 
     if stage == "test" or "predict" or stage is None:
-      self.X_val = preprocessing.transform(self.X_val)
-      self.y_val = np.array(self.y_val)
+      # self.X_val = preprocessing.transform(self.X_val)
+      # self.y_val = np.array(self.y_val)
 
-      # self.X_test = preprocessing.transform(self.X_test)
-      # self.y_test = np.array(self.y_test)
+      self.X_test = preprocessing.transform(self.X_test)
+      self.y_test = np.array(self.y_test)
 
   def train_dataloader(self):
     train_dataset = TimeSeriesDataset(
@@ -548,17 +548,17 @@ class SDUDataModule(L.LightningDataModule):
     # train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return train_loader
 
-  # def predict_dataloader(self):
-  #   test_dataset = TimeSeriesDataset(self.X_test, self.y_test, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-  #   test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
-  #   return test_loader
-
   def predict_dataloader(self):
-    val_dataset = TimeSeriesDataset(
-        self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-    val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False,
-                            num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
-    return val_loader
+    test_dataset = TimeSeriesDataset(self.X_test, self.y_test, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+    test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    return test_loader
+
+  # def predict_dataloader(self):
+  #   val_dataset = TimeSeriesDataset(
+  #       self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+  #   val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False,
+  #                           num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+  #   return val_loader
 
   def sklearn_setup(self, set_name: str = "train"):
     if set_name == "train":
@@ -703,7 +703,7 @@ if __name__ == "__main__":
 
     # model creates prediction
     if isinstance(model, torch.nn.Module):
-      model = LightningModel(model=model, criterion=nn.L1Loss(), optimizer=torch.optim.Adam, learning_rate=hyperparameters['learning_rate'])
+      model = LightningModel(model=model, criterion=torch.nn.HuberLoss(delta=0.25), optimizer=torch.optim.Adam, learning_rate=hyperparameters['learning_rate'])
       trainer = L.Trainer(max_epochs=hyperparameters['max_epochs'], log_every_n_steps=100, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
       trainer.fit(model, colmod)
 
