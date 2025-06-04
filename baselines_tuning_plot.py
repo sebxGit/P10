@@ -818,7 +818,7 @@ def objective(args, trial, study):
       train_loss = params['criterion'](torch.tensor(pred), torch.tensor(act))
 
     dates = colmod.val_dates[-len(pred):]
-    plt.figure(figsize=(8, 5))
+    plt.figure(figsize=(10, 5))
     plt.plot(dates, act, label='Actuals')
     plt.plot(dates, pred, label=f'predictions')
     plt.xlabel('Dates')
