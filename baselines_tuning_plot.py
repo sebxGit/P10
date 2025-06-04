@@ -659,16 +659,20 @@ def objective(args, trial, study):
     # 'max_epochs': 1900,
     # 'num_workers': 9
 
-        'batch_size': 48,                           # Batch size for training
-        'learning_rate': 0.00015659795416669107,    # Learning rate for the optimizer
-        'max_epochs': 1000,                         # Maximum number of epochs
-        'num_workers': 6,                           # Number of workers for data loading
-        'patch_len': 12,                            # Patch length for xPatch
-        'padding_patch': 'None',                    # Padding type for patches
-        'revin': 0,                                 # Reversible normalization flag
-        'ma_type': 'reg',                           # Moving average type
-        'alpha': 0.7972611256000964,                # Alpha parameter for xPatch
-        'beta': 0.17020757865248334,
+        'batch_size': 80,                           # Batch size for training
+        'learning_rate': 0.000737097364475848,      # Learning rate for the optimizer
+        'max_epochs': 1800,                         # Maximum number of epochs
+        'num_workers': 10,                          # Number of workers for data loading
+        'n_estimators': 113,                        # Number of estimators for Random Forest
+        'max_depth': 1,                             # Maximum depth of the trees
+        # Minimum samples required to split a node
+        'min_samples_split': 13,
+        # Minimum samples required in a leaf node
+        'min_samples_leaf': 15,
+        # Maximum features to consider for a split
+        'max_features': 0.1268005874199549,
+
+       
 
     }
         
@@ -709,11 +713,21 @@ def objective(args, trial, study):
       model = MultiOutputRegressor(AdaBoostRegressor(n_estimators=_params['n_estimators'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "RandomForest":
       _params = {
-        'n_estimators': trial.suggest_int('n_estimators', 50, 200),
-        'max_depth': trial.suggest_int('max_depth', 1, 20),
-        'min_samples_split': trial.suggest_int('min_samples_split', 2, 20),
-        'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 20),
-        'max_features': trial.suggest_float('max_features', 0.1, 1.0),
+        # 'n_estimators': trial.suggest_int('n_estimators', 50, 200),
+        # 'max_depth': trial.suggest_int('max_depth', 1, 20),
+        # 'min_samples_split': trial.suggest_int('min_samples_split', 2, 20),
+        # 'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 20),
+        # 'max_features': trial.suggest_float('max_features', 0.1, 1.0),
+        # Number of estimators for Random Forest
+        'n_estimators': params['n_estimators'],
+          # Maximum depth of the trees
+          'max_depth': params['max_depth'],
+          # Minimum samples required to split a node
+          'min_samples_split': params['min_samples_split'],
+          # Minimum samples required in a leaf node
+          'min_samples_leaf': params['min_samples_leaf'],
+          # Maximum features to consider for a split
+          'max_features': params['max_features'],
       }
       model =  MultiOutputRegressor(RandomForestRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], min_samples_leaf=_params['min_samples_leaf'], max_features=_params['max_features'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "GradientBoosting":
@@ -740,37 +754,16 @@ def objective(args, trial, study):
     elif args.model == "xPatch":
       params_xpatch = Configs(
         dict(
-        # seq_len=params['seq_len'],
-        # pred_len=params['pred_len'],
-        # enc_in=params['input_size'],
-        # patch_len=12,  # Fixed value from the dictionary
-        # stride=36,     # Fixed value from the dictionary
-        # padding_patch='None',  # Fixed value from the dictionary
-        # revin=0,       # Fixed value from the dictionary
-        # ma_type='reg', # Fixed value from the dictionary
-        # alpha=0.7972611256000964,  # Fixed value from the dictionary
-        # beta=0.17020757865248334   # Fixed value from the dictionary
-            # Batch size for training
-            seq_len=params['seq_len'],
-            pred_len=params['pred_len'],
-            enc_in=params['input_size'],
-            # Learning rate for the optimizer
-            learning_rate =  params['learning_rate'],
-            # Maximum number of epochs
-            max_epochs = params['max_epochs'],
-            # Number of workers for data loading
-            num_workers = params['num_workers'],
-            # Patch length for xPatch
-            patch_len = params['patch_len'],
-            stride = 36,                 # Stride for patching
-            # Padding type for patches
-            padding_patch = params['padding_patch'],
-            # Reversible normalization flag
-            revin = params['revin'],
-            ma_type = params['ma_type'],               # Moving average type
-            # Alpha parameter for xPatch
-            alpha = params['alpha'],
-            beta = params['beta'],
+        seq_len=params['seq_len'],
+        pred_len=params['pred_len'],
+        enc_in=params['input_size'],
+        patch_len=12,  # Fixed value from the dictionary
+        stride=36,     # Fixed value from the dictionary
+        padding_patch='None',  # Fixed value from the dictionary
+        revin=0,       # Fixed value from the dictionary
+        ma_type='reg', # Fixed value from the dictionary
+        alpha=0.7972611256000964,  # Fixed value from the dictionary
+        beta=0.17020757865248334   # Fixed value from the dictionary
     )
       )
       model = xPatch(params_xpatch)
