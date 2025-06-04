@@ -646,18 +646,17 @@ def objective(args, trial, study):
         'pred_len': args.pred_len,
         'seq_len': 24*7,
         'stride': args.pred_len,
-        'batch_size': 48,
         'criterion': torch.nn.L1Loss(),
         # 'criterion': torch.nn.HuberLoss(delta=0.25),
         'optimizer': torch.optim.Adam,
         'scaler': MinMaxScaler(),
-        
-        'learning_rate': 0.00015659795416669107,
-        'max_epochs': 1000,
-        'num_workers': 6,
-
         'seed': 42,
-        'is_persistent': True
+        'is_persistent': True,
+
+            'batch_size': 80,
+    'learning_rate': 0.008963332707659527,
+    'max_epochs': 1700,
+    'num_workers': 11,
     }
 
     if args.dataset == "Colorado":
@@ -689,8 +688,8 @@ def objective(args, trial, study):
       model = MLP(num_features=params['seq_len']*params['input_size'], seq_len=params['batch_size'], pred_len=params['pred_len'], hidden_size=trial.suggest_int('hidden_size', 25, 250, step=25))
     elif args.model == "AdaBoost":
       _params = {
-        'n_estimators': trial.suggest_int('n_estimators', 50, 200),
-        'learning_rate_model': trial.suggest_float('learning_rate_model', 0.01, 1.0),
+          'n_estimators': 61,  # Specific to model configuration
+          'learning_rate_model': 0.8546071447383281 
       }
       model = MultiOutputRegressor(AdaBoostRegressor(n_estimators=_params['n_estimators'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "RandomForest":
