@@ -659,17 +659,14 @@ def objective(args, trial, study):
     # 'max_epochs': 1900,
     # 'num_workers': 9
 
-        'batch_size': 48,                           # Batch size for training
-        'learning_rate': 0.00015659795416669107,    # Learning rate for the optimizer
-        'max_epochs': 1000,                         # Maximum number of epochs
-        'num_workers': 6,                           # Number of workers for data loading
-        'patch_len': 12,                            # Patch length for xPatch
-        'padding_patch': 'None',                    # Padding type for patches
-        'revin': 0,                                 # Reversible normalization flag
-        'ma_type': 'reg',                           # Moving average type
-        'alpha': 0.7972611256000964,                # Alpha parameter for xPatch
-        'beta': 0.17020757865248334,
-
+        'batch_size': 80,                           # Batch size for training
+        'learning_rate': 0.008963332707659527,      # Learning rate for the optimizer
+        'max_epochs': 1700,                         # Maximum number of epochs
+        'num_workers': 11,                          # Number of workers for data loading
+        'n_estimators': 61,                         # Number of estimators for AdaBoost
+        # Learning rate for the AdaBoost model
+        'learning_rate_model': 0.8546071447383281,
+  
     }
         
 
@@ -703,8 +700,12 @@ def objective(args, trial, study):
       model = MLP(num_features=params['seq_len']*params['input_size'], seq_len=params['batch_size'], pred_len=params['pred_len'], hidden_size=trial.suggest_int('hidden_size', 25, 250, step=25))
     elif args.model == "AdaBoost":
       _params = {
-          'n_estimators': 61,  # Specific to model configuration
-          'learning_rate_model': 0.8546071447383281 
+          # 'n_estimators': 61,  # Specific to model configuration
+          # 'learning_rate_model': 0.8546071447383281 
+          # Number of estimators for AdaBoost
+          'n_estimators': params['n_estimators'],
+          # Learning rate for the AdaBoost model
+          'learning_rate_model': params['learning_rate_model'],
       }
       model = MultiOutputRegressor(AdaBoostRegressor(n_estimators=_params['n_estimators'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "RandomForest":
@@ -740,37 +741,16 @@ def objective(args, trial, study):
     elif args.model == "xPatch":
       params_xpatch = Configs(
         dict(
-        # seq_len=params['seq_len'],
-        # pred_len=params['pred_len'],
-        # enc_in=params['input_size'],
-        # patch_len=12,  # Fixed value from the dictionary
-        # stride=36,     # Fixed value from the dictionary
-        # padding_patch='None',  # Fixed value from the dictionary
-        # revin=0,       # Fixed value from the dictionary
-        # ma_type='reg', # Fixed value from the dictionary
-        # alpha=0.7972611256000964,  # Fixed value from the dictionary
-        # beta=0.17020757865248334   # Fixed value from the dictionary
-            # Batch size for training
-            seq_len=params['seq_len'],
-            pred_len=params['pred_len'],
-            enc_in=params['input_size'],
-            # Learning rate for the optimizer
-            learning_rate =  params['learning_rate'],
-            # Maximum number of epochs
-            max_epochs = params['max_epochs'],
-            # Number of workers for data loading
-            num_workers = params['num_workers'],
-            # Patch length for xPatch
-            patch_len = params['patch_len'],
-            stride = 36,                 # Stride for patching
-            # Padding type for patches
-            padding_patch = params['padding_patch'],
-            # Reversible normalization flag
-            revin = params['revin'],
-            ma_type = params['ma_type'],               # Moving average type
-            # Alpha parameter for xPatch
-            alpha = params['alpha'],
-            beta = params['beta'],
+        seq_len=params['seq_len'],
+        pred_len=params['pred_len'],
+        enc_in=params['input_size'],
+        patch_len=12,  # Fixed value from the dictionary
+        stride=36,     # Fixed value from the dictionary
+        padding_patch='None',  # Fixed value from the dictionary
+        revin=0,       # Fixed value from the dictionary
+        ma_type='reg', # Fixed value from the dictionary
+        alpha=0.7972611256000964,  # Fixed value from the dictionary
+        beta=0.17020757865248334   # Fixed value from the dictionary
     )
       )
       model = xPatch(params_xpatch)
@@ -797,8 +777,8 @@ def objective(args, trial, study):
       tuned_model = LightningModel(model=model, criterion=params['criterion'], optimizer=params['optimizer'], learning_rate=params['learning_rate'])
 
       # Trainer for fitting using DDP - Multi GPU
-      # trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
-      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False)
+      trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
+      # trainer = L.Trainer(max_epochs=params['max_epochs'], log_every_n_steps=0, precision='16-mixed' if args.mixed == 'True' else None, enable_checkpointing=False)
 
 
       trainer.fit(tuned_model, colmod)
