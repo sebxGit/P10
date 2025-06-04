@@ -683,7 +683,7 @@ if __name__ == "__main__":
     if args.dataset == "Colorado":
       hyperparameters = ast.literal_eval(hparams[hparams['model'] == model_name].iloc[0].values[3])
     else:
-      hyperparameters = ast.literal_eval(hparams[hparams['model'] == model_name].iloc[0].values[5])
+      hyperparameters = ast.literal_eval(hparams[hparams['model'] == model_name].iloc[0].values[4])
 
     print(hyperparameters)
     if model_name == "DPAD": 
