@@ -659,10 +659,10 @@ def objective(args, trial, study):
         'seed': 42,
         'is_persistent': True,
 
-            'batch_size': 208,
-    'learning_rate': 0.0006554334484062519,
-    'max_epochs': 2000,
-    'num_workers': 8
+            'batch_size': 64,
+    "learning_rate": 0.0008146399215302535,
+    "max_epochs": 1700,
+    "num_workers": 6
     }
 
     if args.dataset == "Colorado":
@@ -678,10 +678,10 @@ def objective(args, trial, study):
 
     if args.model == "LSTM":
       _params = {
-    'hidden_size': 67,  # Model-specific parameter
-    'num_layers': 1,    # Model-specific parameter
-    'dropout': 0.27527815284264673  # Model-specific parameter
-      }
+    'hidden_size': 144,  # Model-specific parameter
+    'num_layers': 1,     # Model-specific parameter
+    'dropout': 0.624867070588652  # Model-specific parameter
+}
       model = LSTM(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "GRU":
       _params = {
@@ -700,12 +700,12 @@ def objective(args, trial, study):
       model = MultiOutputRegressor(AdaBoostRegressor(n_estimators=_params['n_estimators'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "RandomForest":
       _params = {
-        'n_estimators': trial.suggest_int('n_estimators', 50, 200),
-        'max_depth': trial.suggest_int('max_depth', 1, 20),
-        'min_samples_split': trial.suggest_int('min_samples_split', 2, 20),
-        'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 20),
-        'max_features': trial.suggest_float('max_features', 0.1, 1.0),
-      }
+    'n_estimators': 111,  # Model-specific parameter
+    'max_depth': 16,      # Model-specific parameter
+    'min_samples_split': 3,  # Model-specific parameter
+    'min_samples_leaf': 3,   # Model-specific parameter
+    'max_features': 0.9596702162606467  # Model-specific parameter
+}
       model =  MultiOutputRegressor(RandomForestRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], min_samples_leaf=_params['min_samples_leaf'], max_features=_params['max_features'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "GradientBoosting":
       _params = {
@@ -747,16 +747,16 @@ def objective(args, trial, study):
     elif args.model == "PatchMixer":
       _params = Configs({
           "enc_in": params['input_size'],                # Number of input channels
-          "seq_len": params['seq_len'],                 # Context window (lookback length)
-          "pred_len": params['pred_len'],
-          "batch_size": 48,                             # Fixed batch size
-          "patch_len": 32,                              # Fixed patch size
-          "stride": 9,                                  # Fixed stride for patching
-          "mixer_kernel_size": 2,                       # Fixed kernel size for the PatchMixer layer
-          "d_model": 128,                               # Fixed dimension of the model
-          "dropout": 0.35,                              # Fixed dropout rate for the model
-          "head_dropout": 0.0,                          # Fixed dropout rate for the head layers
-          "e_layers": 1,                                # Fixed number of PatchMixer layers (depth)
+    "seq_len": params['seq_len'],                 # Context window (lookback length)
+    "pred_len": params['pred_len'],
+    "batch_size": 64,                             # Fixed batch size
+    "patch_len": 32,                              # Fixed patch size
+    "stride": 6,                                  # Fixed stride for patching
+    "mixer_kernel_size": 6,                       # Fixed kernel size for the PatchMixer layer
+    "d_model": 960,                               # Fixed dimension of the model
+    "dropout": 0.4,                               # Fixed dropout rate for the model
+    "head_dropout": 0.0,                          # Fixed dropout rate for the head layers
+    "e_layers": 2,
       })
       model = PatchMixer(_params)
     else:
