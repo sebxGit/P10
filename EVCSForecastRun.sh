@@ -14,7 +14,7 @@ MODELS=("LSTM", "GRU", "AdaBoost", "RandomForest", "GradientBoosting", "xPatch",
 for model in "${MODELS[@]}"; do
     echo "Running model: $model"
     singularity exec --nv energycontainerblackbox.sif \
-        python3 baselines_tuning_classification.py \
+        python3 model_run.py \
         --model "$model" \
         --load False \
         --individual True \

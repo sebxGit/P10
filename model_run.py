@@ -405,6 +405,8 @@ class SDUDataModule(L.LightningDataModule):
     self.X_train_val = None
     self.y_train_val = None
 
+    self.test_dates = []
+
   def setup(self, stage: str):
     # Define the start and end dates
     # start_date = pd.to_datetime('2024-12-31')
@@ -514,6 +516,8 @@ class SDUDataModule(L.LightningDataModule):
     self.X_train_val, self.X_test, self.y_train_val, self.y_test = train_test_split( X, y, test_size=0.2, shuffle=False)
     self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(self.X_train_val, self.y_train_val, test_size=0.25, shuffle=False)
 
+    self.test_dates = self.X_test.index.tolist()
+
     preprocessing = self.scaler
     preprocessing.fit(self.X_train)  # should only fit to training data
 
@@ -540,17 +544,17 @@ class SDUDataModule(L.LightningDataModule):
     # train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return train_loader
 
-  # def predict_dataloader(self):
-  #   test_dataset = TimeSeriesDataset(self.X_test, self.y_test, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-  #   test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
-  #   return test_loader
-
   def predict_dataloader(self):
-    val_dataset = TimeSeriesDataset(
-        self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-    val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False,
-                            num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
-    return val_loader
+    test_dataset = TimeSeriesDataset(self.X_test, self.y_test, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+    test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    return test_loader
+
+  # def predict_dataloader(self):
+  #   val_dataset = TimeSeriesDataset(
+  #       self.X_val, self.y_val, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+  #   val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False,
+  #                           num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+  #   return val_loader
 
   def sklearn_setup(self, set_name: str = "train"):
     if set_name == "train":
@@ -638,7 +642,7 @@ def initialize_model(model_name, hyperparameters):
 
 parser = ArgumentParser()
 # parser.add_argument("--models", type=str, default="LSTM") # ['LSTM', 'GRU', 'PatchMixer', 'xPatch'] #['LSTM', 'GRU', 'PatchMixer', 'xPatch']
-parser.add_argument("--models", type=str, default="LSTM")
+parser.add_argument("--models", type=str, default="xPatch") # ['LSTM', 'GRU', 'PatchMixer', 'xPatch'] #['LSTM', 'GRU', 'PatchMixer', 'xPatch']
 parser.add_argument("--individual", type=str, default="True")
 parser.add_argument("--input_size", type=int, default=16)
 parser.add_argument("--pred_len", type=int, default=24)
@@ -672,7 +676,15 @@ if __name__ == "__main__":
     print(f"-----Training {model_name} model-----")
     hparams = pd.read_csv(file_path)
 
-    hyperparameters = ast.literal_eval(hparams[hparams['model'] == model_name].iloc[0].values[3])
+    if args.dataset == "Colorado":
+      hyperparameters = ast.literal_eval(hparams[hparams['model'] == model_name].iloc[0].values[3])
+    else:
+      hyperparameters = ast.literal_eval(hparams[hparams['model'] == model_name].iloc[0].values[6])
+
+
+    print(f"Hyperparameters for {model_name}: {hyperparameters}")
+    exit()
+
     if model_name == "DPAD": 
       hyperparameters['num_workers'] = 2
       hyperparameters['dropout'] = 0.5
@@ -691,7 +703,7 @@ if __name__ == "__main__":
     # model creates prediction
     if isinstance(model, torch.nn.Module):
       model = LightningModel(model=model, criterion=nn.HuberLoss(delta=0.25), optimizer=torch.optim.Adam, learning_rate=hyperparameters['learning_rate'])
-      trainer = L.Trainer(max_epochs=hyperparameters['max_epochs'], log_every_n_steps=100, precision='16-mixed', enable_checkpointing=False)
+      trainer = L.Trainer(max_epochs=hyperparameters['max_epochs'], log_every_n_steps=100, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
       trainer.fit(model, colmod)
 
       trainer = L.Trainer(max_epochs=hyperparameters['max_epochs'], log_every_n_steps=100, precision='16-mixed', enable_checkpointing=False, devices=1)
@@ -718,11 +730,15 @@ if __name__ == "__main__":
 
     actuals_flattened = [item for sublist in actuals for item in sublist]
 
+    dates = colmod.test_dates
+
+    dates = dates[-len(actuals_flattened):]
+    
     plt.figure(figsize=(15, 4))
-    plt.plot(actuals_flattened, label='Actuals')
-    plt.plot(y_pred, label=f'{combined_name} Predictions')
-    plt.xlabel('Samples')
-    plt.ylabel('Electricity Consumption (kW)')
+    plt.plot(dates, actuals_flattened, label='Actuals')
+    plt.plot(dates, y_pred, label=f'{combined_name} Predictions')
+    plt.xlabel('Dates')
+    plt.ylabel('Electricity Consumption (kWh)')
     plt.legend()
     plt.savefig(f'Predictions/{args.dataset}_{args.pred_len}h_{args.models}_predact_plot.png')
     plt.show()
