@@ -659,10 +659,10 @@ def objective(args, trial, study):
         'seed': 42,
         'is_persistent': True,
 
-            'batch_size': 80,
-    'learning_rate': 0.0024309462831591075,
-    'max_epochs': 2000,
-    'num_workers': 10
+            'batch_size': 64,
+    "learning_rate": 0.0008146399215302535,
+    "max_epochs": 1700,
+    "num_workers": 6
     }
 
     if args.dataset == "Colorado":
@@ -747,16 +747,16 @@ def objective(args, trial, study):
     elif args.model == "PatchMixer":
       _params = Configs({
           "enc_in": params['input_size'],                # Number of input channels
-          "seq_len": params['seq_len'],                 # Context window (lookback length)
-          "pred_len": params['pred_len'],
-          "batch_size": 48,                             # Fixed batch size
-          "patch_len": 32,                              # Fixed patch size
-          "stride": 9,                                  # Fixed stride for patching
-          "mixer_kernel_size": 2,                       # Fixed kernel size for the PatchMixer layer
-          "d_model": 128,                               # Fixed dimension of the model
-          "dropout": 0.35,                              # Fixed dropout rate for the model
-          "head_dropout": 0.0,                          # Fixed dropout rate for the head layers
-          "e_layers": 1,                                # Fixed number of PatchMixer layers (depth)
+    "seq_len": params['seq_len'],                 # Context window (lookback length)
+    "pred_len": params['pred_len'],
+    "batch_size": 64,                             # Fixed batch size
+    "patch_len": 32,                              # Fixed patch size
+    "stride": 6,                                  # Fixed stride for patching
+    "mixer_kernel_size": 6,                       # Fixed kernel size for the PatchMixer layer
+    "d_model": 960,                               # Fixed dimension of the model
+    "dropout": 0.4,                               # Fixed dropout rate for the model
+    "head_dropout": 0.0,                          # Fixed dropout rate for the head layers
+    "e_layers": 2,
       })
       model = PatchMixer(_params)
     else:
