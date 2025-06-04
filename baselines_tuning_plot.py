@@ -652,27 +652,26 @@ def objective(args, trial, study):
         'scaler': MinMaxScaler(),
         'seed': 42,
         'is_persistent': True,
+        
 
     #         'batch_size': 80,
     # 'learning_rate': 0.00544215587526865,
     # 'max_epochs': 1900,
     # 'num_workers': 9
-        'batch_size': 32,                           # Batch size for training
-        'learning_rate': 0.0006333956308102298,     # Learning rate for the optimizer
-        'max_epochs': 1200,                         # Maximum number of epochs
-        'num_workers': 10,                          # Number of workers for data loading
-        # Number of estimators for Gradient Boosting
-        'n_estimators': 144,
-        'max_depth': 18,                            # Maximum depth of the trees
-        # Minimum samples required to split a node
-        'min_samples_split': 15,
-        # Minimum samples required in a leaf node
-        'min_samples_leaf': 4,
-        # Maximum features to consider for a split
-        'max_features': 0.6592172883644293,
-        # Learning rate for the Gradient Boosting model
-        'learning_rate_model': 0.388634205880954,
+
+        'batch_size': 48,                           # Batch size for training
+        'learning_rate': 0.00015659795416669107,    # Learning rate for the optimizer
+        'max_epochs': 1000,                         # Maximum number of epochs
+        'num_workers': 6,                           # Number of workers for data loading
+        'patch_len': 12,                            # Patch length for xPatch
+        'padding_patch': 'None',                    # Padding type for patches
+        'revin': 0,                                 # Reversible normalization flag
+        'ma_type': 'reg',                           # Moving average type
+        'alpha': 0.7972611256000964,                # Alpha parameter for xPatch
+        'beta': 0.17020757865248334,
+
     }
+        
 
     if args.dataset == "Colorado":
       colmod = ColoradoDataModule(data_dir='Colorado/Preprocessing/TestDataset/CleanedColoradoData.csv', scaler=params['scaler'], seq_len=params['seq_len'], pred_len=params['pred_len'], stride=params['stride'], batch_size=params['batch_size'], num_workers=params['num_workers'], is_persistent=params['is_persistent'])
@@ -687,9 +686,9 @@ def objective(args, trial, study):
 
     if args.model == "LSTM":
       _params = {
-    # 'hidden_size': 67,  # Model-specific parameter
-    # 'num_layers': 1,    # Model-specific parameter
-    # 'dropout': 0.27527815284264673  # Model-specific parameter
+    'hidden_size': 67,  # Model-specific parameter
+    'num_layers': 1,    # Model-specific parameter
+    'dropout': 0.27527815284264673  # Model-specific parameter
     
       }
       model = LSTM(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
@@ -719,27 +718,15 @@ def objective(args, trial, study):
       model =  MultiOutputRegressor(RandomForestRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], min_samples_leaf=_params['min_samples_leaf'], max_features=_params['max_features'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "GradientBoosting":
       _params = {
-          # Number of estimators for Gradient Boosting
-          'n_estimators': params['n_estimators'],
-          # Maximum depth of the trees
-          'max_depth': params['max_depth'],
-          # Minimum samples required to split a node
-          'min_samples_split': params['min_samples_split'],
-          # Minimum samples required in a leaf node
-          'min_samples_leaf': params['min_samples_leaf'],
-          # Maximum features to consider for a split
-          'max_features': params['max_features'],
-          'learning_rate_model': params['learning_rate_model'],
-        # 'n_estimators': trial.suggest_int('n_estimators', 100, 500),
-        # 'max_depth': trial.suggest_int('max_depth', 1, 10),
-        # 'min_samples_split': trial.suggest_int('min_samples_split', 2, 20),
-        # 'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 20),
-        # 'max_features': trial.suggest_float('max_features', 0.1, 1.0),
-        # 'learning_rate_model': trial.suggest_float('learning_rate_model', 0.01, 1.0),
-        # 'subsample': trial.suggest_float('subsample', 0.3, 1.0),
+        'n_estimators': trial.suggest_int('n_estimators', 100, 500),
+        'max_depth': trial.suggest_int('max_depth', 1, 10),
+        'min_samples_split': trial.suggest_int('min_samples_split', 2, 20),
+        'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 20),
+        'max_features': trial.suggest_float('max_features', 0.1, 1.0),
+        'learning_rate_model': trial.suggest_float('learning_rate_model', 0.01, 1.0),
+        'subsample': trial.suggest_float('subsample', 0.3, 1.0),
       }
-      model = MultiOutputRegressor(GradientBoostingRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], min_samples_leaf=_params['min_samples_leaf'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
-      # model = MultiOutputRegressor(GradientBoostingRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], subsample=_params['subsample'], min_samples_leaf=_params['min_samples_leaf'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
+      model = MultiOutputRegressor(GradientBoostingRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], subsample=_params['subsample'], min_samples_leaf=_params['min_samples_leaf'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "DPAD":
         _params = {
           'enc_hidden': trial.suggest_int('enc_hidden', 108, 324, step=24),
@@ -753,16 +740,35 @@ def objective(args, trial, study):
     elif args.model == "xPatch":
       params_xpatch = Configs(
         dict(
-        seq_len=params['seq_len'],
-        pred_len=params['pred_len'],
-        enc_in=params['input_size'],
-        patch_len=12,  # Fixed value from the dictionary
-        stride=36,     # Fixed value from the dictionary
-        padding_patch='None',  # Fixed value from the dictionary
-        revin=0,       # Fixed value from the dictionary
-        ma_type='reg', # Fixed value from the dictionary
-        alpha=0.7972611256000964,  # Fixed value from the dictionary
-        beta=0.17020757865248334   # Fixed value from the dictionary
+        # seq_len=params['seq_len'],
+        # pred_len=params['pred_len'],
+        # enc_in=params['input_size'],
+        # patch_len=12,  # Fixed value from the dictionary
+        # stride=36,     # Fixed value from the dictionary
+        # padding_patch='None',  # Fixed value from the dictionary
+        # revin=0,       # Fixed value from the dictionary
+        # ma_type='reg', # Fixed value from the dictionary
+        # alpha=0.7972611256000964,  # Fixed value from the dictionary
+        # beta=0.17020757865248334   # Fixed value from the dictionary
+            # Batch size for training
+            batch_size = params['batch_size'],
+            # Learning rate for the optimizer
+            learning_rate =  params['learning_rate'],
+            # Maximum number of epochs
+            max_epochs = params['max_epochs'],
+            # Number of workers for data loading
+            num_workers = params['num_workers'],
+            # Patch length for xPatch
+            patch_len = params['patch_len'],
+            stride = 36,                 # Stride for patching
+            # Padding type for patches
+            padding_patch = params['padding_patch'],
+            # Reversible normalization flag
+            revin = params['revin'],
+            ma_type = params['ma_type'],               # Moving average type
+            # Alpha parameter for xPatch
+            alpha = params['alpha'],
+            beta = params['beta'],
     )
       )
       model = xPatch(params_xpatch)
