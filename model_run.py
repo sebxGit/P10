@@ -683,7 +683,6 @@ if __name__ == "__main__":
 
 
     print(f"Hyperparameters for {model_name}: {hyperparameters}")
-    exit()
 
     if model_name == "DPAD": 
       hyperparameters['num_workers'] = 2
