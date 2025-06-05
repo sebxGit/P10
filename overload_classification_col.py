@@ -791,8 +791,8 @@ if __name__ == "__main__":
 
       df_pred_act = df_pred_act.iloc[-300:]
 
-    baseloads = [df]
-    dfs = [df_pred_act]
+      baseloads = [df]
+      dfs = [df_pred_act]
 
     for i, (baseload, df) in enumerate(zip(baseloads, dfs)):
       if args.dataset == "Colorado":
