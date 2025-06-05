@@ -712,16 +712,16 @@ def objective(args, trial, study):
         # 'num_workers': 10,
         'is_persistent': True,
 
-        'batch_size': 144,
+        'batch_size': 96,
         'num_workers': 10,
-        'learning_rate': 0.0008285155531289423,
-        'max_epochs': 1400,
-        'patch_len': 8,
-        'mixer_kernel_size': 16,
-        'd_model': 320,
-        'dropout': 0.8,
-        'head_dropout': 0.1,
-        'e_layers': 4
+        'learning_rate': 0.004895508586161393,
+        'max_epochs': 1900,
+        'patch_len': 14,
+        'padding_patch': 'None',
+        'revin': 0,
+        'ma_type': 'reg',
+        'alpha': 0.9217499028959255,
+        'beta': 0.29425111586615627
 
 
 
@@ -796,13 +796,20 @@ def objective(args, trial, study):
         seq_len = params['seq_len'],
         pred_len = params['pred_len'],
         enc_in = params['input_size'],
-        patch_len = trial.suggest_int('patch_len', 2, 16, step=2),
-        stride=trial.suggest_int('stride', 1, 7, step=2),
-        padding_patch = trial.suggest_categorical('padding_patch', ['end', 'None']),
-        revin = trial.suggest_int('revin', 0, 1),
-        ma_type = trial.suggest_categorical('ma_type', ['reg', 'ema']),
-        alpha = trial.suggest_float('alpha', 0.0, 1.0),
-        beta = trial.suggest_float('beta', 0.0, 1.0),
+        # patch_len = trial.suggest_int('patch_len', 2, 16, step=2),
+        # stride=trial.suggest_int('stride', 1, 7, step=2),
+        # padding_patch = trial.suggest_categorical('padding_patch', ['end', 'None']),
+        # revin = trial.suggest_int('revin', 0, 1),
+        # ma_type = trial.suggest_categorical('ma_type', ['reg', 'ema']),
+        # alpha = trial.suggest_float('alpha', 0.0, 1.0),
+        # beta = trial.suggest_float('beta', 0.0, 1.0),
+            patch_len =  params['patch_len'],
+            stride = 7,
+            padding_patch = params['padding_patch'],
+            revin = params['revin'],
+            ma_type = params['ma_type'],
+            alpha =  params['alpha'],
+            beta =  params['beta']
         )
       )
       model = xPatch(params_xpatch)
@@ -812,20 +819,14 @@ def objective(args, trial, study):
         "seq_len": params['seq_len'],               # Context window (lookback length)
         "pred_len": params['pred_len'],
         "batch_size": params['batch_size'],
-        # "patch_len": trial.suggest_int("patch_len", 4, 32, step=4),  # Patch size
-        # "stride": trial.suggest_int("stride", 2, 16, step=2),  # Stride for patching
-        # "mixer_kernel_size": trial.suggest_int("mixer_kernel_size", 2, 16, step=2),  # Kernel size for the PatchMixer layer
-        # "d_model": trial.suggest_int("d_model", 128, 1024, step=64),  # Dimension of the model
-        # "dropout": trial.suggest_float("dropout", 0.0, 0.8, step=0.1),  # Dropout rate for the model
-        # "head_dropout": trial.suggest_float("head_dropout", 0.0, 0.8, step=0.1),  # Dropout rate for the head layers
-        # "e_layers": trial.suggest_int("e_layers", 1, 10),  # Number of PatchMixer layers (depth)
-        'patch_len': params['patch_len'],
-          'stride': 14,
-          'mixer_kernel_size': params['mixer_kernel_size'],
-          'd_model': params['d_model'],
-          'dropout': params['dropout'],
-          'head_dropout': params['head_dropout'],
-          'e_layers': params['e_layers']
+        "patch_len": trial.suggest_int("patch_len", 4, 32, step=4),  # Patch size
+        "stride": trial.suggest_int("stride", 2, 16, step=2),  # Stride for patching
+        "mixer_kernel_size": trial.suggest_int("mixer_kernel_size", 2, 16, step=2),  # Kernel size for the PatchMixer layer
+        "d_model": trial.suggest_int("d_model", 128, 1024, step=64),  # Dimension of the model
+        "dropout": trial.suggest_float("dropout", 0.0, 0.8, step=0.1),  # Dropout rate for the model
+        "head_dropout": trial.suggest_float("head_dropout", 0.0, 0.8, step=0.1),  # Dropout rate for the head layers
+        "e_layers": trial.suggest_int("e_layers", 1, 10),  # Number of PatchMixer layers (depth)
+        
       })
       model = PatchMixer(_params)
     else:
