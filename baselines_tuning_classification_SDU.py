@@ -719,7 +719,6 @@ def objective(args, trial, study):
         'learning_rate': 0.0008285155531289423,
         'max_epochs': 1400,
         'patch_len': 8,
-        'stride': 14,
         'mixer_kernel_size': 16,
         'd_model': 320,
         'dropout': 0.8,
