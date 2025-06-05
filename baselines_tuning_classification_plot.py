@@ -712,13 +712,19 @@ def objective(args, trial, study):
         # 'num_workers': 10,
         'is_persistent': True,
 
-        'batch_size': 128,
+
+        'batch_size': 192,
         'num_workers': 10,
-        'learning_rate': 0.0036149068236998,
-        'max_epochs': 1800,
-        'hidden_size': 156,
-        'num_layers': 1,
-        'dropout': 0.3070727620397399
+        'learning_rate': 0.0005934535032636055,
+        'max_epochs': 1400,
+        'n_estimators': 488,
+        'max_depth': 1,
+        'min_samples_split': 17,
+        'min_samples_leaf': 6,
+        'max_features': 0.6098031852726209,
+        'learning_rate_model': 0.9488819068920191,
+        'subsample': 0.9070970684413281
+        
 
 
 
@@ -744,12 +750,9 @@ def objective(args, trial, study):
       model = LSTM(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "GRU":
       _params = {
-          # 'hidden_size': trial.suggest_int('hidden_size', 50, 200),
-          # 'num_layers': trial.suggest_int('num_layers', 1, 10),
-          # 'dropout': trial.suggest_float('dropout', 0.0, 1),
-          'hidden_size': params['hidden_size'],
-          'num_layers': params['num_layers'],
-          'dropout': params['dropout']
+          'hidden_size': trial.suggest_int('hidden_size', 50, 200),
+          'num_layers': trial.suggest_int('num_layers', 1, 10),
+          'dropout': trial.suggest_float('dropout', 0.0, 1),
       }
       model = GRU(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "MLP":
@@ -771,13 +774,20 @@ def objective(args, trial, study):
       model =  MultiOutputRegressor(RandomForestRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], min_samples_leaf=_params['min_samples_leaf'], max_features=_params['max_features'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "GradientBoosting":
       _params = {
-        'n_estimators': trial.suggest_int('n_estimators', 100, 500),
-        'max_depth': trial.suggest_int('max_depth', 1, 10),
-        'min_samples_split': trial.suggest_int('min_samples_split', 2, 20),
-        'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 20),
-        'max_features': trial.suggest_float('max_features', 0.1, 1.0),
-        'learning_rate_model': trial.suggest_float('learning_rate_model', 0.01, 1.0),
-        'subsample': trial.suggest_float('subsample', 0.7, 1.0),
+        # 'n_estimators': trial.suggest_int('n_estimators', 100, 500),
+        # 'max_depth': trial.suggest_int('max_depth', 1, 10),
+        # 'min_samples_split': trial.suggest_int('min_samples_split', 2, 20),
+        # 'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 20),
+        # 'max_features': trial.suggest_float('max_features', 0.1, 1.0),
+        # 'learning_rate_model': trial.suggest_float('learning_rate_model', 0.01, 1.0),
+        # 'subsample': trial.suggest_float('subsample', 0.7, 1.0),
+        'n_estimators': params['n_estimators'],
+          'max_depth': params['max_depth'],
+          'min_samples_split': params['min_samples_split'],
+          'min_samples_leaf': params['min_samples_leaf'],
+          'max_features': params['max_features'],
+          'learning_rate_model': params['learning_rate_model'],
+          'subsample': params['subsample']
       }
       model = MultiOutputRegressor(GradientBoostingRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], subsample=_params['subsample'], min_samples_leaf=_params['min_samples_leaf'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "DPAD":
