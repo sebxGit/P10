@@ -664,16 +664,14 @@ def objective(args, trial, study):
     # "max_epochs": 1700,
     # "num_workers": 6
 
-        'batch_size': 208,
-        'learning_rate': 0.0006554334484062519,
-        'max_epochs': 2000,
-        'num_workers': 8,
-        'patch_len': 16,
-        'padding_patch': 'None',
-        'revin': 0,
-        'ma_type': 'reg',
-        'alpha': 0.6803081419478867,
-        'beta': 0.7493277554345201
+        'batch_size': 112,
+        'learning_rate': 0.001180923466722264,
+        'max_epochs': 1100,
+        'num_workers': 9,
+        'n_estimators': 151,
+        'learning_rate_model': 0.9143031551070804
+
+        
     }
 
     if args.dataset == "Colorado":
@@ -705,8 +703,10 @@ def objective(args, trial, study):
       model = MLP(num_features=params['seq_len']*params['input_size'], seq_len=params['batch_size'], pred_len=params['pred_len'], hidden_size=trial.suggest_int('hidden_size', 25, 250, step=25))
     elif args.model == "AdaBoost":
       _params = {
-          'n_estimators': 61,  # Specific to model configuration
-          'learning_rate_model': 0.8546071447383281 
+          # 'n_estimators': 61,  # Specific to model configuration
+          # 'learning_rate_model': 0.8546071447383281 
+          'n_estimators': params['n_estimators'],
+          'learning_rate_model': params['learning_rate_model']
       }
       model = MultiOutputRegressor(AdaBoostRegressor(n_estimators=_params['n_estimators'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "RandomForest":
@@ -745,18 +745,14 @@ def objective(args, trial, study):
         seq_len=params['seq_len'],
         pred_len=params['pred_len'],
         enc_in=params['input_size'],
-        # patch_len=16,  # Fixed value from the dictionary
-        # stride=5,      # Fixed value from the dictionary
-        # padding_patch='None',  # Fixed value from the dictionary
+        patch_len=16,  # Fixed value from the dictionary
+        stride=5,      # Fixed value from the dictionary
+        padding_patch='None',  # Fixed value from the dictionary
         revin=0,       # Fixed value from the dictionary
         ma_type='reg', # Fixed value from the dictionary
-        # alpha=0.6803081419478867,  # Fixed value from the dictionary
-        # beta=0.7493277554345201    # Fixed value from the dictionary
-            patch_len = params['patch_len'],
-            stride = 5,
-            padding_patch = params['padding_patch'],
-            alpha =  params['alpha'],
-            beta = params['beta']
+        alpha=0.6803081419478867,  # Fixed value from the dictionary
+        beta=0.7493277554345201    # Fixed value from the dictionary
+           
     )
       )
       model = xPatch(params_xpatch)
