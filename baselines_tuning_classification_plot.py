@@ -793,6 +793,7 @@ def objective(args, trial, study):
         dict(
     seq_len=params['seq_len'],
     pred_len=params['pred_len'],
+    enc_in=params['input_size'],
     batch_size=params['batch_size'],
     patch_len=48,
     stride=24,
