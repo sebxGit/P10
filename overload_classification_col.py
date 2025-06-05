@@ -809,7 +809,9 @@ if __name__ == "__main__":
       actuals = np.array(actuals_flat) + baseload
       predictions = np.array(y_pred) + baseload
       
-      dates = colmod.test_dates[-300:]
+      
+      dates = df.index
+
       plt.figure(figsize=(11, 5))
       plt.plot(dates, actuals, label='Actuals+baseload')
       plt.plot(dates, predictions, label=f'{combined_name}+baseload')
