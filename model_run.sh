@@ -8,4 +8,4 @@
 #SBATCH --cpus-per-task=128
 #SBATCH --mem=192G
 
-singularity exec --nv energycontainerblackbox.sif python3 model_run.py
+singularity exec --nv energycontainerblackbox.sif python3 model_run.py --model "['GRU', 'xPatch', 'PatchMixer']" ---individual False --dataset SDU
