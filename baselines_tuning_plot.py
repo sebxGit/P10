@@ -661,7 +661,7 @@ def objective(args, trial, study):
 
         'batch_size': 128,                          # Batch size for training
         'learning_rate': 0.002183521345460817,      # Learning rate for the optimizer
-        'max_epochs': 1,                            # Maximum number of epochs
+        'max_epochs': 1600,                            # Maximum number of epochs
         'num_workers': 9,                           # Number of workers for data loading
         'hidden_size': 143,                         # Hidden size for GRU layers
         'num_layers': 1,                            # Number of GRU layers
