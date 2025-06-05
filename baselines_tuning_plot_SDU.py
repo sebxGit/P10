@@ -819,15 +819,30 @@ def objective(args, trial, study):
       
       train_loss = params['criterion'](torch.tensor(pred), torch.tensor(act))
 
+    # dates = colmod.val_dates[-len(pred):]
+    # plt.figure(figsize=(15, 4))
+    # plt.plot(dates, act, label='Actuals')
+    # plt.plot(dates, pred, label=f'predictions')
+    # plt.xlabel('Dates')
+    # plt.ylabel('Electricity Consumption (kWh)')
+    # plt.legend()
+    # plt.tight_layout()
+    # plt.savefig(f'Predictions/{args.dataset}_{args.model}_{train_loss}_plot.png')
+    # plt.show()
+    # plt.clf()
+    # plt.close()
+    # print(f"model: {args.model}, loss: {train_loss}")
+    # exit()
     dates = colmod.val_dates[-len(pred):]
-    plt.figure(figsize=(15, 4))
+    plt.figure(figsize=(11, 5))
     plt.plot(dates, act, label='Actuals')
     plt.plot(dates, pred, label=f'predictions')
     plt.xlabel('Dates')
     plt.ylabel('Electricity Consumption (kWh)')
     plt.legend()
     plt.tight_layout()
-    plt.savefig(f'Predictions/{args.dataset}_{args.model}_{train_loss}_plot.png')
+    plt.savefig(
+        f'Predictions/{args.dataset}_{args.model}_{train_loss}_plot.png')
     plt.show()
     plt.clf()
     plt.close()
