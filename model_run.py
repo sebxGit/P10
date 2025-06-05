@@ -536,13 +536,14 @@ class SDUDataModule(L.LightningDataModule):
       self.y_test = np.array(self.y_test)
 
   def train_dataloader(self):
-    train_dataset = TimeSeriesDataset(self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-    if args.individual == "True":
-      train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
-    else:
-      sampler = BootstrapSampler(len(train_dataset), random_state=SEED)
-      train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
-    return train_loader  
+    train_dataset = TimeSeriesDataset(
+        self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+    sampler = BootstrapSampler(len(train_dataset), random_state=SEED)
+    train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler,
+                              shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
+    # train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    return train_loader
+  
 
   def predict_dataloader(self):
     test_dataset = TimeSeriesDataset(self.X_test, self.y_test, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
@@ -642,8 +643,7 @@ def initialize_model(model_name, hyperparameters):
 
 parser = ArgumentParser()
 # parser.add_argument("--models", type=str, default="LSTM") # ['LSTM', 'GRU', 'PatchMixer', 'xPatch'] #['LSTM', 'GRU', 'PatchMixer', 'xPatch']
-# ['LSTM', 'GRU', 'PatchMixer', 'xPatch'] #['LSTM', 'GRU', 'PatchMixer', 'xPatch']
-parser.add_argument("--models", type=str, default="['GRU', 'xPatch', 'PatchMixer']")
+parser.add_argument("--models", type=str, default="['GRU', 'xPatch', 'PatchMixer']") # ['LSTM', 'GRU', 'PatchMixer', 'xPatch'] #['LSTM', 'GRU', 'PatchMixer', 'xPatch']
 parser.add_argument("--individual", type=str, default="False")
 parser.add_argument("--input_size", type=int, default=16)
 parser.add_argument("--pred_len", type=int, default=24)
