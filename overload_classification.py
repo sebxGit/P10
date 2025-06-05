@@ -816,7 +816,7 @@ if __name__ == "__main__":
       predictions = np.array(y_pred) + baseload
       
       # dates = colmod.test_dates[0:300]
-      dates = colmod.test_dates
+      dates = colmod.test_dates[:len(actuals_flat)]
 
       plt.figure(figsize=(11, 5))
       plt.plot(dates, actuals, label='Actuals+baseload')
