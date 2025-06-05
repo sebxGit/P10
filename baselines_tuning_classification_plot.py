@@ -898,7 +898,6 @@ def objective(args, trial, study):
     plt.figure(figsize=(11, 5))
     plt.plot(dates, actuals, label='Actuals')
     plt.plot(dates, predictions, label=f'Predictions')
-    plt.plot(dates, baseload, label='Baseload')
     plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
     plt.xlabel('Dates')
     plt.ylabel('Electricity Consumption (kWh)')
