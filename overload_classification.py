@@ -542,10 +542,12 @@ class SDUDataModule(L.LightningDataModule):
   def train_dataloader(self):
     train_dataset = TimeSeriesDataset(
         self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-    sampler = BootstrapSampler(len(train_dataset), random_state=SEED)
-    train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler,
-                              shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
-    # train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    if args.individual == "True":
+      train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False,
+                                num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    else:
+      sampler = BootstrapSampler(len(train_dataset), random_state=SEED)
+      train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
     return train_loader
 
   def predict_dataloader(self):
@@ -641,8 +643,8 @@ def initialize_model(model_name, hyperparameters):
   return model_dict[model_name]()
 
 parser = ArgumentParser()
-parser.add_argument("--models", type=str, default="PatchMixer")
-parser.add_argument("--individual", type=str, default="True")
+parser.add_argument("--models", type=str, default="['GradientBoostingRegressor', 'LSTM']")
+parser.add_argument("--individual", type=str, default="False")
 parser.add_argument("--input_size", type=int, default=16)
 parser.add_argument("--pred_len", type=int, default=24)
 parser.add_argument("--seq_len", type=int, default=24*7)
@@ -703,8 +705,13 @@ if __name__ == "__main__":
 
     # model creates prediction
     if isinstance(model, torch.nn.Module):
-      model = LightningModel(model=model, criterion=torch.nn.HuberLoss(delta=0.25), optimizer=torch.optim.Adam, learning_rate=hyperparameters['learning_rate'])
-      trainer = L.Trainer(max_epochs=hyperparameters['max_epochs'], log_every_n_steps=100, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
+      if args.dataset == "SDU":
+        model = LightningModel(model=model, criterion=torch.nn.HuberLoss(delta=0.25), optimizer=torch.optim.Adam, learning_rate=hyperparameters['learning_rate'])
+      else:
+        model = LightningModel(model=model, criterion=torch.nn.L1Loss(), optimizer=torch.optim.Adam, learning_rate=hyperparameters['learning_rate'])
+
+      trainer = L.Trainer(max_epochs=hyperparameters['max_epochs'], log_every_n_steps=100,
+                          precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
       trainer.fit(model, colmod)
 
       trainer = L.Trainer(max_epochs=hyperparameters['max_epochs'], log_every_n_steps=100, precision='16-mixed', enable_checkpointing=False, devices=1)
