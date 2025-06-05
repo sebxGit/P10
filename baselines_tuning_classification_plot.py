@@ -790,7 +790,7 @@ def objective(args, trial, study):
         model = DPAD_GCN(input_len=params['seq_len'], output_len=params['pred_len'], input_dim=params['input_size'], enc_hidden=_params['enc_hidden'], dec_hidden=_params['dec_hidden'], dropout=_params['dropout'], num_levels=_params['num_levels'], K_IMP=_params['K_IMP'], RIN=_params['RIN'])
     elif args.model == "xPatch":
       params_xpatch = Configs(
-        dict(
+        {
 'patch_len': 48,
     'stride': 24,
     'padding_patch': 'None',
@@ -798,7 +798,7 @@ def objective(args, trial, study):
     'ma_type': 'reg',
     'alpha': 0.8205177177113407,
     'beta': 0.5824502202238674
-        )
+        }
       )
       model = xPatch(params_xpatch)
     elif args.model == "PatchMixer":
