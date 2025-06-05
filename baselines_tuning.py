@@ -798,7 +798,7 @@ def objective(args, trial, study):
     plt.ylabel('Electricity Consumption (kWh)')
     plt.legend()
     plt.tight_layout()
-    plt.savefig(f'Predictions/{args.dataset}_{train_loss}_plot.png')
+    plt.savefig(f'Predictions/{args.dataset}_{train_loss}_{mae}_plot.png')
     plt.show()
     plt.clf()
     plt.close()
@@ -806,17 +806,6 @@ def objective(args, trial, study):
     if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials) and train_loss <= study.best_value:
       best_list.clear()
       best_list.append({'mae': mae, 'mse': mse, 'huber_loss': huber_loss.item(), 'params': trial.params})
-
-      plt.figure(figsize=(10, 5))
-      plt.plot(act, label='Actuals')
-      plt.plot(pred, label='Predictions')
-      plt.title(f'{args.model} tuning')
-      plt.xlabel('Samples')
-      plt.ylabel('Electricity Consumption (kWh)')
-      plt.legend()
-      plt.tight_layout()
-      plt.savefig(f"Tunings/test_plot{args.model}_trial_{trial.number}.png")
-      plt.show()
 
     return train_loss
 
@@ -873,9 +862,9 @@ def tune_model_with_optuna(args, n_trials):
 
 if __name__ == '__main__':
   parser = ArgumentParser()
-  parser.add_argument("--dataset", type=str, default="Colorado")
+  parser.add_argument("--dataset", type=str, default="SDU")
   parser.add_argument("--pred_len", type=int, default=24)
-  parser.add_argument("--model", type=str, default="PatchMixer")
+  parser.add_argument("--model", type=str, default="DPAD")
   parser.add_argument("--load", type=str, default='False')
   parser.add_argument("--mixed", type=str, default='True')
   parser.add_argument("--individual", type=str, default="True")
