@@ -659,10 +659,21 @@ def objective(args, trial, study):
         'seed': 42,
         'is_persistent': True,
 
-            'batch_size': 64,
-    "learning_rate": 0.0008146399215302535,
-    "max_epochs": 1700,
-    "num_workers": 6
+    #         'batch_size': 64,
+    # "learning_rate": 0.0008146399215302535,
+    # "max_epochs": 1700,
+    # "num_workers": 6
+
+        'batch_size': 208,
+        'learning_rate': 0.0006554334484062519,
+        'max_epochs': 2000,
+        'num_workers': 8,
+        'patch_len': 16,
+        'padding_patch': 'None',
+        'revin': 0,
+        'ma_type': 'reg',
+        'alpha': 0.6803081419478867,
+        'beta': 0.7493277554345201
     }
 
     if args.dataset == "Colorado":
@@ -734,13 +745,18 @@ def objective(args, trial, study):
         seq_len=params['seq_len'],
         pred_len=params['pred_len'],
         enc_in=params['input_size'],
-        patch_len=16,  # Fixed value from the dictionary
-        stride=5,      # Fixed value from the dictionary
-        padding_patch='None',  # Fixed value from the dictionary
+        # patch_len=16,  # Fixed value from the dictionary
+        # stride=5,      # Fixed value from the dictionary
+        # padding_patch='None',  # Fixed value from the dictionary
         revin=0,       # Fixed value from the dictionary
         ma_type='reg', # Fixed value from the dictionary
-        alpha=0.6803081419478867,  # Fixed value from the dictionary
-        beta=0.7493277554345201    # Fixed value from the dictionary
+        # alpha=0.6803081419478867,  # Fixed value from the dictionary
+        # beta=0.7493277554345201    # Fixed value from the dictionary
+            patch_len = params['patch_len'],
+            stride = 5,
+            padding_patch = params['padding_patch'],
+            alpha =  params['alpha'],
+            beta = params['beta']
     )
       )
       model = xPatch(params_xpatch)
