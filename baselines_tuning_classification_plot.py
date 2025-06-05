@@ -712,9 +712,9 @@ def objective(args, trial, study):
         'num_workers': 10,
         'is_persistent': True,
          
-            'batch_size': 192,
-    'learning_rate': 0.0029608318844730765,
-    'max_epochs': 1500
+    'batch_size': 256,
+    'learning_rate': 0.00416833788862982,
+    'max_epochs': 2000
     }
 
     if args.dataset == "Colorado":
@@ -737,9 +737,9 @@ def objective(args, trial, study):
       model = LSTM(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "GRU":
       _params = {
-          'hidden_size': trial.suggest_int('hidden_size', 50, 200),
-          'num_layers': trial.suggest_int('num_layers', 1, 10),
-          'dropout': trial.suggest_float('dropout', 0.0, 1),
+    'hidden_size': 103,
+    'num_layers': 1,
+    'dropout': 0.47421195537747074
       }
       model = GRU(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "MLP":
