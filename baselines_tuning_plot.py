@@ -660,16 +660,18 @@ def objective(args, trial, study):
     # 'num_workers': 9
 
         'batch_size': 48,                           # Batch size for training
-        'learning_rate': 0.00021128018387968383,    # Learning rate for the optimizer
-        'max_epochs': 1200,                         # Maximum number of epochs
+        'learning_rate': 0.0001483174723491183,     # Learning rate for the optimizer
+        'max_epochs': 1,                            # Maximum number of epochs
         'num_workers': 8,                           # Number of workers for data loading
-        'patch_len': 32,                            # Patch length for PatchMixer
-        'mixer_kernel_size': 2,                     # Kernel size for the PatchMixer layer
-        'd_model': 128,                             # Dimension of the model
-        'dropout': 0.35,                            # Dropout rate for the model
-        'head_dropout': 0.0,                        # Dropout rate for the head layers
-        'e_layers': 1,
+        'n_estimators': 63,                         # Number of estimators for Random Forest
+        'max_depth': 13,                            # Maximum depth of the trees
+        # Minimum samples required to split a node
+        'min_samples_split': 2,
+        # Minimum samples required in a leaf node
+        'min_samples_leaf': 19,
+        'max_features': 0.9794293248463268,
 
+        
         
     }
         
@@ -710,11 +712,20 @@ def objective(args, trial, study):
       model = MultiOutputRegressor(AdaBoostRegressor(n_estimators=_params['n_estimators'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "RandomForest":
       _params = {
-        'n_estimators': trial.suggest_int('n_estimators', 50, 200),
-        'max_depth': trial.suggest_int('max_depth', 1, 20),
-        'min_samples_split': trial.suggest_int('min_samples_split', 2, 20),
-        'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 20),
-        'max_features': trial.suggest_float('max_features', 0.1, 1.0),
+        # 'n_estimators': trial.suggest_int('n_estimators', 50, 200),
+        # 'max_depth': trial.suggest_int('max_depth', 1, 20),
+        # 'min_samples_split': trial.suggest_int('min_samples_split', 2, 20),
+        # 'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 20),
+        # 'max_features': trial.suggest_float('max_features', 0.1, 1.0),
+        # Number of estimators for Random Forest
+        'n_estimators': params['n_estimators'],
+          # Maximum depth of the trees
+          'max_depth': params['max_depth'],
+          # Minimum samples required to split a node
+          'min_samples_split': params['min_samples_split'],
+          # Minimum samples required in a leaf node
+          'min_samples_leaf': params['min_samples_leaf'],
+          'max_features': params['max_features'],
       }
       model =  MultiOutputRegressor(RandomForestRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], min_samples_leaf=_params['min_samples_leaf'], max_features=_params['max_features'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "GradientBoosting":
@@ -759,32 +770,14 @@ def objective(args, trial, study):
           "enc_in": params['input_size'],                # Number of input channels
           "seq_len": params['seq_len'],                 # Context window (lookback length)
           "pred_len": params['pred_len'],
-          # "batch_size": 48,                             # Fixed batch size
-          # "patch_len": 32,                              # Fixed patch size
-          # "stride": 9,                                  # Fixed stride for patching
-          # "mixer_kernel_size": 2,                       # Fixed kernel size for the PatchMixer layer
-          # "d_model": 128,                               # Fixed dimension of the model
-          # "dropout": 0.35,                              # Fixed dropout rate for the model
-          # "head_dropout": 0.0,                          # Fixed dropout rate for the head layers
-          # "e_layers": 1,     
-          'batch_size': params['batch_size'],         # Batch size for training
-          # Learning rate for the optimizer
-          'learning_rate': params['learning_rate'],
-          # Maximum number of epochs
-          'max_epochs': params['max_epochs'],
-          # Number of workers for data loading
-          'num_workers': params['num_workers'],
-          # Patch length for PatchMixer
-          'patch_len': params['patch_len'],
-          'stride': 9,                 # Stride for patching
-          # Kernel size for the PatchMixer layer
-          'mixer_kernel_size': params['mixer_kernel_size'],
-          'd_model': params['d_model'],               # Dimension of the model
-          # Dropout rate for the model
-          'dropout': params['dropout'],
-          # Dropout rate for the head layers
-          'head_dropout': params['head_dropout'],
-          'e_layers': params['e_layers'],
+          "batch_size": 48,                             # Fixed batch size
+          "patch_len": 32,                              # Fixed patch size
+          "stride": 9,                                  # Fixed stride for patching
+          "mixer_kernel_size": 2,                       # Fixed kernel size for the PatchMixer layer
+          "d_model": 128,                               # Fixed dimension of the model
+          "dropout": 0.35,                              # Fixed dropout rate for the model
+          "head_dropout": 0.0,                          # Fixed dropout rate for the head layers
+          "e_layers": 1,     
       })
       model = PatchMixer(_params)
     else:
@@ -921,7 +914,7 @@ if __name__ == '__main__':
   parser.add_argument("--model", type=str, default="PatchMixer")
   parser.add_argument("--load", type=str, default='False')
   parser.add_argument("--mixed", type=str, default='True')
-  parser.add_argument("--individual", type=str, default="True")
+  parser.add_argument("--individual", type=str, default="False")
   parser.add_argument("--trials", type=int, default=150)
   args = parser.parse_args()
 
