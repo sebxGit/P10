@@ -659,13 +659,18 @@ def objective(args, trial, study):
     # 'max_epochs': 1900,
     # 'num_workers': 9
 
-        'batch_size': 80,                           # Batch size for training
-        'learning_rate': 0.008963332707659527,      # Learning rate for the optimizer
-        'max_epochs': 1700,                         # Maximum number of epochs
-        'num_workers': 11,                          # Number of workers for data loading
-        'n_estimators': 61,                         # Number of estimators for AdaBoost
-        # Learning rate for the AdaBoost model
-        'learning_rate_model': 0.8546071447383281,
+        'batch_size': 48,                           # Batch size for training
+        'learning_rate': 0.00021128018387968383,    # Learning rate for the optimizer
+        'max_epochs': 1200,                         # Maximum number of epochs
+        'num_workers': 8,                           # Number of workers for data loading
+        'patch_len': 32,                            # Patch length for PatchMixer
+        'mixer_kernel_size': 2,                     # Kernel size for the PatchMixer layer
+        'd_model': 128,                             # Dimension of the model
+        'dropout': 0.35,                            # Dropout rate for the model
+        'head_dropout': 0.0,                        # Dropout rate for the head layers
+        'e_layers': 1,
+
+        
     }
         
 
@@ -699,12 +704,8 @@ def objective(args, trial, study):
       model = MLP(num_features=params['seq_len']*params['input_size'], seq_len=params['batch_size'], pred_len=params['pred_len'], hidden_size=trial.suggest_int('hidden_size', 25, 250, step=25))
     elif args.model == "AdaBoost":
       _params = {
-          # 'n_estimators': 61,  # Specific to model configuration
-          # 'learning_rate_model': 0.8546071447383281 
-          # Number of estimators for AdaBoost
-          'n_estimators': params['n_estimators'],
-          # Learning rate for the AdaBoost model
-          'learning_rate_model': params['learning_rate_model'],
+          'n_estimators': 61,  # Specific to model configuration
+          'learning_rate_model': 0.8546071447383281 
       }
       model = MultiOutputRegressor(AdaBoostRegressor(n_estimators=_params['n_estimators'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "RandomForest":
@@ -758,14 +759,32 @@ def objective(args, trial, study):
           "enc_in": params['input_size'],                # Number of input channels
           "seq_len": params['seq_len'],                 # Context window (lookback length)
           "pred_len": params['pred_len'],
-          "batch_size": 48,                             # Fixed batch size
-          "patch_len": 32,                              # Fixed patch size
-          "stride": 9,                                  # Fixed stride for patching
-          "mixer_kernel_size": 2,                       # Fixed kernel size for the PatchMixer layer
-          "d_model": 128,                               # Fixed dimension of the model
-          "dropout": 0.35,                              # Fixed dropout rate for the model
-          "head_dropout": 0.0,                          # Fixed dropout rate for the head layers
-          "e_layers": 1,     
+          # "batch_size": 48,                             # Fixed batch size
+          # "patch_len": 32,                              # Fixed patch size
+          # "stride": 9,                                  # Fixed stride for patching
+          # "mixer_kernel_size": 2,                       # Fixed kernel size for the PatchMixer layer
+          # "d_model": 128,                               # Fixed dimension of the model
+          # "dropout": 0.35,                              # Fixed dropout rate for the model
+          # "head_dropout": 0.0,                          # Fixed dropout rate for the head layers
+          # "e_layers": 1,     
+          'batch_size': params['batch_size'],         # Batch size for training
+          # Learning rate for the optimizer
+          'learning_rate': params['learning_rate'],
+          # Maximum number of epochs
+          'max_epochs': params['max_epochs'],
+          # Number of workers for data loading
+          'num_workers': params['num_workers'],
+          # Patch length for PatchMixer
+          'patch_len': params['patch_len'],
+          'stride': 9,                 # Stride for patching
+          # Kernel size for the PatchMixer layer
+          'mixer_kernel_size': params['mixer_kernel_size'],
+          'd_model': params['d_model'],               # Dimension of the model
+          # Dropout rate for the model
+          'dropout': params['dropout'],
+          # Dropout rate for the head layers
+          'head_dropout': params['head_dropout'],
+          'e_layers': params['e_layers'],
       })
       model = PatchMixer(_params)
     else:
