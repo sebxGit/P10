@@ -817,15 +817,13 @@ if __name__ == "__main__":
       
       dates = colmod.test_dates[0:300]
 
-
-
-      plt.figure(figsize=(15, 4))
+      plt.figure(figsize=(11, 5))
       plt.plot(dates, actuals, label='Actuals+baseload')
       plt.plot(dates, predictions, label=f'{combined_name}+baseload')
       plt.axhline(y=args.threshold, color='red',
                   linestyle='--', label='Threshold')
       plt.xlabel('Dates')
-      plt.ylabel('Electricity Consumption (kW)')
+      plt.ylabel('Electricity Consumption (kWh)')
       plt.legend()
       plt.savefig(f'{file_path}_baseload.png')
       plt.show()
