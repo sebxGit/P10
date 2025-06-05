@@ -750,17 +750,31 @@ if __name__ == "__main__":
     dates = colmod.test_dates
 
     dates = dates[-len(actuals_flattened):]
-    
-    plt.figure(figsize=(11, 5))
-    plt.plot(dates, actuals_flattened, label='Actuals')
-    plt.plot(dates, y_pred, label=f'{combined_name} Predictions')
-    plt.xlabel('Dates')
-    plt.ylabel('Electricity Consumption (kWh)')
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(f'Predictions/{args.dataset}_{args.pred_len}h_{args.models}_model_run_plot.png')
-    plt.show()
-    plt.clf()
+
+
+    if args.dataset == "Colorado":
+      plt.figure(figsize=(11, 5))
+      plt.plot(dates, actuals_flattened, label='Actuals')
+      plt.plot(dates, y_pred, label=f'{combined_name} Predictions')
+      plt.xlabel('Months')
+      plt.ylabel('Electricity Consumption (kWh)')
+      plt.legend()
+      plt.tight_layout()
+      plt.savefig(
+          f'Predictions/{args.dataset}_{args.pred_len}h_{args.models}_model_run_col_plot.png')
+      plt.show()
+      plt.clf()
+    else:
+      plt.figure(figsize=(11, 5))
+      plt.plot(dates, actuals_flattened, label='Actuals')
+      plt.plot(dates, y_pred, label=f'{combined_name} Predictions')
+      plt.xlabel('Dates')
+      plt.ylabel('Electricity Consumption (kWh)')
+      plt.legend()
+      plt.tight_layout()
+      plt.savefig(f'Predictions/{args.dataset}_{args.pred_len}h_{args.models}_model_run_plot.png')
+      plt.show()
+      plt.clf()
 
     try:
       df_tuning = pd.read_csv(f'Predictions/{args.dataset}_{args.pred_len}h_{args.models}_model_run.csv', delimiter=',')
