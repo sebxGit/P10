@@ -745,12 +745,12 @@ if __name__ == "__main__":
     plt.ylabel('Electricity Consumption (kWh)')
     plt.legend()
     plt.tight_layout()
-    plt.savefig(f'Predictions/{args.dataset}_{args.pred_len}h_{args.models}_predact_plot.png')
+    plt.savefig(f'Predictions/{args.dataset}_{args.pred_len}h_{args.models}_model_run_plot.png')
     plt.show()
     plt.clf()
 
     try:
-      df_tuning = pd.read_csv(f'Predictions/{args.dataset}_{args.pred_len}h_{args.models}.csv', delimiter=',')
+      df_tuning = pd.read_csv(f'Predictions/{args.dataset}_{args.pred_len}h_{args.models}_model_run.csv', delimiter=',')
     except Exception:
       df_tuning = pd.DataFrame(columns=['model', 'mae', 'mse', 'huber_loss'])
 

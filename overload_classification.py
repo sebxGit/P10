@@ -668,7 +668,7 @@ if __name__ == "__main__":
 
   output_dir = f'Classifications/{args.dataset}' 
   os.makedirs(output_dir, exist_ok=True)
-  file_path = f'Classifications/{args.dataset}/{combined_name}_metrics.csv'
+  file_path = f'Classifications/{args.dataset}/{combined_name}_overload_metrics.csv'
   
   all_predictions = []
   metrics = []
@@ -818,7 +818,7 @@ if __name__ == "__main__":
       plt.ylabel('Electricity Consumption (kWh)')
       plt.legend()
       plt.tight_layout()
-      plt.savefig(f'Predictions/{args.dataset}_{args.pred_len}h_{args.models}_predact_plot.png')
+      plt.savefig(f'Predictions/{args.dataset}_{args.pred_len}h_{args.models}_overload_plot.png')
       plt.show()
 
       actual_class = np.where(actuals > args.threshold, 1, 0)
