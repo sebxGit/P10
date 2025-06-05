@@ -17,5 +17,5 @@ for model in "${MODELS[@]}"; do
         --models "$model" \
         --individual True \
         --dataset Colorado \
-        --threshold 250 || echo "Model $model failed due to missing hyperparameters."
+        --threshold 500 || echo "Model $model failed due to missing hyperparameters."
 done
