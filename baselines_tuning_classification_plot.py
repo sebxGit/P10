@@ -796,30 +796,31 @@ def objective(args, trial, study):
     'batch_size': params['batch_size'],
           
 'patch_len': 48,
-    'stride': 24,
-    'padding_patch': 'None',
-    'revin': 0,
-    'ma_type': 'reg',
-    'alpha': 0.8205177177113407,
-    'beta': 0.5824502202238674
+        'stride': 24,
+        'padding_patch': 'None',
+        'revin': 0,
+        'ma_type': 'reg',
+        'alpha': 0.8205177177113407,
+        'beta': 0.5824502202238674
         }
       )
       model = xPatch(params_xpatch)
     elif args.model == "PatchMixer":
-      _params = Configs({
-        "enc_in": params['input_size'],                # Number of input channels
-        "seq_len": params['seq_len'],               # Context window (lookback length)
-        "pred_len": params['pred_len'],
-        "batch_size": params['batch_size'],
-'patch_len': 12,
-    'stride': 8,
-    'mixer_kernel_size': 8,
-    'd_model': 768,
-    'dropout': 0.8,
-    'head_dropout': 0.0,
-    'e_layers': 3
+      _params = Configs(
+        dict(
+        seq_len = params['seq_len'],
+        pred_len = params['pred_len'],
+        enc_in = params['input_size'],
+        patch_len = trial.suggest_int('patch_len', 2, 16, step=2),
+        stride=trial.suggest_int('stride', 1, 7, step=2),
+        padding_patch = trial.suggest_categorical('padding_patch', ['end', 'None']),
+        revin = trial.suggest_int('revin', 0, 1),
+        ma_type = trial.suggest_categorical('ma_type', ['reg', 'ema']),
+        alpha = trial.suggest_float('alpha', 0.0, 1.0),
+        beta = trial.suggest_float('beta', 0.0, 1.0),
+        )
         
-      })
+      )
       model = PatchMixer(_params)
     else:
       raise ValueError("Model not found")
