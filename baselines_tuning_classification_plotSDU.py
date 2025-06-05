@@ -708,17 +708,16 @@ def objective(args, trial, study):
         # 'num_workers': trial.suggest_int('num_workers', 6, 14) if args.model != "DPAD" else 2,
         # 'num_workers': 10,
         'is_persistent': True,
-        
-        'batch_size': 144,                          # Batch size for training
+
+        'batch_size': 128,                          # Batch size for training
         'num_workers': 10,                          # Number of workers for data loading
-        'learning_rate': 0.0008285155531289423,     # Learning rate for the optimizer
-        'max_epochs': 1400,                         # Maximum number of epochs
-        'patch_len': 8,                             # Patch length for PatchMixer
-        'mixer_kernel_size': 16,                    # Kernel size for the PatchMixer layer
-        'd_model': 320,                             # Dimension of the model
-        'dropout': 0.8,                             # Dropout rate for the model
-        'head_dropout': 0.1,                        # Dropout rate for the head layers
-        'e_layers': 4,
+        'learning_rate': 0.0036149068236998,        # Learning rate for the optimizer
+        'max_epochs': 1800,                         # Maximum number of epochs
+        'hidden_size': 156,                         # Hidden size for GRU layers
+        'num_layers': 1,                            # Number of GRU layers
+        'dropout': 0.3070727620397399
+        
+        
     }
 
     if args.dataset == "Colorado":
@@ -741,9 +740,13 @@ def objective(args, trial, study):
       model = LSTM(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "GRU":
       _params = {
-    'hidden_size': 103,
-    'num_layers': 1,
-    'dropout': 0.47421195537747074
+    # 'hidden_size': 103,
+    # 'num_layers': 1,
+    # 'dropout': 0.47421195537747074
+          # Hidden size for GRU layers
+          'hidden_size': params['hidden_size'],
+          'num_layers': params['num_layers'],         # Number of GRU layers
+          'dropout': params['dropout'],
       }
       model = GRU(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "MLP":
@@ -1081,7 +1084,7 @@ if __name__ == '__main__':
   parser.add_argument("--model", type=str, default="PatchMixer")  # change
   parser.add_argument("--load", type=str, default='False') #change
   parser.add_argument("--mixed", type=str, default='True')
-  parser.add_argument("--individual", type=str, default="True")
+  parser.add_argument("--individual", type=str, default="False")
   parser.add_argument("--threshold", type=float, default=250)
   parser.add_argument("--downscaling", type=int, default=13)
   parser.add_argument("--multiplier", type=int, default=2)
