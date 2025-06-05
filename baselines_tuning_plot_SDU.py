@@ -664,16 +664,12 @@ def objective(args, trial, study):
     # "max_epochs": 1700,
     # "num_workers": 6
 
-        'batch_size': 64,
-        'learning_rate': 0.0004865675722861067,
-        'max_epochs': 1400,
-        'num_workers': 14,
-        'patch_len': 6,
-        'padding_patch': 'end',
-        'revin': 0,
-        'ma_type': 'reg',
-        'alpha': 0.4689754211609729,
-        'beta': 0.6857634099892445
+        'batch_size': 112,
+        'learning_rate': 0.001180923466722264,
+        'max_epochs': 1100,
+        'num_workers': 9,
+        'n_estimators': 151,
+        'learning_rate_model': 0.9143031551070804
 
         
 
@@ -709,8 +705,10 @@ def objective(args, trial, study):
       model = MLP(num_features=params['seq_len']*params['input_size'], seq_len=params['batch_size'], pred_len=params['pred_len'], hidden_size=trial.suggest_int('hidden_size', 25, 250, step=25))
     elif args.model == "AdaBoost":
       _params = {
-          'n_estimators': 61,  # Specific to model configuration
-          'learning_rate_model': 0.8546071447383281 
+          # 'n_estimators': 61,  # Specific to model configuration
+          # 'learning_rate_model': 0.8546071447383281 
+          'n_estimators': params['n_estimators'],
+          'learning_rate_model': params['learning_rate_model']
       }
       model = MultiOutputRegressor(AdaBoostRegressor(n_estimators=_params['n_estimators'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "RandomForest":
@@ -929,7 +927,7 @@ if __name__ == '__main__':
   parser.add_argument("--model", type=str, default="PatchMixer")
   parser.add_argument("--load", type=str, default='False')
   parser.add_argument("--mixed", type=str, default='True')
-  parser.add_argument("--individual", type=str, default="False")
+  parser.add_argument("--individual", type=str, default="True")
   parser.add_argument("--trials", type=int, default=150)
   args = parser.parse_args()
 
