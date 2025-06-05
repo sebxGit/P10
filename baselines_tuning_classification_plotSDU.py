@@ -709,13 +709,22 @@ def objective(args, trial, study):
         # 'num_workers': 10,
         'is_persistent': True,
 
-        'batch_size': 128,                          # Batch size for training
+        'batch_size': 192,                          # Batch size for training
         'num_workers': 10,                          # Number of workers for data loading
-        'learning_rate': 0.0036149068236998,        # Learning rate for the optimizer
-        'max_epochs': 1800,                         # Maximum number of epochs
-        'hidden_size': 156,                         # Hidden size for GRU layers
-        'num_layers': 1,                            # Number of GRU layers
-        'dropout': 0.3070727620397399
+        'learning_rate': 0.0005934535032636055,     # Learning rate for the optimizer
+        'max_epochs': 1400,                         # Maximum number of epochs
+        # Number of estimators for Gradient Boosting
+        'n_estimators': 488,
+        'max_depth': 1,                             # Maximum depth of the trees
+        # Minimum samples required to split a node
+        'min_samples_split': 17,
+        # Minimum samples required in a leaf node
+        'min_samples_leaf': 6,
+        # Maximum features to consider for a split
+        'max_features': 0.6098031852726209,
+        # Learning rate for the Gradient Boosting model
+        'learning_rate_model': 0.9488819068920191,
+        'subsample': 0.9070970684413281,
         
         
     }
@@ -775,13 +784,20 @@ def objective(args, trial, study):
         # 'max_features': trial.suggest_float('max_features', 0.1, 1.0),
         # 'learning_rate_model': trial.suggest_float('learning_rate_model', 0.01, 1.0),
         # 'subsample': trial.suggest_float('subsample', 0.7, 1.0),
-        'n_estimators': params['n_estimators'],
+          # Number of estimators for Gradient Boosting
+          'n_estimators': params['n_estimators'],
+          # Maximum depth of the trees
           'max_depth': params['max_depth'],
+          # Minimum samples required to split a node
           'min_samples_split': params['min_samples_split'],
+          # Minimum samples required in a leaf node
           'min_samples_leaf': params['min_samples_leaf'],
+          # Maximum features to consider for a split
           'max_features': params['max_features'],
+          # Learning rate for the Gradient Boosting model
           'learning_rate_model': params['learning_rate_model'],
-          'subsample': params['subsample']
+          # Subsample ratio for Gradient Boosting
+          'subsample': params['subsample'],
       }
       model = MultiOutputRegressor(GradientBoostingRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], subsample=_params['subsample'], min_samples_leaf=_params['min_samples_leaf'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "DPAD":
