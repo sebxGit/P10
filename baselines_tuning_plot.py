@@ -660,14 +660,12 @@ def objective(args, trial, study):
     # 'num_workers': 9
 
 
-        'batch_size': 128,
-        'learning_rate': 0.002183521345460817,
-        'max_epochs': 1600,
-        'num_workers': 9,
-        'hidden_size': 143,
-        'num_layers': 1,
-        'dropout': 0.23265791159785204
-      
+        'batch_size': 32,                           # Batch size for training
+        'learning_rate': 0.0009137344842562993,     # Learning rate for the optimizer
+        'max_epochs': 1300,                         # Maximum number of epochs
+        'num_workers': 10,                          # Number of workers for data loading
+        'n_estimators': 123,                        # Number of estimators for AdaBoost
+        'learning_rate_model': 0.657301480230918,
         
 
         
@@ -696,20 +694,21 @@ def objective(args, trial, study):
       model = LSTM(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "GRU":
       _params = {
-          # 'hidden_size': trial.suggest_int('hidden_size', 50, 200),
-          # 'num_layers': trial.suggest_int('num_layers', 1, 10),
-          # 'dropout': trial.suggest_float('dropout', 0.0, 1),
-          'hidden_size': params['hidden_size'],
-          'num_layers': params['num_layers'],
-          'dropout': params['dropout']
+          'hidden_size': trial.suggest_int('hidden_size', 50, 200),
+          'num_layers': trial.suggest_int('num_layers', 1, 10),
+          'dropout': trial.suggest_float('dropout', 0.0, 1),
       }
       model = GRU(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "MLP":
       model = MLP(num_features=params['seq_len']*params['input_size'], seq_len=params['batch_size'], pred_len=params['pred_len'], hidden_size=trial.suggest_int('hidden_size', 25, 250, step=25))
     elif args.model == "AdaBoost":
       _params = {
-          'n_estimators': 61,  # Specific to model configuration
-          'learning_rate_model': 0.8546071447383281 
+          # 'n_estimators': 61,  # Specific to model configuration
+          # 'learning_rate_model': 0.8546071447383281 
+          # Number of estimators for AdaBoost
+          'n_estimators': params['n_estimators'],
+          # Learning rate for the AdaBoost model
+          'learning_rate_model': params['learning_rate_model'],
       }
       model = MultiOutputRegressor(AdaBoostRegressor(n_estimators=_params['n_estimators'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "RandomForest":
