@@ -16,6 +16,6 @@ for model in "${MODELS[@]}"; do
         python3 model_run.py \
         --models "$model" \
         --individual True \
-        --dataset SDU \
+        --dataset Colorado \
         --threshold 250 || echo "Model $model failed due to missing hyperparameters."
 done
