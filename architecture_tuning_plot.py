@@ -726,11 +726,11 @@ def objective(args, trial, all_subsets, study):
   plt.ylabel('Electricity Consumption (kWh)')
   plt.legend()
   plt.tight_layout()
-  plt.savefig(f'Predictions/{args.dataset}_{args.model}_{huber_loss.item()}_{mae.item()}_{mse.item()}_plot.png')
+  plt.savefig(f'Predictions/{args.dataset}_{args.models}_{huber_loss.item()}_{mae.item()}_{mse.item()}_plot.png')
   plt.show()
   plt.clf()
   plt.close()
-  print(f"model: {args.model}, loss: {huber_loss.item()}_{mae.item()}_{mse.item()}")
+  print(f"model: {args.models}, loss: {huber_loss.item()}_{mae.item()}_{mse.item()}")
   exit()
 
   if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials) and study.best_value != None and mae <= study.best_value:
