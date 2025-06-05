@@ -713,9 +713,9 @@ def objective(args, trial, study):
         'is_persistent': True,
         
     'batch_size': 32,
-    'learning_rate': 0.009375393931457811,
-    'max_epochs': 1800,
-    'num_workers': 11
+    'learning_rate': 0.0022504039576051542,
+    'max_epochs': 1200,
+    'num_workers': 10
     }
 
     if args.dataset == "Colorado":
@@ -801,7 +801,7 @@ def objective(args, trial, study):
     revin=0,
     ma_type='reg',
     alpha=0.8205177177113407,
-    beta=0.5824502202238674,
+    beta=0.5824502202238674
 )
       )
       model = xPatch(params_xpatch)
