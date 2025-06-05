@@ -664,12 +664,16 @@ def objective(args, trial, study):
     # "max_epochs": 1700,
     # "num_workers": 6
 
-        'batch_size': 112,
-        'learning_rate': 0.001180923466722264,
-        'max_epochs': 1100,
-        'num_workers': 9,
-        'n_estimators': 151,
-        'learning_rate_model': 0.9143031551070804
+        'batch_size': 64,
+        'learning_rate': 0.0004865675722861067,
+        'max_epochs': 1400,
+        'num_workers': 14,
+        'patch_len': 6,
+        'padding_patch': 'end',
+        'revin': 0,
+        'ma_type': 'reg',
+        'alpha': 0.4689754211609729,
+        'beta': 0.6857634099892445
 
         
     }
@@ -745,13 +749,21 @@ def objective(args, trial, study):
         seq_len=params['seq_len'],
         pred_len=params['pred_len'],
         enc_in=params['input_size'],
-        patch_len=16,  # Fixed value from the dictionary
-        stride=5,      # Fixed value from the dictionary
-        padding_patch='None',  # Fixed value from the dictionary
-        revin=0,       # Fixed value from the dictionary
-        ma_type='reg', # Fixed value from the dictionary
-        alpha=0.6803081419478867,  # Fixed value from the dictionary
-        beta=0.7493277554345201    # Fixed value from the dictionary
+        # patch_len=16,  # Fixed value from the dictionary
+        # stride=5,      # Fixed value from the dictionary
+        # padding_patch='None',  # Fixed value from the dictionary
+        # revin=0,       # Fixed value from the dictionary
+        # ma_type='reg', # Fixed value from the dictionary
+        # alpha=0.6803081419478867,  # Fixed value from the dictionary
+        # beta=0.7493277554345201    # Fixed value from the dictionary
+
+        patch_len = params['patch_len'],
+        stride = 1,
+        padding_patch =  params['padding_patch'],
+        revin =  params['revin'],
+        ma_type = params['ma_type'],
+        alpha =  params['alpha'],
+        beta =  params['beta']
            
     )
       )
@@ -904,7 +916,7 @@ if __name__ == '__main__':
   parser.add_argument("--model", type=str, default="PatchMixer")
   parser.add_argument("--load", type=str, default='False')
   parser.add_argument("--mixed", type=str, default='True')
-  parser.add_argument("--individual", type=str, default="True")
+  parser.add_argument("--individual", type=str, default="False")
   parser.add_argument("--trials", type=int, default=150)
   args = parser.parse_args()
 
