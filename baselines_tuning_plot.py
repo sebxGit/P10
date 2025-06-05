@@ -659,7 +659,6 @@ def objective(args, trial, study):
     # 'max_epochs': 1900,
     # 'num_workers': 9
 
-
         'batch_size': 128,                          # Batch size for training
         'learning_rate': 0.0018689669036629699,     # Learning rate for the optimizer
         'max_epochs': 1900,                         # Maximum number of epochs
@@ -674,6 +673,7 @@ def objective(args, trial, study):
         # Maximum features to consider for a split
         'max_features': 0.4917613280300664,
         'learning_rate_model': 0.031397442469832317,
+        
 
         
         
@@ -720,11 +720,22 @@ def objective(args, trial, study):
       model = MultiOutputRegressor(AdaBoostRegressor(n_estimators=_params['n_estimators'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "RandomForest":
       _params = {
-        'n_estimators': trial.suggest_int('n_estimators', 50, 200),
-        'max_depth': trial.suggest_int('max_depth', 1, 20),
-        'min_samples_split': trial.suggest_int('min_samples_split', 2, 20),
-        'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 20),
-        'max_features': trial.suggest_float('max_features', 0.1, 1.0),
+        # 'n_estimators': trial.suggest_int('n_estimators', 50, 200),
+        # 'max_depth': trial.suggest_int('max_depth', 1, 20),
+        # 'min_samples_split': trial.suggest_int('min_samples_split', 2, 20),
+        # 'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 20),
+        # 'max_features': trial.suggest_float('max_features', 0.1, 1.0),
+        # Number of estimators for Gradient Boosting
+        'n_estimators': params['n_estimators'],
+          # Maximum depth of the trees
+          'max_depth': params['max_depth'],
+          # Minimum samples required to split a node
+          'min_samples_split': params['min_samples_split'],
+          # Minimum samples required in a leaf node
+          'min_samples_leaf': params['min_samples_leaf'],
+          # Maximum features to consider for a split
+          'max_features': params['max_features'],
+          'learning_rate_model': params['learning_rate_model'],
       }
       model =  MultiOutputRegressor(RandomForestRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], min_samples_leaf=_params['min_samples_leaf'], max_features=_params['max_features'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "GradientBoosting":
@@ -921,7 +932,7 @@ if __name__ == '__main__':
   parser = ArgumentParser()
   parser.add_argument("--dataset", type=str, default="Colorado")
   parser.add_argument("--pred_len", type=int, default=24)
-  parser.add_argument("--model", type=str, default="PatchMixer")
+  parser.add_argument("--model", type=str, default="RandomForest")
   parser.add_argument("--load", type=str, default='False')
   parser.add_argument("--mixed", type=str, default='True')
   parser.add_argument("--individual", type=str, default="False")
