@@ -700,17 +700,34 @@ def objective(args, trial, study):
         'pred_len': args.pred_len,
         'seq_len': 24*7,
         'stride': args.pred_len,
-        'batch_size': trial.suggest_int('batch_size', 32, 256, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
+        # 'batch_size': trial.suggest_int('batch_size', 32, 256, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
         # 'criterion': torch.nn.L1Loss(),
         'criterion': torch.nn.HuberLoss(delta=0.25),
         'optimizer': torch.optim.Adam,
         'scaler': MaxAbsScaler(),
-        'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
+        # 'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
-        'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100),
+        # 'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100),
         # 'num_workers': trial.suggest_int('num_workers', 6, 14) if args.model != "DPAD" else 2,
+        # 'num_workers': 10,
+        'is_persistent': True,
+
+
+        'batch_size': 192,
         'num_workers': 10,
-        'is_persistent': True
+        'learning_rate': 0.0005934535032636055,
+        'max_epochs': 1400,
+        'n_estimators': 488,
+        'max_depth': 1,
+        'min_samples_split': 17,
+        'min_samples_leaf': 6,
+        'max_features': 0.6098031852726209,
+        'learning_rate_model': 0.9488819068920191,
+        'subsample': 0.9070970684413281
+        
+
+
+
     }
 
     if args.dataset == "Colorado":
@@ -757,13 +774,20 @@ def objective(args, trial, study):
       model =  MultiOutputRegressor(RandomForestRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], min_samples_leaf=_params['min_samples_leaf'], max_features=_params['max_features'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "GradientBoosting":
       _params = {
-        'n_estimators': trial.suggest_int('n_estimators', 100, 500),
-        'max_depth': trial.suggest_int('max_depth', 1, 10),
-        'min_samples_split': trial.suggest_int('min_samples_split', 2, 20),
-        'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 20),
-        'max_features': trial.suggest_float('max_features', 0.1, 1.0),
-        'learning_rate_model': trial.suggest_float('learning_rate_model', 0.01, 1.0),
-        'subsample': trial.suggest_float('subsample', 0.7, 1.0),
+        # 'n_estimators': trial.suggest_int('n_estimators', 100, 500),
+        # 'max_depth': trial.suggest_int('max_depth', 1, 10),
+        # 'min_samples_split': trial.suggest_int('min_samples_split', 2, 20),
+        # 'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 20),
+        # 'max_features': trial.suggest_float('max_features', 0.1, 1.0),
+        # 'learning_rate_model': trial.suggest_float('learning_rate_model', 0.01, 1.0),
+        # 'subsample': trial.suggest_float('subsample', 0.7, 1.0),
+        'n_estimators': params['n_estimators'],
+          'max_depth': params['max_depth'],
+          'min_samples_split': params['min_samples_split'],
+          'min_samples_leaf': params['min_samples_leaf'],
+          'max_features': params['max_features'],
+          'learning_rate_model': params['learning_rate_model'],
+          'subsample': params['subsample']
       }
       model = MultiOutputRegressor(GradientBoostingRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], subsample=_params['subsample'], min_samples_leaf=_params['min_samples_leaf'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "DPAD":
@@ -805,6 +829,7 @@ def objective(args, trial, study):
         "dropout": trial.suggest_float("dropout", 0.0, 0.8, step=0.1),  # Dropout rate for the model
         "head_dropout": trial.suggest_float("head_dropout", 0.0, 0.8, step=0.1),  # Dropout rate for the head layers
         "e_layers": trial.suggest_int("e_layers", 1, 10),  # Number of PatchMixer layers (depth)
+        
       })
       model = PatchMixer(_params)
     else:
@@ -879,20 +904,47 @@ def objective(args, trial, study):
     total_recall_score = np.mean(recall_scores) if len(recall_scores) > 0 else 0
     total_huber_loss_score = np.mean(huber_loss_scores) if len(huber_loss_scores) > 0 else float('inf')
 
+    total_recall_score_float = total_recall_score.item()
+
+    total_recall_score_float = total_recall_score.item()
+
     dates = colmod.val_dates[-len(predictions):]
-    plt.figure(figsize=(15, 4))
+    plt.figure(figsize=(11, 5))
     plt.plot(dates, actuals, label='Actuals')
-    plt.plot(dates, predictions, label=f'predictions')
+    plt.plot(dates, predictions, label=f'Predictions')
+    plt.plot(dates, baseload, label='Baseload')
+    plt.axhline(y=args.threshold, color='red',
+                linestyle='--', label='Threshold')
     plt.xlabel('Dates')
     plt.ylabel('Electricity Consumption (kWh)')
     plt.legend()
     plt.tight_layout()
-    plt.savefig(f'Predictions/{args.dataset}_{args.model}_{total_recall_score}_{total_huber_loss_score}_plot.png')
+    plt.savefig(
+        f'Predictions/{args.dataset}_{args.model}_{huber_loss_scores}_plot.png')
     plt.show()
     plt.clf()
     plt.close()
-    print(f"model: {args.model}, loss: {total_recall_score}, {total_huber_loss_score}")
+    print(
+        f"model: {args.model}, loss: {huber_loss_scores}, recall: {total_recall_score}, trial: {trial.number}")
     exit()
+
+
+
+    # dates = colmod.val_dates[-len(predictions):]
+    # plt.figure(figsize=(15, 4))
+    # plt.plot(dates, actuals, label='Actuals')
+    # plt.plot(dates, predictions, label=f'predictions')
+    # plt.xlabel('Dates')
+    # plt.ylabel('Electricity Consumption (kWh)')
+    # plt.legend()
+    # plt.tight_layout()
+    # plt.savefig(f'Predictions/{args.dataset}_{args.model}_{total_recall_score}_{total_huber_loss_score}_plot.png')
+    # plt.show()
+    # plt.clf()
+    # plt.close()
+    # print(
+    #     f"model: {args.model}, loss: {total_recall_score_float}, {total_huber_loss_score}")
+    # exit()
 
     # plt.figure(figsize=(15, 4))
     # plt.title(f'{args.model} - Total Recall Score: {total_recall_score:.4f}, Total MAE Score: {total_huber_loss_score:.4f}')
@@ -1001,7 +1053,7 @@ if __name__ == '__main__':
   parser.add_argument("--model", type=str, default="xPatch")  # change
   parser.add_argument("--load", type=str, default='False') #change
   parser.add_argument("--mixed", type=str, default='True')
-  parser.add_argument("--individual", type=str, default="True")
+  parser.add_argument("--individual", type=str, default="False")
   parser.add_argument("--threshold", type=float, default=250)
   parser.add_argument("--downscaling", type=int, default=13)
   parser.add_argument("--multiplier", type=int, default=2)

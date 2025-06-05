@@ -641,7 +641,7 @@ def initialize_model(model_name, hyperparameters):
   return model_dict[model_name]()
 
 parser = ArgumentParser()
-parser.add_argument("--models", type=str, default="xPatch")
+parser.add_argument("--models", type=str, default="GradientBoostingRegressor")
 parser.add_argument("--individual", type=str, default="True")
 parser.add_argument("--input_size", type=int, default=16)
 parser.add_argument("--pred_len", type=int, default=24)
@@ -771,16 +771,30 @@ if __name__ == "__main__":
       df.set_index('Timestamp', inplace=True)
 
       df = df[(df.index >= val_start_date) & (df.index <= val_end_date)]
+
+      # plt.figure(figsize=(15, 4))
+      # plt.plot(df['Aggregated charging load'], label='Aggregated charging load')
+      # plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
+      # plt.xlabel('Dates')
+      # plt.ylabel('Electricity Consumption (kW)')
+      # plt.legend()
+      # plt.savefig(f'{file_path}_baseload.png')
+      # plt.show()
+
+  
       
       df = df.iloc[:len(actuals_flat)]
-      df = df.iloc[1100:1400] 
+      print(len(actuals_flat), len(df))
+
+      # exit()
+      df = df.iloc[0:300] 
 
       df = df[['Aggregated base load']]
 
       df_pred_act = pd.DataFrame({'y_pred': y_pred, 'actuals_flat': actuals_flat})
       df_pred_act.index = colmod.val_dates[:len(actuals_flat)]
 
-      df_pred_act = df_pred_act.iloc[1100:1400]
+      df_pred_act = df_pred_act.iloc[0:300]
 
     baseloads = [df]
     dfs = [df_pred_act]
@@ -796,10 +810,25 @@ if __name__ == "__main__":
         y_pred = df['y_pred'].values
         actuals_flat = df['actuals_flat'].values
         baseload = baseload['Aggregated base load'].values
+  
 
       actuals = np.array(actuals_flat) + baseload
       predictions = np.array(y_pred) + baseload
       
+      dates = colmod.test_dates[0:300]
+
+      plt.figure(figsize=(11, 5))
+      plt.plot(dates, actuals, label='Actuals+baseload')
+      plt.plot(dates, predictions, label=f'{combined_name}+baseload')
+      plt.axhline(y=args.threshold, color='red',
+                  linestyle='--', label='Threshold')
+      plt.xlabel('Dates')
+      plt.ylabel('Electricity Consumption (kWh)')
+      plt.legend()
+      plt.savefig(f'{file_path}_baseload.png')
+      plt.show()
+
+
       actual_class = np.where(actuals > args.threshold, 1, 0)
       pred_class = np.where(predictions > args.threshold, 1, 0)
 
@@ -815,6 +844,7 @@ if __name__ == "__main__":
       _metrics = {
         'model': f"{combined_name}_part{i}",
         'mae': mean_absolute_error(predictions, actuals),
+        'huber': nn.HuberLoss(delta=0.25)(torch.tensor(predictions), torch.tensor(actuals)).item(),
         'acc': accuracy_score(TP, TN, FP, FN),
         'pre': precision_score(TP, FP),
         'rec': recall_score(TP, FN),
@@ -826,7 +856,7 @@ if __name__ == "__main__":
       if os.path.exists(file_path):
         metrics_df = pd.read_csv(file_path)
       else:
-        metrics_df = pd.DataFrame(columns=['model', 'mae', 'acc', 'pre', 'rec'])
+        metrics_df = pd.DataFrame(columns=['model', 'mae', 'huber', 'acc', 'pre', 'rec'])
 
       new_metrics_df = pd.DataFrame([_metrics])
       metrics_df = pd.concat([metrics_df, new_metrics_df], ignore_index=True)
@@ -836,43 +866,43 @@ if __name__ == "__main__":
 
       metrics_df.to_csv(file_path)
 
-      #baseload plot
-      plt.figure(figsize=(15, 4))
-      plt.plot(baseload, label='Baseload')
-      plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
-      plt.xlabel('Samples')
-      plt.ylabel('Electricity Consumption (kW)')
-      plt.legend()
-      plt.savefig(f'{file_path}_part{i}_baseload.png')
-      plt.show()
-      plt.clf()
+      # #baseload plot
+      # plt.figure(figsize=(15, 4))
+      # plt.plot(baseload, label='Baseload')
+      # plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
+      # plt.xlabel('Samples')
+      # plt.ylabel('Electricity Consumption (kW)')
+      # plt.legend()
+      # plt.savefig(f'{file_path}_part{i}_baseload.png')
+      # plt.show()
+      # plt.clf()
 
-      # pred and act plot
-      plt.figure(figsize=(15, 4))
-      plt.plot(actuals, label='Actuals+baseload')
-      plt.plot(predictions, label=f'{combined_name}+baseload')
-      plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
-      plt.xlabel('Samples')
-      plt.ylabel('Electricity Consumption (kW)')
-      plt.legend()
-      plt.savefig(f'{file_path}_part{i}_overload_visual.png')
-      plt.show()
-      plt.clf()
+      # # pred and act plot
+      # plt.figure(figsize=(15, 4))
+      # plt.plot(actuals, label='Actuals+baseload')
+      # plt.plot(predictions, label=f'{combined_name}+baseload')
+      # plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
+      # plt.xlabel('Samples')
+      # plt.ylabel('Electricity Consumption (kW)')
+      # plt.legend()
+      # plt.savefig(f'{file_path}_part{i}_overload_visual.png')
+      # plt.show()
+      # plt.clf()
 
-  if args.dataset == "Colorado":
-    if os.path.exists(file_path):
-      metrics_df = pd.read_csv(file_path)
-    else:
-      metrics_df = pd.DataFrame(columns=['model', 'mae', 'acc', 'pre', 'rec'])
+  # if args.dataset == "Colorado":
+  #   if os.path.exists(file_path):
+  #     metrics_df = pd.read_csv(file_path)
+  #   else:
+  #     metrics_df = pd.DataFrame(columns=['model', 'mae', 'acc', 'pre', 'rec'])
 
-    new_metrics_df = metrics_df.drop(columns=['model'])
-    new_metrics_df = new_metrics_df.mean().to_frame().T
-    new_metrics_df['model'] = f"{combined_name}_avg"
-    new_metrics_df = new_metrics_df[['model'] + list(new_metrics_df.columns.difference(['model'], sort=False))]
+  #   new_metrics_df = metrics_df.drop(columns=['model'])
+  #   new_metrics_df = new_metrics_df.mean().to_frame().T
+  #   new_metrics_df['model'] = f"{combined_name}_avg"
+  #   new_metrics_df = new_metrics_df[['model'] + list(new_metrics_df.columns.difference(['model'], sort=False))]
 
-    metrics_df = pd.concat([metrics_df, new_metrics_df], ignore_index=True)
+  #   metrics_df = pd.concat([metrics_df, new_metrics_df], ignore_index=True)
 
-    if 'model' in metrics_df.columns:
-      metrics_df.set_index('model', inplace=True)
+  #   if 'model' in metrics_df.columns:
+  #     metrics_df.set_index('model', inplace=True)
 
-    metrics_df.to_csv(file_path)
+  #   metrics_df.to_csv(file_path)
