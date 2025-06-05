@@ -787,14 +787,14 @@ if __name__ == "__main__":
       print(len(actuals_flat), len(df))
 
       # exit()
-      df = df.iloc[0:300] 
+      # df = df.iloc[0:300] 
 
       df = df[['Aggregated base load']]
 
       df_pred_act = pd.DataFrame({'y_pred': y_pred, 'actuals_flat': actuals_flat})
       df_pred_act.index = colmod.val_dates[:len(actuals_flat)]
 
-      df_pred_act = df_pred_act.iloc[0:300]
+      # df_pred_act = df_pred_act.iloc[0:300]
 
     baseloads = [df]
     dfs = [df_pred_act]
@@ -815,7 +815,7 @@ if __name__ == "__main__":
       actuals = np.array(actuals_flat) + baseload
       predictions = np.array(y_pred) + baseload
       
-      dates = colmod.test_dates[0:300]
+      # dates = colmod.test_dates[0:300]
 
       plt.figure(figsize=(11, 5))
       plt.plot(dates, actuals, label='Actuals+baseload')

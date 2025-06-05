@@ -716,17 +716,19 @@ def objective(args, trial, all_subsets, study):
   dates = colmod.val_dates[-len(y_pred_tensor):]
   predictions = y_pred_tensor[-len(y_pred_tensor):].tolist()
 
-  plt.figure(figsize=(15, 4))
+  plt.figure(figsize=(11, 5))
   plt.plot(dates, actuals_flattened, label='Actuals')
   plt.plot(dates, predictions, label=f'predictions')
   plt.xlabel('Dates')
   plt.ylabel('Electricity Consumption (kWh)')
   plt.legend()
   plt.tight_layout()
-  plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_{trial.number}_{huber_loss}_{mae}_{mse}_architecture_plot.png')
+  plt.savefig(f'Predictions/{args.dataset}_{args.model}_{huber_loss.item()}_{mae.item()}_{mse.item()}_plot.png')
   plt.show()
   plt.clf()
   plt.close()
+  print(f"model: {args.model}, loss: {huber_loss.item()}_{mae.item()}_{mse.item()}")
+  exit()
 
   if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials) and study.best_value != None and mae <= study.best_value:
     best_list.clear()
