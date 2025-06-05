@@ -647,6 +647,7 @@ def objective(args, trial, all_subsets, study):
   all_subsets_as_strings = [str(subset) for subset in all_subsets]
   selected_subset_as_string = trial.suggest_categorical("model_subsets", all_subsets_as_strings)
   selected_subset = ast.literal_eval(selected_subset_as_string)
+  selected_subset = ["RandomForestRegressor, GradientBoostingRegressor, AdaBoostRegressor"]
 
   for model_name in selected_subset:
     print(f"-----Training {model_name} model-----")
