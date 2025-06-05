@@ -640,9 +640,11 @@ def initialize_model(model_name, hyperparameters):
   }
   return model_dict[model_name]()
 
+# Gradient Boosting, LSTM, PatchMixer
+
 parser = ArgumentParser()
 parser.add_argument("--models", type=str,
-                    default="['GradientBoostingRegressor', 'AdaBoostRegressor', 'GRU', 'PatchMixer', 'xPatch']")
+                    default="['GradientBoostingRegressor', 'LSTM', 'PatchMixer']")
 parser.add_argument("--individual", type=str, default="False")
 parser.add_argument("--input_size", type=int, default=16)
 parser.add_argument("--pred_len", type=int, default=24)
