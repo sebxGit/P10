@@ -641,7 +641,7 @@ def initialize_model(model_name, hyperparameters):
   return model_dict[model_name]()
 
 parser = ArgumentParser()
-parser.add_argument("--models", type=str, default="GradientBoostingRegressor")
+parser.add_argument("--models", type=str, default="PatchMixer")
 parser.add_argument("--individual", type=str, default="True")
 parser.add_argument("--input_size", type=int, default=16)
 parser.add_argument("--pred_len", type=int, default=24)
@@ -816,6 +816,7 @@ if __name__ == "__main__":
       predictions = np.array(y_pred) + baseload
       
       # dates = colmod.test_dates[0:300]
+      dates = colmod.test_dates
 
       plt.figure(figsize=(11, 5))
       plt.plot(dates, actuals, label='Actuals+baseload')
