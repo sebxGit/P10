@@ -791,6 +791,10 @@ def objective(args, trial, study):
     elif args.model == "xPatch":
       params_xpatch = Configs(
         {
+        'seq_len': params['seq_len'],
+    'pred_len': params['pred_len'],
+    'batch_size': params['batch_size'],
+          
 'patch_len': 48,
     'stride': 24,
     'padding_patch': 'None',
