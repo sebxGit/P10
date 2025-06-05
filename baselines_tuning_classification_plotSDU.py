@@ -709,16 +709,16 @@ def objective(args, trial, study):
         # 'num_workers': 10,
         'is_persistent': True,
         
-        'batch_size': 144,                          # Batch size for training
+        'batch_size': 96,                           # Batch size for training
         'num_workers': 10,                          # Number of workers for data loading
-        'learning_rate': 0.0008285155531289423,     # Learning rate for the optimizer
-        'max_epochs': 1400,                         # Maximum number of epochs
-        'patch_len': 8,                             # Patch length for PatchMixer
-        'mixer_kernel_size': 16,                    # Kernel size for the PatchMixer layer
-        'd_model': 320,                             # Dimension of the model
-        'dropout': 0.8,                             # Dropout rate for the model
-        'head_dropout': 0.1,                        # Dropout rate for the head layers
-        'e_layers': 4,
+        'learning_rate': 0.004895508586161393,      # Learning rate for the optimizer
+        'max_epochs': 1900,                         # Maximum number of epochs
+        'patch_len': 14,                            # Patch length for xPatch
+        'padding_patch': 'None',                    # Padding type for patches
+        'revin': 0,                                 # Reversible normalization flag
+        'ma_type': 'reg',                           # Moving average type
+        'alpha': 0.9217499028959255,                # Alpha parameter for xPatch
+        'beta': 0.29425111586615627,
     }
 
     if args.dataset == "Colorado":
@@ -798,13 +798,31 @@ def objective(args, trial, study):
     'pred_len': params['pred_len'],
     'batch_size': params['batch_size'],
           
-'patch_len': 48,
-    'stride': 24,
-    'padding_patch': 'None',
-    'revin': 0,
-    'ma_type': 'reg',
-    'alpha': 0.8205177177113407,
-    'beta': 0.5824502202238674
+    #   'patch_len': 48,
+    # 'stride': 24,
+    # 'padding_patch': 'None',
+    # 'revin': 0,
+    # 'ma_type': 'reg',
+    # 'alpha': 0.8205177177113407,
+    # 'beta': 0.5824502202238674
+
+            # Number of workers for data loading
+            'num_workers': params['num_workers'],
+            # Learning rate for the optimizer
+            'learning_rate': params['learning_rate'],
+            # Maximum number of epochs
+            'max_epochs': params['max_epochs'],
+            # Patch length for xPatch
+            'patch_len': params['patch_len'],
+            'stride': 7,                 # Stride for patching
+            # Padding type for patches
+            'padding_patch': params['padding_patch'],
+            # Reversible normalization flag
+            'revin': params['revin'],
+            'ma_type': params['ma_type'],               # Moving average type
+            # Alpha parameter for xPatch
+            'alpha': params['alpha'],
+            'beta': params['beta'],
         }
       )
       model = xPatch(params_xpatch)
@@ -814,30 +832,14 @@ def objective(args, trial, study):
         "seq_len": params['seq_len'],               # Context window (lookback length)
         "pred_len": params['pred_len'],
         "batch_size": params['batch_size'],
-        # 'patch_len': 12,
-        #     'stride': 8,
-        #     'mixer_kernel_size': 8,
-        #     'd_model': 768,
-        #     'dropout': 0.8,
-        #     'head_dropout': 0.0,
-        #     'e_layers': 3
-        # Number of workers for data loading
-        'num_workers': params['num_workers'],
-        # Learning rate for the optimizer
-        'learning_rate': params['learning_rate'],
-        # Maximum number of epochs
-        'max_epochs': params['max_epochs'],
-        # Patch length for PatchMixer
-        'patch_len': params['patch_len'],
-        'stride': 14,                 # Stride for patching
-        # Kernel size for the PatchMixer layer
-        'mixer_kernel_size': params['mixer_kernel_size'],
-        'd_model': params['d_model'],               # Dimension of the model
-        # Dropout rate for the model
-        'dropout': params['dropout'],
-        # Dropout rate for the head layers
-        'head_dropout': params['head_dropout'],
-        'e_layers': params['e_layers'],
+        'patch_len': 12,
+            'stride': 8,
+            'mixer_kernel_size': 8,
+            'd_model': 768,
+            'dropout': 0.8,
+            'head_dropout': 0.0,
+            'e_layers': 3
+      
         
       })
       model = PatchMixer(_params)
