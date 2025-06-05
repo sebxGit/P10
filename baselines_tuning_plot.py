@@ -659,14 +659,20 @@ def objective(args, trial, study):
     # 'max_epochs': 1900,
     # 'num_workers': 9
 
-        'batch_size': 128,                          # Batch size for training
-        'learning_rate': 0.002183521345460817,      # Learning rate for the optimizer
-        'max_epochs': 1600,                            # Maximum number of epochs
-        'num_workers': 9,                           # Number of workers for data loading
-        'hidden_size': 143,                         # Hidden size for GRU layers
-        'num_layers': 1,                            # Number of GRU layers
-        'dropout': 0.23265791159785204,
 
+        'batch_size': 48,                           # Batch size for training
+        'learning_rate': 0.0001483174723491183,     # Learning rate for the optimizer
+        'max_epochs': 1200,                         # Maximum number of epochs
+        'num_workers': 8,                           # Number of workers for data loading
+        'n_estimators': 63,                         # Number of estimators for Random Forest
+        'max_depth': 13,                            # Maximum depth of the trees
+        # Minimum samples required to split a node
+        'min_samples_split': 2,
+        # Minimum samples required in a leaf node
+        'min_samples_leaf': 19,
+        'max_features': 0.9794293248463268,
+
+      
         
 
         
@@ -695,13 +701,9 @@ def objective(args, trial, study):
       model = LSTM(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "GRU":
       _params = {
-          # 'hidden_size': trial.suggest_int('hidden_size', 50, 200),
-          # 'num_layers': trial.suggest_int('num_layers', 1, 10),
-          # 'dropout': trial.suggest_float('dropout', 0.0, 1),
-          # Hidden size for GRU layers
-          'hidden_size': params['hidden_size'],
-          'num_layers': params['num_layers'],         # Number of GRU layers
-          'dropout': params['dropout'],
+          'hidden_size': trial.suggest_int('hidden_size', 50, 200),
+          'num_layers': trial.suggest_int('num_layers', 1, 10),
+          'dropout': trial.suggest_float('dropout', 0.0, 1),
       }
       model = GRU(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "MLP":
@@ -714,11 +716,20 @@ def objective(args, trial, study):
       model = MultiOutputRegressor(AdaBoostRegressor(n_estimators=_params['n_estimators'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "RandomForest":
       _params = {
-        'n_estimators': trial.suggest_int('n_estimators', 50, 200),
-        'max_depth': trial.suggest_int('max_depth', 1, 20),
-        'min_samples_split': trial.suggest_int('min_samples_split', 2, 20),
-        'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 20),
-        'max_features': trial.suggest_float('max_features', 0.1, 1.0),
+        # 'n_estimators': trial.suggest_int('n_estimators', 50, 200),
+        # 'max_depth': trial.suggest_int('max_depth', 1, 20),
+        # 'min_samples_split': trial.suggest_int('min_samples_split', 2, 20),
+        # 'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 20),
+        # 'max_features': trial.suggest_float('max_features', 0.1, 1.0),
+        # Number of estimators for Random Forest
+        'n_estimators': params['n_estimators'],
+          # Maximum depth of the trees
+          'max_depth': params['max_depth'],
+          # Minimum samples required to split a node
+          'min_samples_split': params['min_samples_split'],
+          # Minimum samples required in a leaf node
+          'min_samples_leaf': params['min_samples_leaf'],
+          'max_features': params['max_features'],
       }
       model =  MultiOutputRegressor(RandomForestRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], min_samples_leaf=_params['min_samples_leaf'], max_features=_params['max_features'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "GradientBoosting":
