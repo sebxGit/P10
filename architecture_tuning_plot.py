@@ -648,7 +648,7 @@ def objective(args, trial, all_subsets, study):
   selected_subset_as_string = trial.suggest_categorical("model_subsets", all_subsets_as_strings)
   selected_subset = ast.literal_eval(selected_subset_as_string)
   print(selected_subset)
-  selected_subset = ['RandomForestRegressor', 'GradientBoostingRegressor', 'GRU', 'PatchMixer', 'xPatch']
+  selected_subset = ['LSTM', 'GRU', 'PatchMixer']
   print(selected_subset)
 
   for model_name in selected_subset:
