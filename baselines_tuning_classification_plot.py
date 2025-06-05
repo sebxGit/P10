@@ -701,8 +701,8 @@ def objective(args, trial, study):
         'seq_len': 24*7,
         'stride': args.pred_len,
         # 'batch_size': trial.suggest_int('batch_size', 32, 256, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
-        # 'criterion': torch.nn.L1Loss(),
-        'criterion': torch.nn.HuberLoss(delta=0.25),
+        'criterion': torch.nn.L1Loss(),
+        # 'criterion': torch.nn.HuberLoss(delta=0.25),
         'optimizer': torch.optim.Adam,
         'scaler': MaxAbsScaler(),
         # 'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
@@ -711,23 +711,10 @@ def objective(args, trial, study):
         # 'num_workers': trial.suggest_int('num_workers', 6, 14) if args.model != "DPAD" else 2,
         # 'num_workers': 10,
         'is_persistent': True,
-
-
-        'batch_size': 192,
-        'num_workers': 10,
-        'learning_rate': 0.0005934535032636055,
-        'max_epochs': 1400,
-        'n_estimators': 488,
-        'max_depth': 1,
-        'min_samples_split': 17,
-        'min_samples_leaf': 6,
-        'max_features': 0.6098031852726209,
-        'learning_rate_model': 0.9488819068920191,
-        'subsample': 0.9070970684413281
         
-
-
-
+            'batch_size': 192,
+    'learning_rate': 0.0029608318844730765,
+    'max_epochs': 1500
     }
 
     if args.dataset == "Colorado":
@@ -822,13 +809,13 @@ def objective(args, trial, study):
         "seq_len": params['seq_len'],               # Context window (lookback length)
         "pred_len": params['pred_len'],
         "batch_size": params['batch_size'],
-        "patch_len": trial.suggest_int("patch_len", 4, 32, step=4),  # Patch size
-        "stride": trial.suggest_int("stride", 2, 16, step=2),  # Stride for patching
-        "mixer_kernel_size": trial.suggest_int("mixer_kernel_size", 2, 16, step=2),  # Kernel size for the PatchMixer layer
-        "d_model": trial.suggest_int("d_model", 128, 1024, step=64),  # Dimension of the model
-        "dropout": trial.suggest_float("dropout", 0.0, 0.8, step=0.1),  # Dropout rate for the model
-        "head_dropout": trial.suggest_float("head_dropout", 0.0, 0.8, step=0.1),  # Dropout rate for the head layers
-        "e_layers": trial.suggest_int("e_layers", 1, 10),  # Number of PatchMixer layers (depth)
+'patch_len': 12,
+    'stride': 8,
+    'mixer_kernel_size': 8,
+    'd_model': 768,
+    'dropout': 0.8,
+    'head_dropout': 0.0,
+    'e_layers': 3
         
       })
       model = PatchMixer(_params)
@@ -904,17 +891,13 @@ def objective(args, trial, study):
     total_recall_score = np.mean(recall_scores) if len(recall_scores) > 0 else 0
     total_huber_loss_score = np.mean(huber_loss_scores) if len(huber_loss_scores) > 0 else float('inf')
 
-    total_recall_score_float = total_recall_score.item()
-
-    total_recall_score_float = total_recall_score.item()
 
     dates = colmod.val_dates[-len(predictions):]
     plt.figure(figsize=(11, 5))
     plt.plot(dates, actuals, label='Actuals')
     plt.plot(dates, predictions, label=f'Predictions')
     plt.plot(dates, baseload, label='Baseload')
-    plt.axhline(y=args.threshold, color='red',
-                linestyle='--', label='Threshold')
+    plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
     plt.xlabel('Dates')
     plt.ylabel('Electricity Consumption (kWh)')
     plt.legend()
@@ -1048,13 +1031,13 @@ def tune_model_with_optuna(args, n_trials):
 
 if __name__ == '__main__':
   parser = ArgumentParser()
-  parser.add_argument("--dataset", type=str, default="SDU")
+  parser.add_argument("--dataset", type=str, default="Colorado")
   parser.add_argument("--pred_len", type=int, default=24)
-  parser.add_argument("--model", type=str, default="xPatch")  # change
+  parser.add_argument("--model", type=str, default="PatchMixer")  # change
   parser.add_argument("--load", type=str, default='False') #change
   parser.add_argument("--mixed", type=str, default='True')
-  parser.add_argument("--individual", type=str, default="False")
-  parser.add_argument("--threshold", type=float, default=250)
+  parser.add_argument("--individual", type=str, default="True")
+  parser.add_argument("--threshold", type=float, default=500)
   parser.add_argument("--downscaling", type=int, default=13)
   parser.add_argument("--multiplier", type=int, default=2)
   parser.add_argument("--trials", type=int, default=150) #change
