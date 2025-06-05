@@ -709,9 +709,9 @@ def objective(args, trial, study):
         'seed': 42,
         # 'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100),
         # 'num_workers': trial.suggest_int('num_workers', 6, 14) if args.model != "DPAD" else 2,
-        # 'num_workers': 10,
+        'num_workers': 10,
         'is_persistent': True,
-        
+         
             'batch_size': 192,
     'learning_rate': 0.0029608318844730765,
     'max_epochs': 1500
