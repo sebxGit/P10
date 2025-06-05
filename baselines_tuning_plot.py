@@ -660,17 +660,15 @@ def objective(args, trial, study):
     # 'num_workers': 9
 
 
-        'batch_size': 48,                           # Batch size for training
-        'learning_rate': 0.0001483174723491183,     # Learning rate for the optimizer
-        'max_epochs': 1200,                         # Maximum number of epochs
-        'num_workers': 8,                           # Number of workers for data loading
-        'n_estimators': 63,                         # Number of estimators for Random Forest
-        'max_depth': 13,                            # Maximum depth of the trees
-        # Minimum samples required to split a node
+        'batch_size': 48,
+        'learning_rate': 0.0001483174723491183,
+        'max_epochs': 1200,
+        'num_workers': 8,
+        'n_estimators': 63,
+        'max_depth': 13,
         'min_samples_split': 2,
-        # Minimum samples required in a leaf node
         'min_samples_leaf': 19,
-        'max_features': 0.9794293248463268,
+        'max_features': 0.9794293248463268
 
       
         
@@ -722,14 +720,11 @@ def objective(args, trial, study):
         # 'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 20),
         # 'max_features': trial.suggest_float('max_features', 0.1, 1.0),
         # Number of estimators for Random Forest
-        'n_estimators': params['n_estimators'],
-          # Maximum depth of the trees
+          'n_estimators': params['n_estimators'],
           'max_depth': params['max_depth'],
-          # Minimum samples required to split a node
           'min_samples_split': params['min_samples_split'],
-          # Minimum samples required in a leaf node
           'min_samples_leaf': params['min_samples_leaf'],
-          'max_features': params['max_features'],
+          'max_features': params['max_features']
       }
       model =  MultiOutputRegressor(RandomForestRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], min_samples_leaf=_params['min_samples_leaf'], max_features=_params['max_features'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "GradientBoosting":
