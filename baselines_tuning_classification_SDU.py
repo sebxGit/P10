@@ -705,25 +705,14 @@ def objective(args, trial, study):
         'criterion': torch.nn.HuberLoss(delta=0.25),
         'optimizer': torch.optim.Adam,
         'scaler': MaxAbsScaler(),
-        # 'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
+        'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
         # 'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100),
         # 'num_workers': trial.suggest_int('num_workers', 6, 14) if args.model != "DPAD" else 2,
-        # 'num_workers': 10,
+        'num_workers': 10,
         'is_persistent': True,
 
 
-
-        'batch_size': 144,
-        'num_workers': 10,
-        'learning_rate': 0.0008285155531289423,
-        'max_epochs': 1400,
-        'patch_len': 8,
-        'mixer_kernel_size': 16,
-        'd_model': 320,
-        'dropout': 0.8,
-        'head_dropout': 0.1,
-        'e_layers': 4
 
 
     }
@@ -821,13 +810,6 @@ def objective(args, trial, study):
         # "head_dropout": trial.suggest_float("head_dropout", 0.0, 0.8, step=0.1),  # Dropout rate for the head layers
         # "e_layers": trial.suggest_int("e_layers", 1, 10),  # Number of PatchMixer layers (depth)
 
-        'patch_len': params['patch_len'],
-          'stride': 14,
-          'mixer_kernel_size': params['mixer_kernel_size'],
-          'd_model': params['d_model'],
-          'dropout': params['dropout'],
-          'head_dropout': params['head_dropout'],
-          'e_layers': params['e_layers']
 
       })
       model = PatchMixer(_params)
