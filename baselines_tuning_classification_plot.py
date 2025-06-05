@@ -712,16 +712,13 @@ def objective(args, trial, study):
         # 'num_workers': 10,
         'is_persistent': True,
 
-        'batch_size': 96,
+        'batch_size': 128,
         'num_workers': 10,
-        'learning_rate': 0.004895508586161393,
-        'max_epochs': 1900,
-        'patch_len': 14,
-        'padding_patch': 'None',
-        'revin': 0,
-        'ma_type': 'reg',
-        'alpha': 0.9217499028959255,
-        'beta': 0.29425111586615627
+        'learning_rate': 0.0036149068236998,
+        'max_epochs': 1800,
+        'hidden_size': 156,
+        'num_layers': 1,
+        'dropout': 0.3070727620397399
 
 
 
@@ -747,9 +744,12 @@ def objective(args, trial, study):
       model = LSTM(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "GRU":
       _params = {
-          'hidden_size': trial.suggest_int('hidden_size', 50, 200),
-          'num_layers': trial.suggest_int('num_layers', 1, 10),
-          'dropout': trial.suggest_float('dropout', 0.0, 1),
+          # 'hidden_size': trial.suggest_int('hidden_size', 50, 200),
+          # 'num_layers': trial.suggest_int('num_layers', 1, 10),
+          # 'dropout': trial.suggest_float('dropout', 0.0, 1),
+          'hidden_size': params['hidden_size'],
+          'num_layers': params['num_layers'],
+          'dropout': params['dropout']
       }
       model = GRU(input_size=params['input_size'], pred_len=params['pred_len'], hidden_size=_params['hidden_size'], num_layers=_params['num_layers'], dropout=_params['dropout'])
     elif args.model == "MLP":
@@ -796,20 +796,13 @@ def objective(args, trial, study):
         seq_len = params['seq_len'],
         pred_len = params['pred_len'],
         enc_in = params['input_size'],
-        # patch_len = trial.suggest_int('patch_len', 2, 16, step=2),
-        # stride=trial.suggest_int('stride', 1, 7, step=2),
-        # padding_patch = trial.suggest_categorical('padding_patch', ['end', 'None']),
-        # revin = trial.suggest_int('revin', 0, 1),
-        # ma_type = trial.suggest_categorical('ma_type', ['reg', 'ema']),
-        # alpha = trial.suggest_float('alpha', 0.0, 1.0),
-        # beta = trial.suggest_float('beta', 0.0, 1.0),
-            patch_len =  params['patch_len'],
-            stride = 7,
-            padding_patch = params['padding_patch'],
-            revin = params['revin'],
-            ma_type = params['ma_type'],
-            alpha =  params['alpha'],
-            beta =  params['beta']
+        patch_len = trial.suggest_int('patch_len', 2, 16, step=2),
+        stride=trial.suggest_int('stride', 1, 7, step=2),
+        padding_patch = trial.suggest_categorical('padding_patch', ['end', 'None']),
+        revin = trial.suggest_int('revin', 0, 1),
+        ma_type = trial.suggest_categorical('ma_type', ['reg', 'ema']),
+        alpha = trial.suggest_float('alpha', 0.0, 1.0),
+        beta = trial.suggest_float('beta', 0.0, 1.0),
         )
       )
       model = xPatch(params_xpatch)
@@ -1050,7 +1043,7 @@ if __name__ == '__main__':
   parser.add_argument("--model", type=str, default="xPatch")  # change
   parser.add_argument("--load", type=str, default='False') #change
   parser.add_argument("--mixed", type=str, default='True')
-  parser.add_argument("--individual", type=str, default="True")
+  parser.add_argument("--individual", type=str, default="False")
   parser.add_argument("--threshold", type=float, default=250)
   parser.add_argument("--downscaling", type=int, default=13)
   parser.add_argument("--multiplier", type=int, default=2)
