@@ -772,33 +772,19 @@ if __name__ == "__main__":
 
       df = df[(df.index >= val_start_date) & (df.index <= val_end_date)]
 
-      # plt.figure(figsize=(15, 4))
-      # plt.plot(df['Aggregated charging load'], label='Aggregated charging load')
-      # plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
-      # plt.xlabel('Dates')
-      # plt.ylabel('Electricity Consumption (kW)')
-      # plt.legend()
-      # plt.savefig(f'{file_path}_baseload.png')
-      # plt.show()
-
-  
-      
       df = df.iloc[:len(actuals_flat)]
-      print(len(actuals_flat), len(df))
 
-      # exit()
-      # df = df.iloc[0:300] 
+      df = df.iloc[-300:] 
 
       df = df[['Aggregated base load']]
 
       df_pred_act = pd.DataFrame({'y_pred': y_pred, 'actuals_flat': actuals_flat})
       df_pred_act.index = colmod.val_dates[:len(actuals_flat)]
 
-      # df_pred_act = df_pred_act.iloc[0:300]
+      df_pred_act = df_pred_act.iloc[-300:]
 
     baseloads = [df]
     dfs = [df_pred_act]
-
 
     for i, (baseload, df) in enumerate(zip(baseloads, dfs)):
       if args.dataset == "Colorado":
@@ -815,9 +801,7 @@ if __name__ == "__main__":
       actuals = np.array(actuals_flat) + baseload
       predictions = np.array(y_pred) + baseload
       
-      # dates = colmod.test_dates[0:300]
-      dates = colmod.test_dates[:len(actuals_flat)]
-
+      dates = colmod.test_dates[-300:]
       plt.figure(figsize=(11, 5))
       plt.plot(dates, actuals, label='Actuals+baseload')
       plt.plot(dates, predictions, label=f'{combined_name}+baseload')
@@ -826,9 +810,9 @@ if __name__ == "__main__":
       plt.xlabel('Dates')
       plt.ylabel('Electricity Consumption (kWh)')
       plt.legend()
-      plt.savefig(f'{file_path}_baseload.png')
+      plt.tight_layout()
+      plt.savefig(f'Predictions/{args.dataset}_{args.pred_len}h_{args.models}_predact_plot.png')
       plt.show()
-
 
       actual_class = np.where(actuals > args.threshold, 1, 0)
       pred_class = np.where(predictions > args.threshold, 1, 0)
