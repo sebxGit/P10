@@ -642,8 +642,8 @@ def initialize_model(model_name, hyperparameters):
 
 parser = ArgumentParser()
 # parser.add_argument("--models", type=str, default="LSTM") # ['LSTM', 'GRU', 'PatchMixer', 'xPatch'] #['LSTM', 'GRU', 'PatchMixer', 'xPatch']
-parser.add_argument("--models", type=str, default="xPatch") # ['LSTM', 'GRU', 'PatchMixer', 'xPatch'] #['LSTM', 'GRU', 'PatchMixer', 'xPatch']
-parser.add_argument("--individual", type=str, default="True")
+parser.add_argument("--models", type=str, default="[GRU, PatchMixer, xPatch]") # ['LSTM', 'GRU', 'PatchMixer', 'xPatch'] #['LSTM', 'GRU', 'PatchMixer', 'xPatch']
+parser.add_argument("--individual", type=str, default="False")
 parser.add_argument("--input_size", type=int, default=16)
 parser.add_argument("--pred_len", type=int, default=24)
 parser.add_argument("--seq_len", type=int, default=24*7)
@@ -680,7 +680,6 @@ if __name__ == "__main__":
       hyperparameters = ast.literal_eval(hparams[hparams['model'] == model_name].iloc[0].values[3])
     else:
       hyperparameters = ast.literal_eval(hparams[hparams['model'] == model_name].iloc[0].values[6])
-
 
     print(f"Hyperparameters for {model_name}: {hyperparameters}")
 
@@ -733,12 +732,13 @@ if __name__ == "__main__":
 
     dates = dates[-len(actuals_flattened):]
     
-    plt.figure(figsize=(15, 4))
+    plt.figure(figsize=(11, 5))
     plt.plot(dates, actuals_flattened, label='Actuals')
     plt.plot(dates, y_pred, label=f'{combined_name} Predictions')
     plt.xlabel('Dates')
     plt.ylabel('Electricity Consumption (kWh)')
     plt.legend()
+    plt.tight_layout()
     plt.savefig(f'Predictions/{args.dataset}_{args.pred_len}h_{args.models}_predact_plot.png')
     plt.show()
     plt.clf()
