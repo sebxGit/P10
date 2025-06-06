@@ -420,37 +420,8 @@ class SDUDataModule(L.LightningDataModule):
              'Number of driving EVs', 
              'Year', 'Month', 'Day', 'Hour']]
 
-    # Ensure numeric columns are correctly parsed
-    # numeric_cols = [
-    #     'Aggregated charging load',
-    #     'Total number of EVs',
-    #     'Number of driving EVs',
-    #     'Number of charging EVs',
-    #     'Overload duration [min]'
-    # ]
-    # df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric, errors='coerce')
-
-  
-    # Use lowercase 'h' to avoid deprecation warning
+ 
     df['Timestamp'] = df['Timestamp'].dt.floor('h')
-
-    # Optional: Aggregate if multiple entries exist for the same hour
-    # df = df.groupby('Timestamp')[numeric_cols].sum().reset_index()
-
-    #df = add_featuresSDU(df)
-
-    # df['hour'] = df.index.hour
-    # df['dayofweek'] = df.index.dayofweek
-    # df['month'] = df.index.month
-
-    # print("CSV Columns:", df.columns.tolist())
-
-
-    #print(df.head())
-
-    # df['Aggregated charging load'] = df['Aggregated charging load'].interpolate(method='time')
-    # df['Aggregated charging load'] = df['Aggregated charging load'].interpolate(method='linear')
-    # df['Aggregated charging load'] = df['Aggregated charging load'].interpolate(method='pchip')
 
     df.set_index('Timestamp', inplace=True)
 
@@ -460,42 +431,15 @@ class SDUDataModule(L.LightningDataModule):
     df['month_sin'] = np.sin(2 * np.pi * df['Month'] / 12)
     df['month_cos'] = np.cos(2 * np.pi * df['Month'] / 12)
 
-    # df['days_in_month'] = df.apply(lambda row: calendar.monthrange(row['Year'], row['Month'])[1], axis=1)
-    # df['day_sin'] = np.sin(2 * np.pi * df['Day'] / df['days_in_month'])
-    # df['day_cos'] = np.cos(2 * np.pi * df['Day'] / df['days_in_month'])
-
     df['dayofweek'] = df.index.dayofweek
     df['dayofweek_sin'] = np.sin(2 * np.pi * df['dayofweek'] / 7)
     df['dayofweek_cos'] = np.cos(2 * np.pi * df['dayofweek'] / 7)
 
-    #remove  
-    # df = df.drop(columns=['montdh', 'Year', 'hour', 'Month', 'Hour', 'Day'])
-    
-    # Add Logp1 transformation to the target variable 
-    # df['Aggregated charging load'] = np.log1p(df['Aggregated charging load'])
-
-    ### features 
     df['lag1h'] = df['Aggregated charging load'].shift(1)
-    # df['lag3h'] = df['Aggregated charging load'].shift(3)
-    # df['lag6h'] = df['Aggregated charging load'].shift(6)
 
-    # df['lag12h'] = df['Aggregated charging load'].shift(12)
-    df['lag24h'] = df['Aggregated charging load'].shift(24)  # 1 day
-    # df['lag1w'] = df['Aggregated charging load'].shift(24*7)  # 1 week
-
-    # df['roll_std_24h'] = df['Aggregated charging load'].rolling(window=24).std()
-    # df['roll_min_24h'] = df['Aggregated charging load'].rolling(window=24).min()
- 
-
-    # df['rolling1h'] = df['Aggregated charging load'].rolling(window=2).mean()  # 1 hour rolling mean
-    # df['rolling3h'] = df['Aggregated charging load'].rolling(window=3).mean()  # 3 hour rolling mean
-    # df['rolling6h'] = df['Aggregated charging load'].rolling(window=6).mean()  # 6 hour rolling mean
-    # df['rolling12h'] = df['Aggregated charging load'].rolling(window=12).mean()  # 12 hour rolling mean
-    # df['roll_max_24h'] = df['Aggregated charging load'].rolling(window=24).max()
+    df['lag24h'] = df['Aggregated charging load'].shift(24)
 
     df = df.dropna()
-
-    # print("final", df.columns.tolist())
 
     df = filter_data(start_date, end_date, df)
 
@@ -518,15 +462,9 @@ class SDUDataModule(L.LightningDataModule):
       self.X_train = preprocessing.transform(self.X_train)
       self.y_train = np.array(self.y_train)
 
-      # self.X_val = preprocessing.transform(self.X_val)
-      # self.y_val = np.array(self.y_val)
-
     if stage == "test" or "predict" or stage is None:
       self.X_val = preprocessing.transform(self.X_val)
       self.y_val = np.array(self.y_val)
-
-      # self.X_test = preprocessing.transform(self.X_test)
-      # self.y_test = np.array(self.y_test)
 
   def train_dataloader(self):
     train_dataset = TimeSeriesDataset(
@@ -537,10 +475,6 @@ class SDUDataModule(L.LightningDataModule):
     # train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return train_loader
 
-  # def predict_dataloader(self):
-  #   test_dataset = TimeSeriesDataset(self.X_test, self.y_test, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-  #   test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
-  #   return test_loader
 
   def predict_dataloader(self):
     val_dataset = TimeSeriesDataset(
@@ -567,12 +501,10 @@ class SDUDataModule(L.LightningDataModule):
     seq_len, pred_len, stride = self.seq_len, self.pred_len, self.stride
     max_start = len(X) - (seq_len + pred_len) + 1
 
-    # Parallelize the loop
     results = Parallel(n_jobs=-1)(
         delayed(process_window)(i, X, y, seq_len, pred_len) for i in range(0, max_start, stride)
     )
 
-    # Unpack results
     X_window, y_target = zip(*results)
     return np.array(X_window), np.array(y_target)
 
@@ -708,7 +640,6 @@ def objective(args, trial, all_subsets, study):
   trial.set_user_attr('mse', mse.item())
   trial.set_user_attr('mae', mae.item())
   
-  # rank top 10 baggings save in trial.set_user_attr
   tuning_results.append({'combined_name': combined_name, 'huber': huber_loss.item(), 'mae': mae.item(), 'mse': mse.item(), 'parameters': trial.params})
 
   actuals_flattened = [item for sublist in actuals for item in sublist]
@@ -733,20 +664,7 @@ def objective(args, trial, all_subsets, study):
   if len(study.trials) > 0 and any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials) and study.best_value != None and mae <= study.best_value:
     best_list.clear()
     best_list.append({'predictions': y_val_tensor[-len(y_pred_tensor):].tolist(), 'actuals': y_pred_tensor.tolist()})
-    # dates = colmod.val_dates[-len(y_pred_tensor):]
-    # plt.figure(figsize=(15, 4))
-    # plt.plot(dates, actuals, label='Actuals')
-    # plt.plot(dates, predictions, label=f'predictions')
-    # plt.axhline(y=args.threshold, color='red', linestyle='--', label='Threshold')
-    # plt.xlabel('Dates')
-    # plt.ylabel('Electricity Consumption (kWh)')
-    # plt.legend()
-    # plt.tight_layout()
-    # plt.savefig(f'Tunings/{args.dataset}_{args.pred_len}h_{args.models}_{trial.number}_{huber_loss}_{mae}_{mse}_architecture_classification_plot.png')
-    # plt.show()
-    # plt.clf()
-    # plt.close()
-
+    
   if os.path.exists(f"Tunings/{combined_name}"):
     shutil.rmtree(f"Tunings/{combined_name}")
     
@@ -854,7 +772,6 @@ if __name__ == "__main__":
     df_top_10 = pd.DataFrame(top_10_tunings)
     df_top_10.to_csv(f'Tunings/{args.dataset}_{args.pred_len}h_architecture_tuning.csv', index=False)
 
-    # pred and act plot
     best_ensemble_name = sorted_trials[0]['combined_name']
     plt.figure(figsize=(15, 4))
     plt.plot(actuals, label='Actuals')

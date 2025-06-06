@@ -8,4 +8,4 @@
 #SBATCH --cpus-per-task=80
 #SBATCH --mem=175G
 
-singularity exec --nv energycontainerblackbox.sif python3 overload_classification.py --dataset SDU --threshold 250 --multiplier 2 --downscaling 13 --models "['GradientBoostingRegressor', 'AdaBoostRegressor', 'GRU', 'PatchMixer', 'xPatch']" --individual False
+singularity exec --nv energycontainerblackbox.sif python3 overload_classification.py --dataset SDU --threshold 250 --multiplier 2 --downscaling 13 --models PatchMixer --individual False

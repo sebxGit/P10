@@ -54,17 +54,12 @@ def convert_Colorado_to_hourly(data):
     data['Charging_EndTime'] = pd.to_datetime(data['End_DateTime'])
     data['Charging_Time'] = pd.to_timedelta(data['Charging_Time'])
 
-    ####################### CONVERT DATASET TO HOURLY  #######################
-
-    # Split the session into hourly intervals
     hourly_rows = []
 
-    # Iterate over each row in the dataframe to break charging sessions into hourly intervals
     for _, row in data.iterrows():
         start, end = row['Start_DateTime'], row['Charging_EndTime']
         energy = row['Energy_Consumption']
 
-        # Generate hourly intervals
         hourly_intervals = pd.date_range(
             start=start.floor('h'), end=end.ceil('h'), freq='h')
         total_duration = (end - start).total_seconds()
@@ -74,114 +69,46 @@ def convert_Colorado_to_hourly(data):
             interval_end = min(end, hourly_intervals[i+1])
             interval_duration = (interval_end - interval_start).total_seconds()
 
-            # Calculate the energy consumption for the interval if interval is greater than 0 (Start and end time are different)
             if interval_duration > 0:
                 energy_fraction = (interval_duration / total_duration) * energy
 
             hourly_rows.append({
                 'Time': hourly_intervals[i],
                 'Energy_Consumption': energy_fraction,
-                "Session_Count": 1  # Count of sessions in the interval
+                "Session_Count": 1  
             })
 
-    # Create a new dataframe from the hourly intervals
     hourly_df = pd.DataFrame(hourly_rows)
 
-    # Aggregate the hourly intervals
     hourly_df = hourly_df.groupby('Time').agg({
         'Energy_Consumption': 'sum',
         'Session_Count': 'sum'
     }).reset_index()
 
-    # Convert the Time column to datetime
     hourly_df['Time'] = pd.to_datetime(
         hourly_df['Time'], format="%d-%m-%Y %H:%M:%S")
     hourly_df = hourly_df.set_index('Time')
 
-    # Define time range for all 24 hours
-    start_time = hourly_df.index.min().normalize()  # 00:00:00
-    end_time = hourly_df.index.max().normalize() + pd.Timedelta(days=1) - \
-        pd.Timedelta(hours=1)  # 23:00:00
+    start_time = hourly_df.index.min().normalize()  
+    end_time = hourly_df.index.max().normalize() + pd.Timedelta(days=1) - pd.Timedelta(hours=1) 
 
-    # Change range to time_range_full, so from 00:00:00 to 23:00:00
     time_range_full = pd.date_range(start=start_time, end=end_time, freq='h')
 
-    # Reindex the hourly data to include all hours in the range
     hourly_df = hourly_df.reindex(time_range_full, fill_value=0)
 
-    # Return the hourly data
     return hourly_df
 
-def add_featuresSDU(df):
-    # Ensure Timestamp is datetime
-    df['Timestamp'] = pd.to_datetime(df['Timestamp'])
-
-    # Use the Timestamp column instead of index
-    df['Day_of_Week'] = df['Timestamp'].dt.dayofweek
-    df['Hour_of_Day'] = df['Timestamp'].dt.hour
-    df['Month_of_Year'] = df['Timestamp'].dt.month
-    df['Year'] = df['Timestamp'].dt.year
-    df['Day/Night'] = (df['Hour_of_Day'] >= 6) & (df['Hour_of_Day'] <= 18)
-
-    # Add holiday
-    dk_hols = holidays.DK(years=range(
-        df['Timestamp'].dt.year.min(), df['Timestamp'].dt.year.max() + 1))
-    df['IsHoliday'] = df['Timestamp'].dt.date.isin(dk_hols).astype(int)
-
-    # Add weekend
-    df['Weekend'] = (df['Day_of_Week'] >= 5).astype(int)
-
-    ####################### CYCLIC FEATURES  #######################
-    df['HourSin'] = np.sin(2 * np.pi * df['Hour_of_Day'] / 24)
-    df['HourCos'] = np.cos(2 * np.pi * df['Hour_of_Day'] / 24)
-    df['DayOfWeekSin'] = np.sin(2 * np.pi * df['Day_of_Week'] / 7)
-    df['DayOfWeekCos'] = np.cos(2 * np.pi * df['Day_of_Week'] / 7)
-    df['MonthOfYearSin'] = np.sin(2 * np.pi * df['Month_of_Year'] / 12)
-    df['MonthOfYearCos'] = np.cos(2 * np.pi * df['Month_of_Year'] / 12)
-
-    ####################### SEASONAL FEATURES  #######################
-    month_to_season = {1: 0, 2: 0, 3: 1, 4: 1, 5: 1, 6: 2,
-                       7: 2, 8: 2, 9: 3, 10: 3, 11: 3, 12: 0}
-    df['Season'] = df['Month_of_Year'].map(month_to_season)
-
-    ####################### HISTORICAL CONSUMPTION FEATURES  #######################
-    df['Aggregated_charging_load_1h'] = df['Aggregated charging load'].shift(1)
-    df['Aggregated_charging_load_6h'] = df['Aggregated charging load'].shift(6)
-    df['Aggregated_charging_load_12h'] = df['Aggregated charging load'].shift(
-        12)
-    df['Aggregated_charging_load_24h'] = df['Aggregated charging load'].shift(
-        24)
-    df['Aggregated_charging_load_1w'] = df['Aggregated charging load'].shift(
-        24*7)
-    df['Aggregated_charging_rolling'] = df['Aggregated charging load'].rolling(
-        window=24).mean()
-
-    return df
 
 def add_features(hourly_df, dataset_name, historical_feature, weather_df=None):
-  ####################### TIMED BASED FEATURES  #######################
   hourly_df['Day_of_Week'] = hourly_df.index.dayofweek
-
-  # Add hour of the day
   hourly_df['Hour_of_Day'] = hourly_df.index.hour
-
-  # Add month of the year
   hourly_df['Month_of_Year'] = hourly_df.index.month
-
-  # Add year
   hourly_df['Year'] = hourly_df.index.year
-
-  # Add day/night
   hourly_df['Day/Night'] = (hourly_df['Hour_of_Day'] >= 6) & (hourly_df['Hour_of_Day'] <= 18)
 
   # Add holiday
-  if dataset_name == 'Colorado':
-    us_holidays = holidays.US(years=range(hourly_df.index.year.min(), hourly_df.index.year.max() + 1))
-    hourly_df['IsHoliday'] = hourly_df.index.to_series().dt.date.isin(us_holidays).astype(int)
-  elif dataset_name == 'SDU':
-    dk_holidays = holidays.DK(years=range(
-        hourly_df.index.year.min(), hourly_df.index.year.max() + 1))
-    hourly_df['IsHoliday'] = hourly_df.index.to_series().dt.date.isin(dk_holidays).astype(int)
+  us_holidays = holidays.US(years=range(hourly_df.index.year.min(), hourly_df.index.year.max() + 1))
+  hourly_df['IsHoliday'] = hourly_df.index.to_series().dt.date.isin(us_holidays).astype(int)
 
   # Add weekend
   hourly_df['Weekend'] = (hourly_df['Day_of_Week'] >= 5).astype(int)
@@ -257,7 +184,6 @@ class TimeSeriesDataset(Dataset):
     if isinstance(y, pd.Series):
         y = y.to_numpy()
 
-    # Ensure data is numeric and handle non-numeric values
     X = np.asarray(X, dtype=np.float32)
     y = np.asarray(y, dtype=np.float32)
 
@@ -317,7 +243,6 @@ class ColoradoDataModule(L.LightningDataModule):
     start_date = pd.to_datetime('2021-05-30')
     end_date = pd.to_datetime('2023-05-30')
 
-    # Load and preprocess the data
     data = pd.read_csv(self.data_dir)
     data = convert_Colorado_to_hourly(data)
     data = add_features(data, dataset_name='Colorado', historical_feature='Energy_Consumption', weather_df='Colorado/denver_weather.csv')
@@ -402,16 +327,11 @@ class SDUDataModule(L.LightningDataModule):
     self.val_dates = []
 
   def setup(self, stage: str):
-    # Define the start and end dates
-    # start_date = pd.to_datetime('2024-12-31')
-    # end_date = pd.to_datetime('2032-12-31')
     start_date = pd.to_datetime('2029-12-31')
     end_date = pd.to_datetime('2030-12-31')
 
-    # Load the CSV
     df = pd.read_csv(self.data_dir, skipinitialspace=True)
 
-    # Convert 'Timestamp' to datetime with exact format
     df['Timestamp'] = pd.to_datetime(
         df['Timestamp'], format="%b %d, %Y, %I:%M:%S %p")
 
@@ -421,37 +341,7 @@ class SDUDataModule(L.LightningDataModule):
              'Number of driving EVs', 
              'Year', 'Month', 'Day', 'Hour']]
 
-    # Ensure numeric columns are correctly parsed
-    # numeric_cols = [
-    #     'Aggregated charging load',
-    #     'Total number of EVs',
-    #     'Number of driving EVs',
-    #     'Number of charging EVs',
-    #     'Overload duration [min]'
-    # ]
-    # df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric, errors='coerce')
-
-  
-    # Use lowercase 'h' to avoid deprecation warning
     df['Timestamp'] = df['Timestamp'].dt.floor('h')
-
-    # Optional: Aggregate if multiple entries exist for the same hour
-    # df = df.groupby('Timestamp')[numeric_cols].sum().reset_index()
-
-    #df = add_featuresSDU(df)
-
-    # df['hour'] = df.index.hour
-    # df['dayofweek'] = df.index.dayofweek
-    # df['month'] = df.index.month
-
-    # print("CSV Columns:", df.columns.tolist())
-
-
-    #print(df.head())
-
-    # df['Aggregated charging load'] = df['Aggregated charging load'].interpolate(method='time')
-    # df['Aggregated charging load'] = df['Aggregated charging load'].interpolate(method='linear')
-    # df['Aggregated charging load'] = df['Aggregated charging load'].interpolate(method='pchip')
 
     df.set_index('Timestamp', inplace=True)
 
@@ -461,42 +351,14 @@ class SDUDataModule(L.LightningDataModule):
     df['month_sin'] = np.sin(2 * np.pi * df['Month'] / 12)
     df['month_cos'] = np.cos(2 * np.pi * df['Month'] / 12)
 
-    # df['days_in_month'] = df.apply(lambda row: calendar.monthrange(row['Year'], row['Month'])[1], axis=1)
-    # df['day_sin'] = np.sin(2 * np.pi * df['Day'] / df['days_in_month'])
-    # df['day_cos'] = np.cos(2 * np.pi * df['Day'] / df['days_in_month'])
-
     df['dayofweek'] = df.index.dayofweek
     df['dayofweek_sin'] = np.sin(2 * np.pi * df['dayofweek'] / 7)
     df['dayofweek_cos'] = np.cos(2 * np.pi * df['dayofweek'] / 7)
 
-    #remove  
-    # df = df.drop(columns=['montdh', 'Year', 'hour', 'Month', 'Hour', 'Day'])
-    
-    # Add Logp1 transformation to the target variable 
-    # df['Aggregated charging load'] = np.log1p(df['Aggregated charging load'])
-
-    ### features 
     df['lag1h'] = df['Aggregated charging load'].shift(1)
-    # df['lag3h'] = df['Aggregated charging load'].shift(3)
-    # df['lag6h'] = df['Aggregated charging load'].shift(6)
-
-    # df['lag12h'] = df['Aggregated charging load'].shift(12)
     df['lag24h'] = df['Aggregated charging load'].shift(24)  # 1 day
-    # df['lag1w'] = df['Aggregated charging load'].shift(24*7)  # 1 week
-
-    # df['roll_std_24h'] = df['Aggregated charging load'].rolling(window=24).std()
-    # df['roll_min_24h'] = df['Aggregated charging load'].rolling(window=24).min()
- 
-
-    # df['rolling1h'] = df['Aggregated charging load'].rolling(window=2).mean()  # 1 hour rolling mean
-    # df['rolling3h'] = df['Aggregated charging load'].rolling(window=3).mean()  # 3 hour rolling mean
-    # df['rolling6h'] = df['Aggregated charging load'].rolling(window=6).mean()  # 6 hour rolling mean
-    # df['rolling12h'] = df['Aggregated charging load'].rolling(window=12).mean()  # 12 hour rolling mean
-    # df['roll_max_24h'] = df['Aggregated charging load'].rolling(window=24).max()
 
     df = df.dropna()
-
-    # print("final", df.columns.tolist())
 
     df = filter_data(start_date, end_date, df)
 
@@ -513,21 +375,17 @@ class SDUDataModule(L.LightningDataModule):
     self.val_dates = self.X_val.index.tolist()
 
     preprocessing = self.scaler
-    preprocessing.fit(self.X_train)  # should only fit to training data
+    preprocessing.fit(self.X_train)  
 
     if stage == "fit" or stage is None:
       self.X_train = preprocessing.transform(self.X_train)
       self.y_train = np.array(self.y_train)
 
-      # self.X_val = preprocessing.transform(self.X_val)
-      # self.y_val = np.array(self.y_val)
 
     if stage == "test" or "predict" or stage is None:
       self.X_val = preprocessing.transform(self.X_val)
       self.y_val = np.array(self.y_val)
 
-      # self.X_test = preprocessing.transform(self.X_test)
-      # self.y_test = np.array(self.y_test)
 
   def train_dataloader(self):
     train_dataset = TimeSeriesDataset(
@@ -538,10 +396,6 @@ class SDUDataModule(L.LightningDataModule):
     # train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
     return train_loader
 
-  # def predict_dataloader(self):
-  #   test_dataset = TimeSeriesDataset(self.X_test, self.y_test, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-  #   test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
-  #   return test_loader
 
   def predict_dataloader(self):
     val_dataset = TimeSeriesDataset(
@@ -568,12 +422,10 @@ class SDUDataModule(L.LightningDataModule):
     seq_len, pred_len, stride = self.seq_len, self.pred_len, self.stride
     max_start = len(X) - (seq_len + pred_len) + 1
 
-    # Parallelize the loop
     results = Parallel(n_jobs=-1)(
         delayed(process_window)(i, X, y, seq_len, pred_len) for i in range(0, max_start, stride)
     )
 
-    # Unpack results
     X_window, y_target = zip(*results)
     return np.array(X_window), np.array(y_target)
 
@@ -673,12 +525,6 @@ def get_baseloads_and_parts(colmod, y_pred, actuals):
 
     val_start_date = pd.to_datetime('2030-08-07 01:00:00')
     val_end_date = pd.to_datetime('2030-10-19 00:00:00')
-
-    # 2029-12-31 00:00:00 2030-08-07 00:00:00
-    # ----------------------------------------
-    # 2030-08-07 01:00:00 2030-10-19 00:00:00
-    # ----------------------------------------
-    # 2030-10-19 01:00:00 2030-12-31 00:00:00
 
     df = pd.read_csv('SDU Dataset/DumbCharging_2020_to_2032/Measurements.csv', skipinitialspace=True)
 

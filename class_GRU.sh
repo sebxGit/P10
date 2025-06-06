@@ -8,4 +8,4 @@
 #SBATCH --cpus-per-task=128
 #SBATCH --mem=192G
 
-singularity exec --nv energycontainerblackbox.sif python3 baselines_tuning_classification.py --model GRU --load False  --individual True --dataset Colorado --threshold 500
+singularity exec --nv energycontainerblackbox.sif python3 tuning_classification.py --model GRU --load False  --individual True --dataset Colorado --threshold 500
