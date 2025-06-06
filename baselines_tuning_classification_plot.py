@@ -713,10 +713,10 @@ def objective(args, trial, study):
         # 'num_workers': 10,
         'is_persistent': True,
 
-    'batch_size': 64,
-    'learning_rate': 0.001552187907543553,
-    'max_epochs': 1700,
-    'num_workers': 9,
+'batch_size': 192,
+    'num_workers': 10,
+    'learning_rate': 0.0029608318844730765,
+    'max_epochs': 1500,
     }
 
     if args.dataset == "Colorado":
@@ -830,13 +830,13 @@ def objective(args, trial, study):
         seq_len = params['seq_len'],
         pred_len = params['pred_len'],
         enc_in = params['input_size'],
-        patch_len=16,
-        stride=12,
-        mixer_kernel_size=8,
-        d_model=832,
-        dropout=0.4,
-        head_dropout=0.0,
-        e_layers=2
+    patch_len=12,
+    stride=8,
+    mixer_kernel_size=8,
+    d_model=768,
+    dropout=0.8,
+    head_dropout=0.0,
+    e_layers=3
         )
         
       )
