@@ -704,18 +704,27 @@ def objective(args, trial, study):
         'criterion': torch.nn.L1Loss(),
         # 'criterion': torch.nn.HuberLoss(delta=0.25),
         'optimizer': torch.optim.Adam,
-        'scaler': MaxAbsScaler(),
+        # 'scaler': MaxAbsScaler(),
+        'scaler': MinMaxScaler(),
         # 'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
         # 'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100),
         # 'num_workers': trial.suggest_int('num_workers', 6, 14) if args.model != "DPAD" else 2,
         # 'num_workers': 10,
         'is_persistent': True,
+
+        'batch_size': 32,                           # Batch size for training
+        'learning_rate': 0.009375393931457811,      # Learning rate for the optimizer
+        'max_epochs': 1800,                         # Maximum number of epochs
+        'num_workers': 11,                          # Number of workers for data loading
+        'patch_len': 48,                            # Patch length for xPatch
+        'padding_patch': 'None',                    # Padding type for patches
+        'revin': 0,                                 # Reversible normalization flag
+        'ma_type': 'reg',                           # Moving average type
+        'alpha': 0.8205177177113407,                # Alpha parameter for xPatch
+        'beta': 0.5824502202238674,
         
-    'batch_size': 32,
-    'learning_rate': 0.0022504039576051542,
-    'max_epochs': 1200,
-    'num_workers': 10
+    
     }
 
     if args.dataset == "Colorado":
@@ -794,14 +803,34 @@ def objective(args, trial, study):
     seq_len=params['seq_len'],
     pred_len=params['pred_len'],
     enc_in=params['input_size'],
-    batch_size=params['batch_size'],
-    patch_len=48,
-    stride=24,
-    padding_patch='None',
-    revin=0,
-    ma_type='reg',
-    alpha=0.8205177177113407,
-    beta=0.5824502202238674
+    # batch_size=params['batch_size'],
+    # patch_len=48,
+    # stride=24,
+    # padding_patch='None',
+    # revin=0,
+    # ma_type='reg',
+    # alpha=0.8205177177113407,
+    # beta=0.5824502202238674
+
+            # Batch size for training
+            batch_size =  params['batch_size'],
+            # Learning rate for the optimizer
+            learning_rate = params['learning_rate'],
+            # Maximum number of epochs
+            max_epochs = params['max_epochs'],
+            # Number of workers for data loading
+            num_workers = params['num_workers'],
+            # Patch length for xPatch
+            patch_len = params['patch_len'],
+            stride = 24,                 # Stride for patching
+            # Padding type for patches
+            padding_patch = params['padding_patch'],
+            # Reversible normalization flag
+            revin =  params['revin'],
+            ma_type =  params['ma_type'],               # Moving average type
+            # Alpha parameter for xPatch
+            alpha =  params['alpha'],
+            beta = params['beta'],
 )
       )
       model = xPatch(params_xpatch)
@@ -1038,7 +1067,7 @@ if __name__ == '__main__':
   parser.add_argument("--model", type=str, default="xPatch")  # change
   parser.add_argument("--load", type=str, default='False') #change
   parser.add_argument("--mixed", type=str, default='True')  
-  parser.add_argument("--individual", type=str, default="True")
+  parser.add_argument("--individual", type=str, default="False")
   parser.add_argument("--threshold", type=float, default=500)
   parser.add_argument("--downscaling", type=int, default=13)
   parser.add_argument("--multiplier", type=int, default=2)
