@@ -713,16 +713,21 @@ def objective(args, trial, study):
         # 'num_workers': 10,
         'is_persistent': True,
 
-        'batch_size': 32,                           # Batch size for training
-        'learning_rate': 0.009375393931457811,      # Learning rate for the optimizer
-        'max_epochs': 1800,                         # Maximum number of epochs
-        'num_workers': 11,                          # Number of workers for data loading
-        'patch_len': 48,                            # Patch length for xPatch
-        'padding_patch': 'None',                    # Padding type for patches
-        'revin': 0,                                 # Reversible normalization flag
-        'ma_type': 'reg',                           # Moving average type
-        'alpha': 0.8205177177113407,                # Alpha parameter for xPatch
-        'beta': 0.5824502202238674,
+        'batch_size': 48,                           # Batch size for training
+        'learning_rate': 0.00010824735790287389,    # Learning rate for the optimizer
+        'max_epochs': 1500,                         # Maximum number of epochs
+        'num_workers': 5,                           # Number of workers for data loading
+        # Number of estimators for Gradient Boosting
+        'n_estimators': 150,
+        'max_depth': 20,                            # Maximum depth of the trees
+        # Minimum samples required to split a node
+        'min_samples_split': 19,
+        # Minimum samples required in a leaf node
+        'min_samples_leaf': 2,
+        # Maximum features to consider for a split
+        'max_features': 0.13710322525399174,
+        # Learning rate for the Gradient Boosting model
+        'learning_rate_model': 0.2557229816731754,
 
         
         
@@ -780,13 +785,12 @@ def objective(args, trial, study):
         # 'max_features': trial.suggest_float('max_features', 0.1, 1.0),
         # 'learning_rate_model': trial.suggest_float('learning_rate_model', 0.01, 1.0),
         # 'subsample': trial.suggest_float('subsample', 0.7, 1.0),
-        'n_estimators': params['n_estimators'],
-          'max_depth': params['max_depth'],
-          'min_samples_split': params['min_samples_split'],
-          'min_samples_leaf': params['min_samples_leaf'],
-          'max_features': params['max_features'],
-          'learning_rate_model': params['learning_rate_model'],
-          'subsample': params['subsample']
+        'n_estimators': params['n_estimators'],     # Number of estimators for Gradient Boosting
+    'max_depth': params['max_depth'],           # Maximum depth of the trees
+    'min_samples_split': params['min_samples_split'],  # Minimum samples required to split a node
+    'min_samples_leaf': params['min_samples_leaf'],    # Minimum samples required in a leaf node
+    'max_features': params['max_features'],     # Maximum features to consider for a split
+    'learning_rate_model': params['learning_rate_model'],  # Learning rate for the Gradient
       }
       model = MultiOutputRegressor(GradientBoostingRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], subsample=_params['subsample'], min_samples_leaf=_params['min_samples_leaf'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "DPAD":
