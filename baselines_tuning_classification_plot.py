@@ -718,7 +718,6 @@ def objective(args, trial, study):
         'learning_rate': 0.0029608318844730765,     # Learning rate for the optimizer
         'max_epochs': 1500,                         # Maximum number of epochs
         'patch_len': 12,                            # Patch length for PatchMixer
-        'stride': 8,                                # Stride for patching
         'mixer_kernel_size': 8,                     # Kernel size for the PatchMixer layer
         'd_model': 768,                             # Dimension of the model
         'dropout': 0.8,                             # Dropout rate for the model
