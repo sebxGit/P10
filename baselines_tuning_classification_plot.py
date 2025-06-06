@@ -701,11 +701,11 @@ def objective(args, trial, study):
         'seq_len': 24*7,
         'stride': args.pred_len,
         # 'batch_size': trial.suggest_int('batch_size', 32, 256, step=16) if args.model != "DPAD" else trial.suggest_int('batch_size', 16, 48, step=16),
-        'criterion': torch.nn.L1Loss(),
-        # 'criterion': torch.nn.HuberLoss(delta=0.25),
+        # 'criterion': torch.nn.L1Loss(),
+        'criterion': torch.nn.HuberLoss(delta=0.25),
         'optimizer': torch.optim.Adam,
-        'scaler': MaxAbsScaler(),
-        # 'scaler': MinMaxScaler(),
+        # 'scaler': MaxAbsScaler(),
+        'scaler': MinMaxScaler(),
         # 'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
         'seed': 42,
         # 'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100),
@@ -754,11 +754,16 @@ def objective(args, trial, study):
       model = MultiOutputRegressor(AdaBoostRegressor(n_estimators=_params['n_estimators'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "RandomForest":
       _params = {
-        'n_estimators': trial.suggest_int('n_estimators', 50, 200),
-        'max_depth': trial.suggest_int('max_depth', 1, 20),
-        'min_samples_split': trial.suggest_int('min_samples_split', 2, 20),
-        'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 20),
-        'max_features': trial.suggest_float('max_features', 0.1, 1.0),
+        # 'n_estimators': trial.suggest_int('n_estimators', 50, 200),
+        # 'max_depth': trial.suggest_int('max_depth', 1, 20),
+        # 'min_samples_split': trial.suggest_int('min_samples_split', 2, 20),
+        # 'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 20),
+        # 'max_features': trial.suggest_float('max_features', 0.1, 1.0),
+        'n_estimators': params['n_estimators'],     # Number of estimators for Random Forest
+    'max_depth': params['max_depth'],           # Maximum depth of the trees
+    'min_samples_split': params['min_samples_split'],  # Minimum samples required to split a node
+    'min_samples_leaf': params['min_samples_leaf'],    # Minimum samples required in a leaf node
+    'max_features': params['max_features'],     # Maximum features to consider for a split
       }
       model =  MultiOutputRegressor(RandomForestRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], min_samples_leaf=_params['min_samples_leaf'], max_features=_params['max_features'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "GradientBoosting":
@@ -770,14 +775,21 @@ def objective(args, trial, study):
         # 'max_features': trial.suggest_float('max_features', 0.1, 1.0),
         # 'learning_rate_model': trial.suggest_float('learning_rate_model', 0.01, 1.0),
         # 'subsample': trial.suggest_float('subsample', 0.7, 1.0),
-        'n_estimators': params['n_estimators'],     # Number of estimators for Gradient Boosting
-    'max_depth': params['max_depth'],           # Maximum depth of the trees
-    'min_samples_split': params['min_samples_split'],  # Minimum samples required to split a node
-    'min_samples_leaf': params['min_samples_leaf'],    # Minimum samples required in a leaf node
-    'max_features': params['max_features'],     # Maximum features to consider for a split
-    'learning_rate_model': params['learning_rate_model'],  # Learning rate for the Gradient
+        # Number of estimators for Gradient Boosting
+        'n_estimators': params['n_estimators'],
+          # Maximum depth of the trees
+          'max_depth': params['max_depth'],
+          # Minimum samples required to split a node
+          'min_samples_split': params['min_samples_split'],
+          # Minimum samples required in a leaf node
+          'min_samples_leaf': params['min_samples_leaf'],
+          # Maximum features to consider for a split
+          'max_features': params['max_features'],
+          # Learning rate for the Gradient
+          'learning_rate_model': params['learning_rate_model'],
       }
-      model = MultiOutputRegressor(GradientBoostingRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], subsample=_params['subsample'], min_samples_leaf=_params['min_samples_leaf'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
+      model = MultiOutputRegressor(GradientBoostingRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], min_samples_leaf=_params['min_samples_leaf'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
+      # model = MultiOutputRegressor(GradientBoostingRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], subsample=_params['subsample'], min_samples_leaf=_params['min_samples_leaf'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "DPAD":
         _params = {
           'enc_hidden': trial.suggest_int('enc_hidden', 108, 324, step=24),
