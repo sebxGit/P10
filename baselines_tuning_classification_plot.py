@@ -714,20 +714,17 @@ def objective(args, trial, study):
         'is_persistent': True,
 
         'batch_size': 48,                           # Batch size for training
-        'learning_rate': 0.00010824735790287389,    # Learning rate for the optimizer
-        'max_epochs': 1500,                         # Maximum number of epochs
+        'learning_rate': 0.00016068210171536588,    # Learning rate for the optimizer
+        'max_epochs': 1700,                         # Maximum number of epochs
         'num_workers': 5,                           # Number of workers for data loading
-        # Number of estimators for Gradient Boosting
-        'n_estimators': 150,
-        'max_depth': 20,                            # Maximum depth of the trees
+        'n_estimators': 93,                         # Number of estimators for Random Forest
+        'max_depth': 16,                            # Maximum depth of the trees
         # Minimum samples required to split a node
-        'min_samples_split': 19,
+        'min_samples_split': 13,
         # Minimum samples required in a leaf node
-        'min_samples_leaf': 2,
+        'min_samples_leaf': 1,
         # Maximum features to consider for a split
-        'max_features': 0.13710322525399174,
-        # Learning rate for the Gradient Boosting model
-        'learning_rate_model': 0.2557229816731754,
+        'max_features': 0.675461333214573,
 
         
         
@@ -769,11 +766,16 @@ def objective(args, trial, study):
       model = MultiOutputRegressor(AdaBoostRegressor(n_estimators=_params['n_estimators'], learning_rate=_params['learning_rate_model'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "RandomForest":
       _params = {
-        'n_estimators': trial.suggest_int('n_estimators', 50, 200),
-        'max_depth': trial.suggest_int('max_depth', 1, 20),
-        'min_samples_split': trial.suggest_int('min_samples_split', 2, 20),
-        'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 20),
-        'max_features': trial.suggest_float('max_features', 0.1, 1.0),
+        # 'n_estimators': trial.suggest_int('n_estimators', 50, 200),
+        # 'max_depth': trial.suggest_int('max_depth', 1, 20),
+        # 'min_samples_split': trial.suggest_int('min_samples_split', 2, 20),
+        # 'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 20),
+        # 'max_features': trial.suggest_float('max_features', 0.1, 1.0),
+        'n_estimators': params['n_estimators'],     # Number of estimators for Random Forest
+    'max_depth': params['max_depth'],           # Maximum depth of the trees
+    'min_samples_split': params['min_samples_split'],  # Minimum samples required to split a node
+    'min_samples_leaf': params['min_samples_leaf'],    # Minimum samples required in a leaf node
+    'max_features': params['max_features'],     # Maximum features to consider for a split
       }
       model =  MultiOutputRegressor(RandomForestRegressor(n_estimators=_params['n_estimators'], max_depth=_params['max_depth'], min_samples_split=_params['min_samples_split'], min_samples_leaf=_params['min_samples_leaf'], max_features=_params['max_features'], random_state=params['seed']), n_jobs=-1)
     elif args.model == "GradientBoosting":
