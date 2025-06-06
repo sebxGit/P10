@@ -710,12 +710,13 @@ def objective(args, trial, study):
         'seed': 42,
         # 'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100),
         # 'num_workers': trial.suggest_int('num_workers', 6, 14) if args.model != "DPAD" else 2,
-        'num_workers': 10,
+        # 'num_workers': 10,
         'is_persistent': True,
-
-        'batch_size': 32,                           # Batch size for training
-        'learning_rate': 0.0022504039576051542,    # Learning rate for the optimizer
-        'max_epochs': 1200,                         # Maximum number of epochs
+        
+'batch_size': 48,
+    'learning_rate': 0.005415696015300989,
+    'max_epochs': 1800,
+    'num_workers': 5,
         
     }
 
@@ -830,13 +831,13 @@ def objective(args, trial, study):
         seq_len = params['seq_len'],
         pred_len = params['pred_len'],
         enc_in = params['input_size'],
-        patch_len = trial.suggest_int('patch_len', 2, 16, step=2),
-        stride=trial.suggest_int('stride', 1, 7, step=2),
-        padding_patch = trial.suggest_categorical('padding_patch', ['end', 'None']),
-        revin = trial.suggest_int('revin', 0, 1),
-        ma_type = trial.suggest_categorical('ma_type', ['reg', 'ema']),
-        alpha = trial.suggest_float('alpha', 0.0, 1.0),
-        beta = trial.suggest_float('beta', 0.0, 1.0),
+        patch_len=16,
+        stride=12,
+        mixer_kernel_size=8,
+        d_model=832,
+        dropout=0.4,
+        head_dropout=0.0,
+        e_layers=2
         )
         
       )
