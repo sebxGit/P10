@@ -713,16 +713,16 @@ def objective(args, trial, study):
         # 'num_workers': 10,
         'is_persistent': True,
 
-        'batch_size': 192,                          # Batch size for training
-        'num_workers': 10,                          # Number of workers for data loading
-        'learning_rate': 0.0029608318844730765,     # Learning rate for the optimizer
-        'max_epochs': 1500,                         # Maximum number of epochs
-        'patch_len': 12,                            # Patch length for PatchMixer
-        'mixer_kernel_size': 8,                     # Kernel size for the PatchMixer layer
-        'd_model': 768,                             # Dimension of the model
-        'dropout': 0.8,                             # Dropout rate for the model
-        'head_dropout': 0.0,                        # Dropout rate for the head layers
-        'e_layers': 3,
+        'batch_size': 32,                           # Batch size for training
+        'learning_rate': 0.009375393931457811,      # Learning rate for the optimizer
+        'max_epochs': 1800,                         # Maximum number of epochs
+        'num_workers': 11,                          # Number of workers for data loading
+        'patch_len': 48,                            # Patch length for xPatch
+        'padding_patch': 'None',                    # Padding type for patches
+        'revin': 0,                                 # Reversible normalization flag
+        'ma_type': 'reg',                           # Moving average type
+        'alpha': 0.8205177177113407,                # Alpha parameter for xPatch
+        'beta': 0.5824502202238674,
 
         
         
@@ -815,7 +815,7 @@ def objective(args, trial, study):
     # beta=0.5824502202238674
 
             # Batch size for training
-            batch_size =  params['batch_size'],
+            batch_size = params['batch_size'],
             # Learning rate for the optimizer
             learning_rate = params['learning_rate'],
             # Maximum number of epochs
@@ -828,11 +828,11 @@ def objective(args, trial, study):
             # Padding type for patches
             padding_patch = params['padding_patch'],
             # Reversible normalization flag
-            revin =  params['revin'],
-            ma_type =  params['ma_type'],               # Moving average type
+            revin = params['revin'],
+            ma_type = params['ma_type'],               # Moving average type
             # Alpha parameter for xPatch
-            alpha =  params['alpha'],
-            beta = params['beta'],
+            alpha = params['alpha'],
+            beta =  params['beta'],
 )
       )
       model = xPatch(params_xpatch)
@@ -842,34 +842,13 @@ def objective(args, trial, study):
         seq_len = params['seq_len'],
         pred_len = params['pred_len'],
         enc_in = params['input_size'],
-        # patch_len = trial.suggest_int('patch_len', 2, 16, step=2),
-        # stride=trial.suggest_int('stride', 1, 7, step=2),
-        # padding_patch = trial.suggest_categorical('padding_patch', ['end', 'None']),
-        # revin = trial.suggest_int('revin', 0, 1),
-        # ma_type = trial.suggest_categorical('ma_type', ['reg', 'ema']),
-        # alpha = trial.suggest_float('alpha', 0.0, 1.0),
-        # beta = trial.suggest_float('beta', 0.0, 1.0),
-            # Batch size for training
-            batch_size =params['batch_size'],
-            # Number of workers for data loading
-            num_workers = params['num_workers'],
-            # Learning rate for the optimizer
-            learning_rate = params['learning_rate'],
-            # Maximum number of epochs
-            max_epochs = params['max_epochs'],
-            # Patch length for PatchMixer
-            patch_len =  params['patch_len'],
-            
-            stride = 8,                 # Stride for patching
-            # Kernel size for the PatchMixer layer
-            mixer_kernel_size = params['mixer_kernel_size'],
-            # Dimension of the model
-            d_model = params['d_model'],
-            # Dropout rate for the model
-            dropout = params['dropout'],
-            # Dropout rate for the head layers
-            head_dropout = params['head_dropout'],
-            e_layers = params['e_layers'],
+        patch_len = trial.suggest_int('patch_len', 2, 16, step=2),
+        stride=trial.suggest_int('stride', 1, 7, step=2),
+        padding_patch = trial.suggest_categorical('padding_patch', ['end', 'None']),
+        revin = trial.suggest_int('revin', 0, 1),
+        ma_type = trial.suggest_categorical('ma_type', ['reg', 'ema']),
+        alpha = trial.suggest_float('alpha', 0.0, 1.0),
+        beta = trial.suggest_float('beta', 0.0, 1.0),
         )
         
       )
@@ -1090,7 +1069,7 @@ if __name__ == '__main__':
   parser.add_argument("--model", type=str, default="xPatch")  # change
   parser.add_argument("--load", type=str, default='False') #change
   parser.add_argument("--mixed", type=str, default='True')  
-  parser.add_argument("--individual", type=str, default="True")
+  parser.add_argument("--individual", type=str, default="False")
   parser.add_argument("--threshold", type=float, default=500)
   parser.add_argument("--downscaling", type=int, default=13)
   parser.add_argument("--multiplier", type=int, default=2)
