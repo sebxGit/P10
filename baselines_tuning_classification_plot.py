@@ -710,28 +710,13 @@ def objective(args, trial, study):
         'seed': 42,
         # 'max_epochs': trial.suggest_int('max_epochs', 1000, 2000, step=100),
         # 'num_workers': trial.suggest_int('num_workers', 6, 14) if args.model != "DPAD" else 2,
-        # 'num_workers': 10,
+        'num_workers': 10,
         'is_persistent': True,
 
-        'batch_size': 48,                           # Batch size for training
-        'learning_rate': 0.00010824735790287389,    # Learning rate for the optimizer
-        'max_epochs': 1500,                         # Maximum number of epochs
-        'num_workers': 5,                           # Number of workers for data loading
-        # Number of estimators for Gradient Boosting
-        'n_estimators': 150,
-        'max_depth': 20,                            # Maximum depth of the trees
-        # Minimum samples required to split a node
-        'min_samples_split': 19,
-        # Minimum samples required in a leaf node
-        'min_samples_leaf': 2,
-        # Maximum features to consider for a split
-        'max_features': 0.13710322525399174,
-        # Learning rate for the Gradient Boosting model
-        'learning_rate_model': 0.2557229816731754,
-
+        'batch_size': 32,                           # Batch size for training
+        'learning_rate': 0.0022504039576051542,    # Learning rate for the optimizer
+        'max_epochs': 1200,                         # Maximum number of epochs
         
-        
-    
     }
 
     if args.dataset == "Colorado":
@@ -817,26 +802,13 @@ def objective(args, trial, study):
     # ma_type='reg',
     # alpha=0.8205177177113407,
     # beta=0.5824502202238674
-
-            # Batch size for training
-            batch_size = params['batch_size'],
-            # Learning rate for the optimizer
-            learning_rate = params['learning_rate'],
-            # Maximum number of epochs
-            max_epochs = params['max_epochs'],
-            # Number of workers for data loading
-            num_workers = params['num_workers'],
-            # Patch length for xPatch
-            patch_len = params['patch_len'],
-            stride = 24,                 # Stride for patching
-            # Padding type for patches
-            padding_patch = params['padding_patch'],
-            # Reversible normalization flag
-            revin = params['revin'],
-            ma_type = params['ma_type'],               # Moving average type
-            # Alpha parameter for xPatch
-            alpha = params['alpha'],
-            beta =  params['beta'],
+    patch_len=12,                      # Patch length for xPatch
+    stride=1,                          # Stride for patching
+    padding_patch='None',              # Padding type for patches
+    revin=0,                           # Reversible normalization flag
+    ma_type='reg',                     # Moving average type
+    alpha=0.7576358668280231,          # Alpha parameter for xPatch
+    beta=0.26169390850128227  
 )
       )
       model = xPatch(params_xpatch)
