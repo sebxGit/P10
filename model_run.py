@@ -611,7 +611,7 @@ class LightningModel(L.LightningModule):
   def training_step(self, batch, batch_idx):
     x, y = batch
     y_hat = self(x)
-    train_loss = self.criterion(y_hat, y) 
+    train_loss = self.criterion(y_hat.flatten(), y.flatten()) 
     self.log("train_loss", train_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
     return train_loss
 
