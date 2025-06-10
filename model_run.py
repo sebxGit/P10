@@ -22,7 +22,7 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.ensemble import RandomForestRegressor, AdaBoostRegressor, GradientBoostingRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.base import BaseEstimator
-from sklearn.metrics import mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
+from sklearn.metrics import mean_pinball_loss, mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
 from sklearn.utils import resample
 from sklearn.multioutput import MultiOutputRegressor
 import ast
@@ -715,7 +715,7 @@ if __name__ == "__main__":
     # model creates prediction
     if isinstance(model, torch.nn.Module):
       if args.dataset == "SDU":
-        model = LightningModel(model=model, criterion=torch.nn.HuberLoss(delta=0.25), optimizer=torch.optim.Adam, learning_rate=hyperparameters['learning_rate'])
+        model = LightningModel(model=model, criterion=mean_pinball_loss(), optimizer=torch.optim.Adam, learning_rate=hyperparameters['learning_rate'])
       else:
         model = LightningModel(model=model, criterion=torch.nn.L1Loss(), optimizer=torch.optim.Adam, learning_rate=hyperparameters['learning_rate'])
 
