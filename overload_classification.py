@@ -688,9 +688,12 @@ if __name__ == "__main__":
     print(f"-----Training {model_name} model-----")
 
     if args.individual == "False":
-      hparams = pd.read_csv(f'./Tunings/{args.dataset}_{args.pred_len}h_classification_tuning.csv')
+      # hparams = pd.read_csv(f'./Tunings/{args.dataset}_{args.pred_len}h_classification_tuning.csv')
+        hparams = pd.read_csv(f'./Tunings/{args.dataset}_24h_classification_tuning.csv')
+
     else:
-      hparams = pd.read_csv(f'./Tunings/{args.dataset}_{args.pred_len}h_classification_individual_tuning.csv')
+      # hparams = pd.read_csv(f'./Tunings/{args.dataset}_{args.pred_len}h_classification_individual_tuning.csv')
+      hparams = pd.read_csv(f'./Tunings/{args.dataset}_24h_classification_individual_tuning.csv')
 
     # hyperparameters = ast.literal_eval(hparams[hparams['model'] == model_name].iloc[0].values[3])
     if args.dataset == "Colorado":
