@@ -717,8 +717,7 @@ if __name__ == "__main__":
       if args.dataset == "SDU":
         model = LightningModel(model=model, criterion=mean_pinball_loss(), optimizer=torch.optim.Adam, learning_rate=hyperparameters['learning_rate'])
       else:
-        model = LightningModel(model=model, criterion=torch.nn.L1Loss(), optimizer=torch.optim.Adam, learning_rate=hyperparameters['learning_rate'])
-
+        model = LightningModel(model=model, criterion=mean_pinball_loss(), optimizer=torch.optim.Adam, learning_rate=hyperparameters['learning_rate'])
 
       trainer = L.Trainer(max_epochs=hyperparameters['max_epochs'], log_every_n_steps=100, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
       trainer.fit(model, colmod)
