@@ -679,7 +679,7 @@ if __name__ == "__main__":
 
   output_dir = f'Classifications/{args.dataset}' 
   os.makedirs(output_dir, exist_ok=True)
-  file_path = f'Classifications/{args.dataset}/{combined_name}_overload_metrics.csv'
+  file_path = f'Classifications/{args.dataset}/{combined_name}_{args.pred_len}_overload_metrics.csv'
   
   all_predictions = []
   metrics = []

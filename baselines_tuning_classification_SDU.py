@@ -539,13 +539,24 @@ class SDUDataModule(L.LightningDataModule):
       # self.X_test = preprocessing.transform(self.X_test)
       # self.y_test = np.array(self.y_test)
 
+  # def train_dataloader(self):
+  #   train_dataset = TimeSeriesDataset(
+  #       self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
+  #   sampler = BootstrapSampler(len(train_dataset), random_state=SEED)
+  #   train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler,
+  #                             shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
+  #   # train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+  #   return train_loader
+
   def train_dataloader(self):
     train_dataset = TimeSeriesDataset(
         self.X_train, self.y_train, seq_len=self.seq_len, pred_len=self.pred_len, stride=self.stride)
-    sampler = BootstrapSampler(len(train_dataset), random_state=SEED)
-    train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler,
-                              shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
-    # train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    if args.individual == "True":
+      train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False,
+                                num_workers=self.num_workers, persistent_workers=self.is_persistent, drop_last=False)
+    else:
+      sampler = BootstrapSampler(len(train_dataset), random_state=SEED)
+      train_loader = DataLoader(train_dataset, batch_size=self.batch_size, sampler=sampler, shuffle=False, num_workers=self.num_workers, persistent_workers=self.is_persistent)
     return train_loader
 
   # def predict_dataloader(self):
@@ -982,7 +993,7 @@ def tune_model_with_optuna(args, n_trials):
 if __name__ == '__main__':
   parser = ArgumentParser()
   parser.add_argument("--dataset", type=str, default="SDU")
-  parser.add_argument("--pred_len", type=int, default=24)
+  parser.add_argument("--pred_len", type=int, default=6)
   parser.add_argument("--model", type=str, default="DPAD")  # change
   parser.add_argument("--load", type=str, default='False') #change
   parser.add_argument("--mixed", type=str, default='True')
