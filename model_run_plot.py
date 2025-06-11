@@ -641,9 +641,9 @@ def initialize_model(model_name, hyperparameters):
 
 parser = ArgumentParser()
 # parser.add_argument("--models", type=str, default="LSTM") # ['LSTM', 'GRU', 'PatchMixer', 'xPatch'] #['LSTM', 'GRU', 'PatchMixer', 'xPatch']
-parser.add_argument("--models", type=str, default="['RandomForestRegressor', 'GradientBoostingRegressor', 'GRU', 'PatchMixer', 'xPatch']") # ['LSTM', 'GRU', 'PatchMixer', 'xPatch'] #['LSTM', 'GRU', 'PatchMixer', 'xPatch']
-parser.add_argument("--individual", type=str, default="True")
-parser.add_argument("--input_size", type=int, default=16)
+parser.add_argument("--models", type=str, default="GradientBoostingRegressor") # ['LSTM', 'GRU', 'PatchMixer', 'xPatch'] #['LSTM', 'GRU', 'PatchMixer', 'xPatch']
+parser.add_argument("--individual", type=str, default="False")
+parser.add_argument("--input_size", type=int, default=22)
 parser.add_argument("--pred_len", type=int, default=24)
 parser.add_argument("--seq_len", type=int, default=24*7)
 parser.add_argument("--stride", type=int, default=24)
@@ -700,7 +700,7 @@ if __name__ == "__main__":
 
     # model creates prediction
     if isinstance(model, torch.nn.Module):
-      model = LightningModel(model=model, criterion=nn.HuberLoss(delta=0.25), optimizer=torch.optim.Adam, learning_rate=hyperparameters['learning_rate'])
+      model = LightningModel(model=model, criterion=nn.L1Loss(), optimizer=torch.optim.Adam, learning_rate=hyperparameters['learning_rate'])
       trainer = L.Trainer(max_epochs=hyperparameters['max_epochs'], log_every_n_steps=100, precision='16-mixed', enable_checkpointing=False, strategy='ddp_find_unused_parameters_true')
       trainer.fit(model, colmod)
 
