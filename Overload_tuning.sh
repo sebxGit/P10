@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=EVCSForecastRun
-#SBATCH --output=result_overload%j.out
-#SBATCH --error=error_overload_%j.err
+#SBATCH --job-name=model_tuning
+#SBATCH --output=result_model_tuning_%j.out
+#SBATCH --error=error_model_tuning_%j.err
 #SBATCH --time=12:00:00 # 
 #SBATCH --ntasks=1
 #SBATCH --gres=gpu:8
@@ -14,7 +14,7 @@ for model in "${MODELS[@]}"; do
     echo "Running model: $model"
     singularity exec --nv energycontainerblackbox.sif \
         python3 baselines_tuning_classification_SDU.py \
-        --models "$model" \
+        --model "$model" \
         --individual True \
         --multiplier 2 \
         --downscaling 13 \
